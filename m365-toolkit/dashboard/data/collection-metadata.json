@@ -1,0 +1,22 @@
+{
+  "collectionTime": "2026-02-04T08:00:00Z",
+  "duration": "00:05:32",
+  "version": "1.0.0",
+  "collectors": {
+    "users": { "success": true, "count": 10 },
+    "licenseSkus": { "success": true, "count": 6 },
+    "guests": { "success": true, "count": 5 },
+    "mfaStatus": { "success": true, "count": 7 },
+    "adminRoles": { "success": true, "count": 4 },
+    "riskySignins": { "success": true, "count": 4 },
+    "devices": { "success": true, "count": 6 },
+    "compliance": { "success": true, "count": 1 },
+    "autopilot": { "success": true, "count": 4 },
+    "defenderAlerts": { "success": true, "count": 5 }
+  },
+  "errors": [],
+  "tenant": {
+    "id": "sample-tenant-id",
+    "displayName": "Modum Kommune"
+  }
+}

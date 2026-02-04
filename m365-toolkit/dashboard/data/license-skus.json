@@ -1,0 +1,80 @@
+[
+  {
+    "skuId": "sku-11111111-1111-1111-1111-111111111111",
+    "skuName": "Microsoft 365 E3",
+    "skuPartNumber": "SPE_E3",
+    "totalPurchased": 150,
+    "totalAssigned": 120,
+    "assignedToEnabled": 100,
+    "assignedToDisabled": 10,
+    "assignedToInactive": 10,
+    "available": 30,
+    "wasteCount": 20,
+    "utilizationPercent": 80
+  },
+  {
+    "skuId": "sku-22222222-2222-2222-2222-222222222222",
+    "skuName": "Microsoft 365 A3 for Students",
+    "skuPartNumber": "M365EDU_A3_STUUSEBNFT",
+    "totalPurchased": 2000,
+    "totalAssigned": 1500,
+    "assignedToEnabled": 1450,
+    "assignedToDisabled": 30,
+    "assignedToInactive": 20,
+    "available": 500,
+    "wasteCount": 50,
+    "utilizationPercent": 75
+  },
+  {
+    "skuId": "sku-33333333-3333-3333-3333-333333333333",
+    "skuName": "Microsoft 365 A3 for Faculty",
+    "skuPartNumber": "M365EDU_A3_FACULTY",
+    "totalPurchased": 200,
+    "totalAssigned": 180,
+    "assignedToEnabled": 165,
+    "assignedToDisabled": 8,
+    "assignedToInactive": 7,
+    "available": 20,
+    "wasteCount": 15,
+    "utilizationPercent": 90
+  },
+  {
+    "skuId": "sku-44444444-4444-4444-4444-444444444444",
+    "skuName": "Microsoft Defender for Endpoint P1",
+    "skuPartNumber": "DEFENDER_ENDPOINT_P1",
+    "totalPurchased": 100,
+    "totalAssigned": 85,
+    "assignedToEnabled": 80,
+    "assignedToDisabled": 3,
+    "assignedToInactive": 2,
+    "available": 15,
+    "wasteCount": 5,
+    "utilizationPercent": 85
+  },
+  {
+    "skuId": "sku-55555555-5555-5555-5555-555555555555",
+    "skuName": "Power BI Pro",
+    "skuPartNumber": "POWER_BI_PRO",
+    "totalPurchased": 25,
+    "totalAssigned": 20,
+    "assignedToEnabled": 18,
+    "assignedToDisabled": 1,
+    "assignedToInactive": 1,
+    "available": 5,
+    "wasteCount": 2,
+    "utilizationPercent": 80
+  },
+  {
+    "skuId": "sku-66666666-6666-6666-6666-666666666666",
+    "skuName": "Entra ID P2",
+    "skuPartNumber": "AAD_PREMIUM_P2",
+    "totalPurchased": 50,
+    "totalAssigned": 45,
+    "assignedToEnabled": 43,
+    "assignedToDisabled": 1,
+    "assignedToInactive": 1,
+    "available": 5,
+    "wasteCount": 2,
+    "utilizationPercent": 90
+  }
+]

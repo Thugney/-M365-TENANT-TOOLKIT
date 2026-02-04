@@ -1,3 +1,2 @@
-# Ignore all dashboard data files (copied from ../data/)
-*.json
-!.gitignore
+# Sample data files are included for testing
+# In production, this directory contains copies from ../data/

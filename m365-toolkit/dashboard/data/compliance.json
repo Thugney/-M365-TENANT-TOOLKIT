@@ -1,0 +1,45 @@
+{
+  "totalDevices": 6,
+  "compliant": 4,
+  "nonCompliant": 2,
+  "unknown": 0,
+  "complianceRate": 66.7,
+  "byOS": {
+    "Windows": {
+      "total": 3,
+      "compliant": 2,
+      "nonCompliant": 1,
+      "unknown": 0
+    },
+    "iOS": {
+      "total": 1,
+      "compliant": 1,
+      "nonCompliant": 0,
+      "unknown": 0
+    },
+    "Android": {
+      "total": 1,
+      "compliant": 0,
+      "nonCompliant": 1,
+      "unknown": 0
+    },
+    "macOS": {
+      "total": 1,
+      "compliant": 1,
+      "nonCompliant": 0,
+      "unknown": 0
+    }
+  },
+  "byOwnership": {
+    "corporate": {
+      "total": 5,
+      "compliant": 4,
+      "nonCompliant": 1
+    },
+    "personal": {
+      "total": 1,
+      "compliant": 0,
+      "nonCompliant": 1
+    }
+  }
+}

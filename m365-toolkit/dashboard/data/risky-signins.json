@@ -1,0 +1,62 @@
+[
+  {
+    "id": "risk-11111111-1111-1111-1111-111111111111",
+    "userId": "33333333-3333-3333-3333-333333333333",
+    "userPrincipalName": "per.olsen@modum.kommune.no",
+    "riskLevel": "high",
+    "riskState": "atRisk",
+    "riskDetail": "impossibleTravel",
+    "detectedDateTime": "2026-01-28T14:30:00Z",
+    "location": {
+      "city": "Moscow",
+      "countryOrRegion": "Russia"
+    },
+    "ipAddress": "185.220.101.45",
+    "appDisplayName": "Microsoft Office"
+  },
+  {
+    "id": "risk-22222222-2222-2222-2222-222222222222",
+    "userId": "66666666-6666-6666-6666-666666666666",
+    "userPrincipalName": "maria.johansen@modum.kommune.no",
+    "riskLevel": "medium",
+    "riskState": "atRisk",
+    "riskDetail": "unfamiliarFeatures",
+    "detectedDateTime": "2026-01-30T09:15:00Z",
+    "location": {
+      "city": "Stockholm",
+      "countryOrRegion": "Sweden"
+    },
+    "ipAddress": "94.234.56.78",
+    "appDisplayName": "Azure Portal"
+  },
+  {
+    "id": "risk-33333333-3333-3333-3333-333333333333",
+    "userId": "22222222-2222-2222-2222-222222222222",
+    "userPrincipalName": "kari.nordmann@modum.kommune.no",
+    "riskLevel": "low",
+    "riskState": "remediated",
+    "riskDetail": "anonymizedIPAddress",
+    "detectedDateTime": "2026-01-25T16:00:00Z",
+    "location": {
+      "city": "Unknown",
+      "countryOrRegion": "Unknown"
+    },
+    "ipAddress": "10.0.0.1",
+    "appDisplayName": "Microsoft Teams"
+  },
+  {
+    "id": "risk-44444444-4444-4444-4444-444444444444",
+    "userId": "77777777-7777-7777-7777-777777777777",
+    "userPrincipalName": "thomas.nilsen@modum.kommune.no",
+    "riskLevel": "medium",
+    "riskState": "dismissed",
+    "riskDetail": "unfamiliarFeatures",
+    "detectedDateTime": "2026-01-20T11:30:00Z",
+    "location": {
+      "city": "Oslo",
+      "countryOrRegion": "Norway"
+    },
+    "ipAddress": "84.208.100.50",
+    "appDisplayName": "Outlook Mobile"
+  }
+]
