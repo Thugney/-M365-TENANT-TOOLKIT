@@ -1,0 +1,3 @@
+# Ignore all collected data files
+*.json
+!.gitignore

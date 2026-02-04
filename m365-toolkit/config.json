@@ -1,0 +1,20 @@
+{
+  "tenantId": "your-tenant-id",
+  "domains": {
+    "employees": "@modum.kommune.no",
+    "students": "@skole.modum.kommune.no"
+  },
+  "thresholds": {
+    "inactiveDays": 90,
+    "staleGuestDays": 60,
+    "staleDeviceDays": 90
+  },
+  "collection": {
+    "signInLogDays": 30,
+    "defenderAlertDays": 30
+  },
+  "dashboard": {
+    "title": "M365 Tenant Toolkit",
+    "subtitle": "Modum Kommune"
+  }
+}
