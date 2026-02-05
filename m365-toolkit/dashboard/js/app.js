@@ -216,8 +216,10 @@
                         <div class="empty-state-icon">&#9888;</div>
                         <div class="empty-state-title">No Data Available</div>
                         <div class="empty-state-description">
-                            Run the data collection script first:<br>
-                            <code>./Invoke-DataCollection.ps1</code>
+                            After collecting data, build the dashboard to make it viewable:<br><br>
+                            <code>.\\scripts\\Build-Dashboard.ps1</code><br><br>
+                            Or use sample data for testing:<br>
+                            <code>.\\scripts\\Build-Dashboard.ps1 -UseSampleData</code>
                         </div>
                     </div>
                 `;

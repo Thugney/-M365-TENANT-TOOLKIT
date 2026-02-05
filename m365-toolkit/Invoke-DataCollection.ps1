@@ -672,19 +672,20 @@ Write-Host "Disconnecting from Microsoft Graph..." -ForegroundColor Cyan
 Disconnect-MgGraph | Out-Null
 Write-Host "  ✓ Disconnected" -ForegroundColor Green
 
-# Offer to open dashboard
-if (-not $SkipDashboard) {
-    Write-Host ""
-    $openDashboard = Read-Host "Would you like to build and open the dashboard? (Y/n)"
-    if ($openDashboard -ne "n" -and $openDashboard -ne "N") {
-        $buildScript = Join-Path $PSScriptRoot "scripts" "Build-Dashboard.ps1"
-        if (Test-Path $buildScript) {
-            & $buildScript
-        }
-        else {
-            Write-Host "Dashboard build script not found. Run Build-Dashboard.ps1 manually." -ForegroundColor Yellow
-        }
+# Build dashboard automatically so data is ready to view
+Write-Host ""
+Write-Host "Building dashboard..." -ForegroundColor Cyan
+$buildScript = Join-Path $PSScriptRoot "scripts" "Build-Dashboard.ps1"
+if (Test-Path $buildScript) {
+    if (-not $SkipDashboard) {
+        & $buildScript
     }
+    else {
+        & $buildScript -NoBrowser
+    }
+}
+else {
+    Write-Host "Dashboard build script not found. Run Build-Dashboard.ps1 manually." -ForegroundColor Yellow
 }
 
 Write-Host ""
