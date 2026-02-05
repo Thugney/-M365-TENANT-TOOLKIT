@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-05
+
+### Added
+- SVG donut charts across all dashboard pages (Overview, Users, Licenses, Guests, Security, Devices, Enterprise Apps, Lifecycle, PIM, Audit Logs)
+- License Cost Calculator: configurable currency pricing in `config.sample.json`, waste cost cards on Licenses page, cost columns in table, cost breakdown in detail modal, waste callout on Overview
+- Trend Tracking: `trend-history.json` snapshots appended after each collection (capped at 12), `trend-helper.js` utility, delta arrows on Overview metric cards
+- Secure Score: new collector `Get-SecureScoreData.ps1` (Graph `/security/secureScores`), donut chart on Overview with top improvement actions
+- Department Filter: global header dropdown filtering Users, Devices, Overview, and Lifecycle pages by department context
+- Executive Report page: composite health score donut (MFA/Compliance/SecureScore/GuestHygiene/LicenseEfficiency), auto-ranked top 5 risks, license waste table, key metrics grid, governance summary, browser print support
+- Teams collector (`Get-TeamsData.ps1`) and Teams dashboard page with activity, ownership, and guest access tracking
+- SharePoint collector (`Get-SharePointData.ps1`) and SharePoint Governance dashboard page with sharing links, sensitivity labels, and storage analysis
+- Sample data for Teams, SharePoint, Secure Score, and trend history
+- Print CSS (`@media print`) for clean A4 output from Report page
+- `ARCHITECTURE.md` and `USAGE.md` documentation
+
+### Changed
+- `getSummary()` in data-loader now always computes from raw data instead of relying on metadata summary
+- Overview charts grid changed from fixed 2-column to `auto-fit` to accommodate Secure Score chart
+- `Build-Dashboard.ps1` now copies `trend-history.json` and `secure-score.json` into dashboard bundle
+- `Invoke-DataCollection.ps1` appends trend snapshot after each collection run and includes SecureScore/Teams/SharePoint collectors
+
 ## [1.1.0] - 2026-02-05
 
 ### Added
