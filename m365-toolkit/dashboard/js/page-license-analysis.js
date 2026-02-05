@@ -263,10 +263,10 @@ const PageLicenseAnalysis = (function() {
             return;
         }
 
+        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
+
         if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.renderDonut(container, data, {
-                size: 180, showLegend: true, showTotal: true, totalLabel: 'Overlaps'
-            });
+            DashboardCharts.createDonutChart(container, data, String(total), 'Overlaps', { size: 180 });
         }
     }
 
@@ -293,10 +293,10 @@ const PageLicenseAnalysis = (function() {
             return;
         }
 
+        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
+
         if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.renderDonut(container, data, {
-                size: 180, showLegend: true, showTotal: true, totalLabel: 'Users'
-            });
+            DashboardCharts.createDonutChart(container, data, String(total), 'Users', { size: 180 });
         }
     }
 

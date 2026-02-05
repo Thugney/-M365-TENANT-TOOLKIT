@@ -290,10 +290,10 @@ const PageOrganization = (function() {
             return;
         }
 
+        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
+
         if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.renderDonut(container, data, {
-                size: 180, showLegend: true, showTotal: true, totalLabel: 'Managers'
-            });
+            DashboardCharts.createDonutChart(container, data, String(total), 'Managers', { size: 180 });
         }
     }
 
@@ -314,10 +314,10 @@ const PageOrganization = (function() {
             return;
         }
 
+        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
+
         if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.renderDonut(container, data, {
-                size: 180, showLegend: true, showTotal: true, totalLabel: 'With Mgr'
-            });
+            DashboardCharts.createDonutChart(container, data, String(total), 'With Mgr', { size: 180 });
         }
     }
 
