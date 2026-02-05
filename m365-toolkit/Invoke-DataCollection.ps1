@@ -64,7 +64,7 @@ param(
 
     [Parameter()]
     [ValidateSet("UserData", "LicenseData", "GuestData", "MFAData", "AdminRoleData",
-                 "SignInData", "DeviceData", "AutopilotData", "DefenderData")]
+                 "SignInData", "DeviceData", "AutopilotData", "DefenderData", "EnterpriseAppData")]
     [string[]]$CollectorsToRun
 )
 
@@ -414,7 +414,8 @@ $requiredScopes = @(
     "SecurityEvents.Read.All",
     "IdentityRiskyUser.Read.All",
     "IdentityRiskEvent.Read.All",
-    "RoleManagement.Read.Directory"
+    "RoleManagement.Read.Directory",
+    "Application.Read.All"
 )
 
 Write-Host "  Required scopes:" -ForegroundColor Gray
@@ -474,7 +475,8 @@ $collectors = @(
     @{ Name = "Get-SignInData";    Script = "Get-SignInData.ps1";    Output = "risky-signins.json" },
     @{ Name = "Get-DeviceData";    Script = "Get-DeviceData.ps1";    Output = "devices.json" },
     @{ Name = "Get-AutopilotData"; Script = "Get-AutopilotData.ps1"; Output = "autopilot.json" },
-    @{ Name = "Get-DefenderData";  Script = "Get-DefenderData.ps1";  Output = "defender-alerts.json" }
+    @{ Name = "Get-DefenderData";  Script = "Get-DefenderData.ps1";  Output = "defender-alerts.json" },
+    @{ Name = "Get-EnterpriseAppData"; Script = "Get-EnterpriseAppData.ps1"; Output = "enterprise-apps.json" }
 )
 
 # Filter collectors if specific ones were requested

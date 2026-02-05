@@ -1,0 +1,447 @@
+[
+  {
+    "id": "sp-001-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "appId": "app-001-a1b2c3d4",
+    "displayName": "Modum HR Portal",
+    "accountEnabled": true,
+    "publisher": "Modum Kommune",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2023-06-15T10:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": -45,
+    "credentialStatus": "expired",
+    "secrets": [
+      {
+        "displayName": "HR Portal Secret",
+        "endDateTime": "2025-12-22T00:00:00Z",
+        "daysUntilExpiry": -45
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-002-b2c3d4e5-f6a7-8901-bcde-f23456789012",
+    "appId": "app-002-b2c3d4e5",
+    "displayName": "Modum Intranet Sync",
+    "accountEnabled": true,
+    "publisher": "Modum Kommune",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2022-03-10T08:30:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 1,
+    "nearestExpiryDays": -12,
+    "credentialStatus": "expired",
+    "secrets": [
+      {
+        "displayName": "Sync Client Secret",
+        "endDateTime": "2026-01-24T00:00:00Z",
+        "daysUntilExpiry": -12
+      }
+    ],
+    "certificates": [
+      {
+        "displayName": "Intranet Cert",
+        "endDateTime": "2026-08-10T00:00:00Z",
+        "daysUntilExpiry": 186,
+        "type": "AsymmetricX509Cert"
+      }
+    ]
+  },
+  {
+    "id": "sp-003-c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "appId": "app-003-c3d4e5f6",
+    "displayName": "Visma Enterprise",
+    "accountEnabled": true,
+    "publisher": "Visma",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2021-09-01T09:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": 8,
+    "credentialStatus": "critical",
+    "secrets": [
+      {
+        "displayName": "Visma API Key",
+        "endDateTime": "2026-02-13T00:00:00Z",
+        "daysUntilExpiry": 8
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-004-d4e5f6a7-b8c9-0123-def0-456789012345",
+    "appId": "app-004-d4e5f6a7",
+    "displayName": "Skoleplattformen SSO",
+    "accountEnabled": true,
+    "publisher": "Modum Kommune",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2023-01-20T11:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 2,
+    "certificateCount": 0,
+    "nearestExpiryDays": 22,
+    "credentialStatus": "critical",
+    "secrets": [
+      {
+        "displayName": "SSO Primary Secret",
+        "endDateTime": "2026-02-27T00:00:00Z",
+        "daysUntilExpiry": 22
+      },
+      {
+        "displayName": "SSO Backup Secret",
+        "endDateTime": "2026-09-01T00:00:00Z",
+        "daysUntilExpiry": 208
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-005-e5f6a7b8-c9d0-1234-ef01-567890123456",
+    "appId": "app-005-e5f6a7b8",
+    "displayName": "Acos Websak",
+    "accountEnabled": true,
+    "publisher": "Acos AS",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2022-05-10T07:30:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": 55,
+    "credentialStatus": "warning",
+    "secrets": [
+      {
+        "displayName": "Websak Integration",
+        "endDateTime": "2026-04-01T00:00:00Z",
+        "daysUntilExpiry": 55
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-006-f6a7b8c9-d0e1-2345-f012-678901234567",
+    "appId": "app-006-f6a7b8c9",
+    "displayName": "KS SvarUt Integration",
+    "accountEnabled": true,
+    "publisher": "KS",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2023-08-01T08:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 0,
+    "certificateCount": 1,
+    "nearestExpiryDays": 72,
+    "credentialStatus": "warning",
+    "secrets": [],
+    "certificates": [
+      {
+        "displayName": "SvarUt Certificate",
+        "endDateTime": "2026-04-18T00:00:00Z",
+        "daysUntilExpiry": 72,
+        "type": "AsymmetricX509Cert"
+      }
+    ]
+  },
+  {
+    "id": "sp-007-a7b8c9d0-e1f2-3456-0123-789012345678",
+    "appId": "app-007-a7b8c9d0",
+    "displayName": "TenantScope Data Collector",
+    "accountEnabled": true,
+    "publisher": "Modum Kommune",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2025-11-01T10:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": 269,
+    "credentialStatus": "healthy",
+    "secrets": [
+      {
+        "displayName": "Graph API Secret",
+        "endDateTime": "2026-11-01T00:00:00Z",
+        "daysUntilExpiry": 269
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-008-b8c9d0e1-f2a3-4567-1234-890123456789",
+    "appId": "app-008-b8c9d0e1",
+    "displayName": "Feide Login",
+    "accountEnabled": true,
+    "publisher": "Sikt",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2021-01-15T09:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 1,
+    "nearestExpiryDays": 180,
+    "credentialStatus": "healthy",
+    "secrets": [
+      {
+        "displayName": "Feide Client Secret",
+        "endDateTime": "2026-08-04T00:00:00Z",
+        "daysUntilExpiry": 180
+      }
+    ],
+    "certificates": [
+      {
+        "displayName": "Feide SAML Cert",
+        "endDateTime": "2027-01-15T00:00:00Z",
+        "daysUntilExpiry": 344,
+        "type": "AsymmetricX509Cert"
+      }
+    ]
+  },
+  {
+    "id": "sp-009-c9d0e1f2-a3b4-5678-2345-901234567890",
+    "appId": "app-009-c9d0e1f2",
+    "displayName": "Byggesak Portal",
+    "accountEnabled": false,
+    "publisher": "Modum Kommune",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2020-06-01T08:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": -200,
+    "credentialStatus": "expired",
+    "secrets": [
+      {
+        "displayName": "Legacy Secret",
+        "endDateTime": "2025-07-20T00:00:00Z",
+        "daysUntilExpiry": -200
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-010-d0e1f2a3-b4c5-6789-3456-012345678901",
+    "appId": "app-010-d0e1f2a3",
+    "displayName": "Compilo HMS",
+    "accountEnabled": true,
+    "publisher": "Compilo AS",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2023-04-01T10:30:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": 420,
+    "credentialStatus": "healthy",
+    "secrets": [
+      {
+        "displayName": "HMS Integration",
+        "endDateTime": "2027-04-01T00:00:00Z",
+        "daysUntilExpiry": 420
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-011-ms-exchange",
+    "appId": "00000002-0000-0ff1-ce00-000000000000",
+    "displayName": "Office 365 Exchange Online",
+    "accountEnabled": true,
+    "publisher": "Microsoft",
+    "isMicrosoft": true,
+    "appType": "application",
+    "createdDateTime": "2020-01-01T00:00:00Z",
+    "hasCredentials": false,
+    "secretCount": 0,
+    "certificateCount": 0,
+    "nearestExpiryDays": null,
+    "credentialStatus": "no-credentials",
+    "secrets": [],
+    "certificates": []
+  },
+  {
+    "id": "sp-012-ms-sharepoint",
+    "appId": "00000003-0000-0ff1-ce00-000000000000",
+    "displayName": "Office 365 SharePoint Online",
+    "accountEnabled": true,
+    "publisher": "Microsoft",
+    "isMicrosoft": true,
+    "appType": "application",
+    "createdDateTime": "2020-01-01T00:00:00Z",
+    "hasCredentials": false,
+    "secretCount": 0,
+    "certificateCount": 0,
+    "nearestExpiryDays": null,
+    "credentialStatus": "no-credentials",
+    "secrets": [],
+    "certificates": []
+  },
+  {
+    "id": "sp-013-ms-teams",
+    "appId": "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe",
+    "displayName": "Microsoft Teams",
+    "accountEnabled": true,
+    "publisher": "Microsoft",
+    "isMicrosoft": true,
+    "appType": "application",
+    "createdDateTime": "2020-01-01T00:00:00Z",
+    "hasCredentials": false,
+    "secretCount": 0,
+    "certificateCount": 0,
+    "nearestExpiryDays": null,
+    "credentialStatus": "no-credentials",
+    "secrets": [],
+    "certificates": []
+  },
+  {
+    "id": "sp-014-ms-graph",
+    "appId": "00000003-0000-0000-c000-000000000000",
+    "displayName": "Microsoft Graph",
+    "accountEnabled": true,
+    "publisher": "Microsoft",
+    "isMicrosoft": true,
+    "appType": "application",
+    "createdDateTime": "2020-01-01T00:00:00Z",
+    "hasCredentials": false,
+    "secretCount": 0,
+    "certificateCount": 0,
+    "nearestExpiryDays": null,
+    "credentialStatus": "no-credentials",
+    "secrets": [],
+    "certificates": []
+  },
+  {
+    "id": "sp-015-ms-intune",
+    "appId": "0000000a-0000-0000-c000-000000000000",
+    "displayName": "Microsoft Intune",
+    "accountEnabled": true,
+    "publisher": "Microsoft",
+    "isMicrosoft": true,
+    "appType": "application",
+    "createdDateTime": "2020-01-01T00:00:00Z",
+    "hasCredentials": false,
+    "secretCount": 0,
+    "certificateCount": 0,
+    "nearestExpiryDays": null,
+    "credentialStatus": "no-credentials",
+    "secrets": [],
+    "certificates": []
+  },
+  {
+    "id": "sp-016-d0e1f2a3-managed-id",
+    "appId": "app-016-managed",
+    "displayName": "modum-automation-runbook",
+    "accountEnabled": true,
+    "publisher": "Modum Kommune",
+    "isMicrosoft": false,
+    "appType": "managed-identity",
+    "createdDateTime": "2024-01-10T08:00:00Z",
+    "hasCredentials": false,
+    "secretCount": 0,
+    "certificateCount": 0,
+    "nearestExpiryDays": null,
+    "credentialStatus": "no-credentials",
+    "secrets": [],
+    "certificates": []
+  },
+  {
+    "id": "sp-017-e1f2a3b4-disabled",
+    "appId": "app-017-e1f2a3b4",
+    "displayName": "Old Reporting Tool",
+    "accountEnabled": false,
+    "publisher": "Unknown",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2019-08-15T10:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": -500,
+    "credentialStatus": "expired",
+    "secrets": [
+      {
+        "displayName": "Old Key",
+        "endDateTime": "2024-09-20T00:00:00Z",
+        "daysUntilExpiry": -500
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-018-f2a3b4c5-healthy",
+    "appId": "app-018-f2a3b4c5",
+    "displayName": "IST Extens",
+    "accountEnabled": true,
+    "publisher": "IST Group",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2022-11-01T09:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": 330,
+    "credentialStatus": "healthy",
+    "secrets": [
+      {
+        "displayName": "Extens API",
+        "endDateTime": "2027-01-01T00:00:00Z",
+        "daysUntilExpiry": 330
+      }
+    ],
+    "certificates": []
+  },
+  {
+    "id": "sp-019-a3b4c5d6-warning",
+    "appId": "app-019-a3b4c5d6",
+    "displayName": "Tieto Education",
+    "accountEnabled": true,
+    "publisher": "TietoEvry",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2023-02-15T08:30:00Z",
+    "hasCredentials": true,
+    "secretCount": 0,
+    "certificateCount": 1,
+    "nearestExpiryDays": 85,
+    "credentialStatus": "warning",
+    "secrets": [],
+    "certificates": [
+      {
+        "displayName": "Tieto SAML",
+        "endDateTime": "2026-05-01T00:00:00Z",
+        "daysUntilExpiry": 85,
+        "type": "AsymmetricX509Cert"
+      }
+    ]
+  },
+  {
+    "id": "sp-020-b4c5d6e7-healthy",
+    "appId": "app-020-b4c5d6e7",
+    "displayName": "Atea Helpdesk ITSM",
+    "accountEnabled": true,
+    "publisher": "Atea",
+    "isMicrosoft": false,
+    "appType": "application",
+    "createdDateTime": "2024-06-01T10:00:00Z",
+    "hasCredentials": true,
+    "secretCount": 1,
+    "certificateCount": 0,
+    "nearestExpiryDays": 480,
+    "credentialStatus": "healthy",
+    "secrets": [
+      {
+        "displayName": "ITSM Connector",
+        "endDateTime": "2027-05-31T00:00:00Z",
+        "daysUntilExpiry": 480
+      }
+    ],
+    "certificates": []
+  }
+]

@@ -73,6 +73,54 @@ function Get-DaysSinceDate {
     }
 }
 
+function Get-DaysUntilDate {
+    <#
+    .SYNOPSIS
+        Calculates days from now until a given future date. Returns negative for past dates.
+    #>
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $DateValue
+    )
+
+    if ($null -eq $DateValue) {
+        return $null
+    }
+
+    try {
+        $date = if ($DateValue -is [DateTime]) { $DateValue } else { [DateTime]::Parse($DateValue) }
+        $days = ($date - (Get-Date)).Days
+        return $days
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-CertificateStatus {
+    <#
+    .SYNOPSIS
+        Returns a certificate status based on days until expiry.
+    .OUTPUTS
+        String: expired, critical, warning, healthy, or unknown.
+    #>
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $DaysUntilExpiry
+    )
+
+    if ($null -eq $DaysUntilExpiry) {
+        return "unknown"
+    }
+
+    if ($DaysUntilExpiry -lt 0)  { return "expired" }
+    if ($DaysUntilExpiry -le 30) { return "critical" }
+    if ($DaysUntilExpiry -le 60) { return "warning" }
+    return "healthy"
+}
+
 function Get-SimplifiedOS {
     <#
     .SYNOPSIS
@@ -212,6 +260,10 @@ try {
             }
         }
 
+        # Calculate certificate expiry
+        $daysUntilCertExpiry = Get-DaysUntilDate -DateValue $device.ManagedDeviceCertificateExpirationDate
+        $certStatus = Get-CertificateStatus -DaysUntilExpiry $daysUntilCertExpiry
+
         # Build output object matching our schema
         $processedDevice = [PSCustomObject]@{
             id              = $device.Id
@@ -230,6 +282,9 @@ try {
             serialNumber    = $device.SerialNumber
             isEncrypted     = [bool]$device.IsEncrypted
             managementAgent = $managementAgent
+            certExpiryDate  = if ($device.ManagedDeviceCertificateExpirationDate) { $device.ManagedDeviceCertificateExpirationDate.ToString("o") } else { $null }
+            daysUntilCertExpiry = $daysUntilCertExpiry
+            certStatus      = $certStatus
         }
 
         $processedDevices += $processedDevice

@@ -15,7 +15,10 @@
     "model": "ThinkPad T14 Gen 3",
     "serialNumber": "PF3K7890",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2027-01-15T00:00:00Z",
+    "daysUntilCertExpiry": 344,
+    "certStatus": "healthy"
   },
   {
     "id": "dev2b3c4-d5e6-7890-bcde-f23456789012",
@@ -33,7 +36,10 @@
     "model": "Latitude 5530",
     "serialNumber": "JKLM5678",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-08-20T00:00:00Z",
+    "daysUntilCertExpiry": 196,
+    "certStatus": "healthy"
   },
   {
     "id": "dev3c4d5-e6f7-8901-cdef-345678901234",
@@ -51,7 +57,10 @@
     "model": "EliteBook 840 G9",
     "serialNumber": "5CG2345678",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-05-10T00:00:00Z",
+    "daysUntilCertExpiry": 94,
+    "certStatus": "healthy"
   },
   {
     "id": "dev4d5e6-f7a8-9012-def0-456789012345",
@@ -69,7 +78,10 @@
     "model": "ThinkPad X1 Carbon Gen 10",
     "serialNumber": "PF4L8901",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-03-15T00:00:00Z",
+    "daysUntilCertExpiry": 38,
+    "certStatus": "warning"
   },
   {
     "id": "dev5e6f7-a8b9-0123-ef01-567890123456",
@@ -87,7 +99,10 @@
     "model": "Latitude 5520",
     "serialNumber": "ABCD1234",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2025-11-20T00:00:00Z",
+    "daysUntilCertExpiry": -77,
+    "certStatus": "expired"
   },
   {
     "id": "dev6f7a8-b9c0-1234-f012-678901234567",
@@ -105,7 +120,10 @@
     "model": "ThinkPad P14s Gen 3",
     "serialNumber": "PF5M2345",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-09-15T00:00:00Z",
+    "daysUntilCertExpiry": 222,
+    "certStatus": "healthy"
   },
   {
     "id": "dev7a8b9-c0d1-2345-0123-789012345678",
@@ -123,7 +141,10 @@
     "model": "ProBook 450 G9",
     "serialNumber": "5CG3456789",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-08-01T00:00:00Z",
+    "daysUntilCertExpiry": 177,
+    "certStatus": "healthy"
   },
   {
     "id": "dev8b9c0-d1e2-3456-1234-890123456789",
@@ -141,7 +162,10 @@
     "model": "Latitude 3520",
     "serialNumber": "EFGH5678",
     "isEncrypted": false,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-02-20T00:00:00Z",
+    "daysUntilCertExpiry": 15,
+    "certStatus": "critical"
   },
   {
     "id": "dev9c0d1-e2f3-4567-2345-901234567890",
@@ -159,7 +183,10 @@
     "model": "ThinkPad E14 Gen 4",
     "serialNumber": "PF6N3456",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-08-15T00:00:00Z",
+    "daysUntilCertExpiry": 191,
+    "certStatus": "healthy"
   },
   {
     "id": "dev0d1e2-f3a4-5678-3456-012345678901",
@@ -177,7 +204,10 @@
     "model": "EliteBook 840 G9",
     "serialNumber": "5CG4567890",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2027-01-10T00:00:00Z",
+    "daysUntilCertExpiry": 339,
+    "certStatus": "healthy"
   },
   {
     "id": "dev1e2f3-a4b5-6789-4567-123456789012",
@@ -195,7 +225,10 @@
     "model": "Precision 5560",
     "serialNumber": "IJKL9012",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-01-01T00:00:00Z",
+    "daysUntilCertExpiry": -35,
+    "certStatus": "expired"
   },
   {
     "id": "dev2f3a4-b5c6-7890-5678-234567890123",
@@ -213,7 +246,10 @@
     "model": "ThinkPad T14s Gen 3",
     "serialNumber": "PF7O4567",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-03-25T00:00:00Z",
+    "daysUntilCertExpiry": 48,
+    "certStatus": "warning"
   },
   {
     "id": "dev3a4b5-c6d7-8901-6789-345678901234",
@@ -231,7 +267,10 @@
     "model": "ZBook Firefly 14 G9",
     "serialNumber": "5CG5678901",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-08-30T00:00:00Z",
+    "daysUntilCertExpiry": 206,
+    "certStatus": "healthy"
   },
   {
     "id": "dev4b5c6-d7e8-9012-7890-456789012345",
@@ -249,7 +288,10 @@
     "model": "Latitude 5540",
     "serialNumber": "MNOP3456",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-11-01T00:00:00Z",
+    "daysUntilCertExpiry": 269,
+    "certStatus": "healthy"
   },
   {
     "id": "dev5c6d7-e8f9-0123-8901-567890123456",
@@ -267,7 +309,10 @@
     "model": "ThinkPad L14 Gen 3",
     "serialNumber": "PF8P5678",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-08-15T00:00:00Z",
+    "daysUntilCertExpiry": 191,
+    "certStatus": "healthy"
   },
   {
     "id": "dev6d7e8-f9a0-1234-9012-678901234567",
@@ -285,7 +330,10 @@
     "model": "EliteBook 850 G8",
     "serialNumber": "5CG6789012",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-02-10T00:00:00Z",
+    "daysUntilCertExpiry": 5,
+    "certStatus": "critical"
   },
   {
     "id": "dev7e8f9-a0b1-2345-0123-789012345678",
@@ -303,7 +351,10 @@
     "model": "Latitude 7440",
     "serialNumber": "QRST7890",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-05-01T00:00:00Z",
+    "daysUntilCertExpiry": 85,
+    "certStatus": "healthy"
   },
   {
     "id": "dev8f9a0-b1c2-3456-1234-890123456789",
@@ -321,7 +372,10 @@
     "model": "ThinkPad E15 Gen 3",
     "serialNumber": "PF9Q6789",
     "isEncrypted": false,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-02-15T00:00:00Z",
+    "daysUntilCertExpiry": 10,
+    "certStatus": "critical"
   },
   {
     "id": "dev9a0b1-c2d3-4567-2345-901234567890",
@@ -339,7 +393,10 @@
     "model": "EliteBook 840 G9",
     "serialNumber": "5CG7890123",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2027-03-01T00:00:00Z",
+    "daysUntilCertExpiry": 389,
+    "certStatus": "healthy"
   },
   {
     "id": "dev0b1c2-d3e4-5678-3456-012345678901",
@@ -357,7 +414,10 @@
     "model": "Latitude 5530",
     "serialNumber": "UVWX1234",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2025-12-01T00:00:00Z",
+    "daysUntilCertExpiry": -66,
+    "certStatus": "expired"
   },
   {
     "id": "dev1c2d3-e4f5-6789-4567-123456789012",
@@ -375,7 +435,10 @@
     "model": "iPhone 15 Pro",
     "serialNumber": "DNPV1234567",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-09-15T00:00:00Z",
+    "daysUntilCertExpiry": 222,
+    "certStatus": "healthy"
   },
   {
     "id": "dev2d3e4-f5a6-7890-5678-234567890123",
@@ -393,7 +456,10 @@
     "model": "iPhone 14",
     "serialNumber": "DNPV2345678",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-11-01T00:00:00Z",
+    "daysUntilCertExpiry": 269,
+    "certStatus": "healthy"
   },
   {
     "id": "dev3e4f5-a6b7-8901-6789-345678901234",
@@ -411,7 +477,10 @@
     "model": "iPhone 15 Pro Max",
     "serialNumber": "DNPV3456789",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2027-01-15T00:00:00Z",
+    "daysUntilCertExpiry": 344,
+    "certStatus": "healthy"
   },
   {
     "id": "dev4f5a6-b7c8-9012-7890-456789012345",
@@ -429,7 +498,10 @@
     "model": "iPhone 14 Pro",
     "serialNumber": "DNPV4567890",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-03-20T00:00:00Z",
+    "daysUntilCertExpiry": 43,
+    "certStatus": "warning"
   },
   {
     "id": "dev5a6b7-c8d9-0123-8901-567890123456",
@@ -447,7 +519,10 @@
     "model": "iPhone 15",
     "serialNumber": "DNPV5678901",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2027-03-01T00:00:00Z",
+    "daysUntilCertExpiry": 389,
+    "certStatus": "healthy"
   },
   {
     "id": "dev6b7c8-d9e0-1234-9012-678901234567",
@@ -465,7 +540,10 @@
     "model": "Galaxy S23",
     "serialNumber": "R5CT123456",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-06-10T00:00:00Z",
+    "daysUntilCertExpiry": 125,
+    "certStatus": "healthy"
   },
   {
     "id": "dev7c8d9-e0f1-2345-0123-789012345678",
@@ -483,7 +561,10 @@
     "model": "Galaxy A54",
     "serialNumber": "R5CT234567",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-02-25T00:00:00Z",
+    "daysUntilCertExpiry": 20,
+    "certStatus": "critical"
   },
   {
     "id": "dev8d9e0-f1a2-3456-1234-890123456789",
@@ -501,7 +582,10 @@
     "model": "Pixel 8",
     "serialNumber": "GP8X345678",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": null,
+    "daysUntilCertExpiry": null,
+    "certStatus": "unknown"
   },
   {
     "id": "dev9e0f1-a2b3-4567-2345-901234567890",
@@ -519,7 +603,10 @@
     "model": "MacBook Pro 14-inch",
     "serialNumber": "C02Z123456",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-06-01T00:00:00Z",
+    "daysUntilCertExpiry": 116,
+    "certStatus": "healthy"
   },
   {
     "id": "dev0f1a2-b3c4-5678-3456-012345678901",
@@ -537,6 +624,9 @@
     "model": "MacBook Air M2",
     "serialNumber": "C02Z234567",
     "isEncrypted": true,
-    "managementAgent": "mdm"
+    "managementAgent": "mdm",
+    "certExpiryDate": "2026-03-30T00:00:00Z",
+    "daysUntilCertExpiry": 53,
+    "certStatus": "warning"
   }
 ]

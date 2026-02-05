@@ -27,6 +27,7 @@
         'guests': PageGuests,
         'security': PageSecurity,
         'devices': PageDevices,
+        'enterprise-apps': PageEnterpriseApps,
         'lifecycle': PageLifecycle
     };
 

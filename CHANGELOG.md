@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-05
+
+### Added
+- Enterprise Applications dashboard page with credential expiry tracking, status filters, and publisher classification
+- New collector: `Get-EnterpriseAppData.ps1` - collects service principals and app registrations with secret/certificate expiry
+- New Graph scope: `Application.Read.All` for enterprise app and app registration data
+- Enterprise Apps sample data (20 apps: Microsoft first-party, third-party integrations, managed identities)
+- Device certificate renewal tracking: `certExpiryDate`, `daysUntilCertExpiry`, `certStatus` fields in device collector
+- Certificate Renewal summary cards on Devices page (Expired, Expiring 30d, Expiring 60d, Healthy)
+- Certificate status filter and table columns on Devices page
+- Certificate expiry details in device detail modal
+- Features.md for tracking planned and implemented features
+
 ## [1.0.0] - 2026-02-05
 
 ### Added

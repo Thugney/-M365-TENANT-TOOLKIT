@@ -122,6 +122,7 @@ $dataFiles = @(
     "devices.json",
     "autopilot.json",
     "defender-alerts.json",
+    "enterprise-apps.json",
     "collection-metadata.json"
 )
 
@@ -181,8 +182,9 @@ $bundleMap = @{
     "riskySignins"   = "risky-signins.json"
     "devices"        = "devices.json"
     "autopilot"      = "autopilot.json"
-    "defenderAlerts" = "defender-alerts.json"
-    "metadata"       = "collection-metadata.json"
+    "defenderAlerts"  = "defender-alerts.json"
+    "enterpriseApps"  = "enterprise-apps.json"
+    "metadata"        = "collection-metadata.json"
 }
 
 foreach ($entry in $bundleMap.GetEnumerator()) {

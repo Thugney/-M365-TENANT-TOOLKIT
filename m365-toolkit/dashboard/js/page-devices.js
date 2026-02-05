@@ -49,6 +49,12 @@ const PageDevices = (function() {
         // Apply filters
         let filteredData = Filters.apply(devices, filterConfig);
 
+        // Certificate status filter
+        const certFilter = Filters.getValue('devices-cert');
+        if (certFilter && certFilter !== 'all') {
+            filteredData = filteredData.filter(d => d.certStatus === certFilter);
+        }
+
         // Stale filter (special handling)
         const staleOnly = Filters.getValue('devices-stale');
         if (staleOnly) {
@@ -76,6 +82,8 @@ const PageDevices = (function() {
                 { key: 'complianceState', label: 'Compliance', formatter: Tables.formatters.compliance },
                 { key: 'lastSync', label: 'Last Sync', formatter: Tables.formatters.date },
                 { key: 'daysSinceSync', label: 'Days', formatter: formatDaysSinceSync },
+                { key: 'certStatus', label: 'Cert Status', formatter: formatCertStatus },
+                { key: 'daysUntilCertExpiry', label: 'Cert Days', formatter: formatCertDays },
                 { key: 'ownership', label: 'Ownership', formatter: formatOwnership },
                 { key: 'isEncrypted', label: 'Encrypted', formatter: formatEncrypted }
             ],
@@ -107,6 +115,35 @@ const PageDevices = (function() {
         let colorClass = '';
         if (value >= 90) colorClass = 'text-critical';
         else if (value >= 30) colorClass = 'text-warning';
+        return `<span class="${colorClass}">${value}</span>`;
+    }
+
+    /**
+     * Formats certificate status with color-coded badge.
+     */
+    function formatCertStatus(value) {
+        const map = {
+            'expired':  { cls: 'badge-critical', label: 'Expired' },
+            'critical': { cls: 'badge-critical', label: 'Critical' },
+            'warning':  { cls: 'badge-warning',  label: 'Warning' },
+            'healthy':  { cls: 'badge-success',  label: 'Healthy' },
+            'unknown':  { cls: 'badge-neutral',  label: 'Unknown' }
+        };
+        const info = map[value] || map['unknown'];
+        return `<span class="badge ${info.cls}">${info.label}</span>`;
+    }
+
+    /**
+     * Formats days until certificate expiry with color coding.
+     */
+    function formatCertDays(value) {
+        if (value === null || value === undefined) {
+            return '<span class="text-muted">--</span>';
+        }
+        let colorClass = '';
+        if (value < 0) colorClass = 'text-critical font-bold';
+        else if (value <= 30) colorClass = 'text-critical';
+        else if (value <= 60) colorClass = 'text-warning';
         return `<span class="${colorClass}">${value}</span>`;
     }
 
@@ -187,6 +224,15 @@ const PageDevices = (function() {
                 <span class="detail-label">Management Agent:</span>
                 <span class="detail-value">${device.managementAgent}</span>
 
+                <span class="detail-label">Cert Expiry Date:</span>
+                <span class="detail-value">${device.certExpiryDate ? DataLoader.formatDate(device.certExpiryDate) : '--'}</span>
+
+                <span class="detail-label">Days Until Cert Expiry:</span>
+                <span class="detail-value">${device.daysUntilCertExpiry !== null && device.daysUntilCertExpiry !== undefined ? device.daysUntilCertExpiry : '--'}</span>
+
+                <span class="detail-label">Cert Status:</span>
+                <span class="detail-value">${device.certStatus || '--'}</span>
+
                 <span class="detail-label">Device ID:</span>
                 <span class="detail-value" style="font-size: 0.8em;">${device.id}</span>
             </div>
@@ -209,8 +255,17 @@ const PageDevices = (function() {
         const staleCount = devices.filter(d => d.isStale).length;
         const unencryptedCount = devices.filter(d => !d.isEncrypted).length;
 
+        // Certificate stats
+        const certExpiredCount = devices.filter(d => d.certStatus === 'expired').length;
+        const certCriticalCount = devices.filter(d => d.certStatus === 'critical').length;
+        const certWarningCount = devices.filter(d => d.certStatus === 'warning').length;
+        const certHealthyCount = devices.filter(d => d.certStatus === 'healthy').length;
+
         // Get unique OS values
         const osList = [...new Set(devices.map(d => d.os).filter(Boolean))].sort();
+
+        // Build page HTML using safe integer values only (no user input)
+        const compliancePct = devices.length > 0 ? Math.round((compliantCount / devices.length) * 100) : 0;
 
         container.innerHTML = `
             <div class="page-header">
@@ -218,7 +273,7 @@ const PageDevices = (function() {
                 <p class="page-description">Intune managed devices and compliance status</p>
             </div>
 
-            <!-- Summary Cards -->
+            <!-- Compliance Cards -->
             <div class="cards-grid">
                 <div class="card">
                     <div class="card-label">Total Devices</div>
@@ -227,7 +282,7 @@ const PageDevices = (function() {
                 <div class="card card-success">
                     <div class="card-label">Compliant</div>
                     <div class="card-value success">${compliantCount}</div>
-                    <div class="card-change">${devices.length > 0 ? Math.round((compliantCount / devices.length) * 100) : 0}% compliance</div>
+                    <div class="card-change">${compliancePct}% compliance</div>
                 </div>
                 <div class="card ${nonCompliantCount > 0 ? 'card-critical' : ''}">
                     <div class="card-label">Non-Compliant</div>
@@ -236,6 +291,30 @@ const PageDevices = (function() {
                 <div class="card ${unencryptedCount > 0 ? 'card-warning' : ''}">
                     <div class="card-label">Not Encrypted</div>
                     <div class="card-value ${unencryptedCount > 0 ? 'warning' : ''}">${unencryptedCount}</div>
+                </div>
+            </div>
+
+            <!-- Certificate Renewal Cards -->
+            <div class="page-header" style="margin-top: 1.5rem;">
+                <h3 class="page-title" style="font-size: 1.1rem;">Certificate Renewal</h3>
+                <p class="page-description">MDM certificate expiry status across managed devices</p>
+            </div>
+            <div class="cards-grid">
+                <div class="card ${certExpiredCount > 0 ? 'card-critical' : ''}">
+                    <div class="card-label">Expired</div>
+                    <div class="card-value ${certExpiredCount > 0 ? 'critical' : ''}">${certExpiredCount}</div>
+                </div>
+                <div class="card ${certCriticalCount > 0 ? 'card-critical' : ''}">
+                    <div class="card-label">Expiring in 30d</div>
+                    <div class="card-value ${certCriticalCount > 0 ? 'critical' : ''}">${certCriticalCount}</div>
+                </div>
+                <div class="card ${certWarningCount > 0 ? 'card-warning' : ''}">
+                    <div class="card-label">Expiring in 60d</div>
+                    <div class="card-value ${certWarningCount > 0 ? 'warning' : ''}">${certWarningCount}</div>
+                </div>
+                <div class="card card-success">
+                    <div class="card-label">Cert Healthy</div>
+                    <div class="card-value success">${certHealthyCount}</div>
                 </div>
             </div>
 
@@ -285,6 +364,19 @@ const PageDevices = (function() {
                         { value: 'all', label: 'All' },
                         { value: 'corporate', label: 'Corporate' },
                         { value: 'personal', label: 'Personal' }
+                    ]
+                },
+                {
+                    type: 'select',
+                    id: 'devices-cert',
+                    label: 'Cert Status',
+                    options: [
+                        { value: 'all', label: 'All' },
+                        { value: 'expired', label: 'Expired' },
+                        { value: 'critical', label: 'Critical (30d)' },
+                        { value: 'warning', label: 'Warning (60d)' },
+                        { value: 'healthy', label: 'Healthy' },
+                        { value: 'unknown', label: 'Unknown' }
                     ]
                 },
                 {

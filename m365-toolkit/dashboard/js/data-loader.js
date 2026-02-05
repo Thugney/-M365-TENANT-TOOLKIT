@@ -38,6 +38,7 @@ const DataLoader = (function() {
         devices: [],
         autopilot: [],
         defenderAlerts: [],
+        enterpriseApps: [],
         metadata: null
     };
 
@@ -54,6 +55,7 @@ const DataLoader = (function() {
         devices: 'data/devices.json',
         autopilot: 'data/autopilot.json',
         defenderAlerts: 'data/defender-alerts.json',
+        enterpriseApps: 'data/enterprise-apps.json',
         metadata: 'data/collection-metadata.json'
     };
 
