@@ -1,5 +1,5 @@
 # ============================================================================
-# M365 Tenant Toolkit
+# TenantScope
 # Author: Robe (https://github.com/Thugney)
 # Repository: https://github.com/Thugney/-M365-TENANT-TOOLKIT
 # License: MIT
@@ -117,7 +117,7 @@ if ($Remove) {
 # VALIDATE PREREQUISITES
 # ============================================================================
 
-Write-Host "Setting up scheduled task for M365 Tenant Toolkit" -ForegroundColor Cyan
+Write-Host "Setting up scheduled task for TenantScope" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Test-Path $collectionScript)) {
@@ -203,7 +203,7 @@ try {
         -Action $action `
         -Trigger $trigger `
         -Settings $settings `
-        -Description "Automated data collection for M365 Tenant Toolkit" `
+        -Description "Automated data collection for TenantScope" `
         -User $env:USERNAME `
         -RunLevel Limited | Out-Null
 

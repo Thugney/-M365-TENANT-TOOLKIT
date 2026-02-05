@@ -11,7 +11,9 @@
       "Bash(find:*)",
       "Bash(test:*)",
       "Bash(wc:*)",
-      "WebFetch(domain:keepachangelog.com)"
+      "WebFetch(domain:keepachangelog.com)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)"
     ]
   }
 }

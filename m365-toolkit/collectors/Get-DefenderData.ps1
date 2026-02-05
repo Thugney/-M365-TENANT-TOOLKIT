@@ -1,5 +1,5 @@
 # ============================================================================
-# M365 Tenant Toolkit
+# TenantScope
 # Author: Robe (https://github.com/Thugney)
 # Repository: https://github.com/Thugney/-M365-TENANT-TOOLKIT
 # License: MIT

@@ -240,7 +240,7 @@ If information is missing:
 When adding new tools or modules, follow this structure:
 
 ```
-m365-toolkit/
+tenantscope/
   config.json              # Shared configuration
   collectors/              # Data collection scripts
   dashboard/               # Visualization layer

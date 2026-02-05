@@ -14,7 +14,7 @@
     "defenderAlertDays": 30
   },
   "dashboard": {
-    "title": "M365 Tenant Toolkit",
-    "subtitle": "Modum Kommune"
+    "title": "TenantScope",
+    "subtitle": "M365 Tenant Dashboard"
   }
 }

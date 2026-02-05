@@ -1,4 +1,4 @@
-# M365 Tenant Toolkit — Full Architecture Document
+# TenantScope — Full Architecture Document
 
 ## CRITICAL INSTRUCTIONS FOR AI CODING ASSISTANT
 
@@ -9,7 +9,7 @@
 2. **EVERY FILE must start with this author header:**
 ```
 # ============================================================================
-# M365 Tenant Toolkit
+# TenantScope
 # Author: Robe (https://github.com/Thugney)
 # Repository: https://github.com/Thugney/-M365-TENANT-TOOLKIT
 # License: MIT
@@ -149,8 +149,8 @@ m365-toolkit/
     "defenderAlertDays": 30
   },
   "dashboard": {
-    "title": "M365 Tenant Toolkit",
-    "subtitle": "Modum Kommune"
+    "title": "TenantScope",
+    "subtitle": "M365 Tenant Dashboard"
   }
 }
 ```
@@ -216,7 +216,7 @@ onPremisesSyncEnabled, assignedLicenses, signInActivity
 **PowerShell implementation pattern (follow this pattern for ALL collectors):**
 ```powershell
 # ============================================================================
-# M365 Tenant Toolkit
+# TenantScope
 # Author: Robe (https://github.com/Thugney)
 # Repository: https://github.com/Thugney/-M365-TENANT-TOOLKIT
 # License: MIT
@@ -668,7 +668,7 @@ function Invoke-GraphWithRetry {
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  M365 Tenant Toolkit — Modum Kommune     Last run: date  │
+│  TenantScope — M365 Dashboard     Last run: date  │
 ├────────────┬─────────────────────────────────────────────┤
 │            │                                             │
 │  Overview  │   [Active Page Content]                     │

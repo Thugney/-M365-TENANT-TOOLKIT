@@ -1,6 +1,6 @@
-# M365 Tenant Toolkit
+# TenantScope
 
-> An IT admin toolkit for Microsoft 365 tenant management and monitoring.
+> A personal IT admin toolkit for Microsoft 365 tenant management and monitoring.
 
 **Author:** Robe ([GitHub](https://github.com/Thugney))
 **Repository:** https://github.com/Thugney/-M365-TENANT-TOOLKIT
@@ -8,7 +8,7 @@
 
 ## Overview
 
-M365 Tenant Toolkit is a PowerShell-based solution for collecting and visualizing Microsoft 365 tenant data. It provides IT administrators with insights into:
+TenantScope is a PowerShell-based solution for collecting and visualizing Microsoft 365 tenant data. It provides IT administrators with insights into:
 
 - **User Management** - All users, activity status, MFA enrollment
 - **License Optimization** - SKU allocation, waste analysis, utilization metrics

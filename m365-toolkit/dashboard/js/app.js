@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * M365 Tenant Toolkit
+ * TenantScope
  * Author: Robe (https://github.com/Thugney)
  * Repository: https://github.com/Thugney/-M365-TENANT-TOOLKIT
  * License: MIT
@@ -198,7 +198,7 @@
      * Initializes the application.
      */
     async function init() {
-        console.log('M365 Tenant Toolkit: Initializing...');
+        console.log('TenantScope: Initializing...');
 
         // Setup event handlers
         setupModalHandlers();
@@ -230,7 +230,7 @@
         // Render initial page
         renderCurrentPage();
 
-        console.log('M365 Tenant Toolkit: Ready');
+        console.log('TenantScope: Ready');
     }
 
     // Start the application when DOM is ready

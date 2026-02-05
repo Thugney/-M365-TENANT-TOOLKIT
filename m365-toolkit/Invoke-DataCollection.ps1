@@ -1,5 +1,5 @@
 # ============================================================================
-# M365 Tenant Toolkit
+# TenantScope
 # Author: Robe (https://github.com/Thugney)
 # Repository: https://github.com/Thugney/-M365-TENANT-TOOLKIT
 # License: MIT
@@ -7,7 +7,7 @@
 
 <#
 .SYNOPSIS
-    Main orchestrator script for M365 Tenant Toolkit data collection.
+    Main orchestrator script for TenantScope data collection.
 
 .DESCRIPTION
     This script serves as the primary entry point for collecting Microsoft 365
@@ -80,7 +80,7 @@ function Write-CollectionHeader {
     $header = @"
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                         M365 TENANT TOOLKIT                                  ║
+║                         TENANTSCOPE                                  ║
 ║                         Data Collection Engine                               ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 

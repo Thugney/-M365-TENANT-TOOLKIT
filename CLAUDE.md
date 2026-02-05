@@ -1,6 +1,6 @@
-# M365 Tenant Toolkit
+# TenantScope
 
-PowerShell-based data collection and dashboard for Microsoft 365 tenant security and lifecycle management. Built for Modum Kommune (Norwegian municipality, 2 domains).
+PowerShell-based data collection and dashboard for Microsoft 365 tenant security and lifecycle management.
 
 ## Architecture
 

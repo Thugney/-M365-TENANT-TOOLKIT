@@ -1,14 +1,14 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Installs prerequisites for the M365 Tenant Toolkit.
+    Installs prerequisites for the TenantScope.
 
 .DESCRIPTION
     This script installs the Microsoft Graph PowerShell SDK module required
-    to run the M365 Tenant Toolkit data collectors.
+    to run the TenantScope data collectors.
 
 .NOTES
-    Author: M365 Tenant Toolkit
+    Author: TenantScope
     Requires: PowerShell 7.0 or later
 #>
 
@@ -42,7 +42,7 @@ function Write-Failure {
 # Header
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  M365 Tenant Toolkit - Prerequisites  " -ForegroundColor Cyan
+Write-Host "  TenantScope - Prerequisites  " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 # Check PowerShell version
