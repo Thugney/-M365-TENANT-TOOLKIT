@@ -1,8 +1,8 @@
 {
   "tenantId": "your-tenant-id",
   "domains": {
-    "employees": "@modum.kommune.no",
-    "students": "@skole.modum.kommune.no"
+    "employees": "@yourdomain.com",
+    "students": "@students.yourdomain.com"
   },
   "thresholds": {
     "inactiveDays": 90,

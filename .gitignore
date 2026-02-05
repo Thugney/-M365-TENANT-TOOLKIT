@@ -38,6 +38,9 @@ credentials.*.json
 *-secret.*
 *-secrets.*
 
+# Tenant-specific config (copy config.sample.json to config.json and edit)
+m365-toolkit/config.json
+
 # Logs (generated at runtime, not in repo)
 *.log
 
