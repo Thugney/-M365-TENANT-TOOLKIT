@@ -61,10 +61,10 @@ function Invoke-GraphWithRetry {
         [scriptblock]$ScriptBlock,
 
         [Parameter()]
-        [int]$MaxRetries = 3,
+        [int]$MaxRetries = 5,
 
         [Parameter()]
-        [int]$DefaultBackoffSeconds = 30
+        [int]$BaseBackoffSeconds = 60
     )
 
     $attempt = 0
@@ -73,10 +73,10 @@ function Invoke-GraphWithRetry {
             return & $ScriptBlock
         }
         catch {
-            if ($_.Exception.Message -match "429|throttl|TooManyRequests") {
+            if ($_.Exception.Message -match "429|throttl|TooManyRequests|Too many retries") {
                 $attempt++
                 if ($attempt -gt $MaxRetries) { throw }
-                $wait = $DefaultBackoffSeconds * $attempt
+                $wait = $BaseBackoffSeconds * [Math]::Pow(2, $attempt - 1)
                 Write-Host "      Throttled. Waiting ${wait}s (attempt $attempt/$MaxRetries)..." -ForegroundColor Yellow
                 Start-Sleep -Seconds $wait
             }
@@ -124,6 +124,9 @@ try {
             $errors += "Risk detections error: $($_.Exception.Message)"
         }
     }
+
+    # Pause before next API call to avoid throttling
+    Start-Sleep -Seconds 10
 
     # Also try to get risky users for additional context
     $riskyUsers = @{}

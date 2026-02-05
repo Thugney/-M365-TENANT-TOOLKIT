@@ -140,17 +140,18 @@ function Invoke-GraphWithRetry {
 
     .DESCRIPTION
         Wraps Graph API calls with retry logic that handles HTTP 429
-        (Too Many Requests) responses. Uses exponential backoff with
-        configurable parameters.
+        (Too Many Requests) responses. Uses exponential backoff starting
+        at 60 seconds with up to 5 retries, allowing the Graph SDK's own
+        internal retries to settle before our wrapper retries.
 
     .PARAMETER ScriptBlock
         The script block containing the Graph API call to execute.
 
     .PARAMETER MaxRetries
-        Maximum number of retry attempts. Default is 3.
+        Maximum number of retry attempts. Default is 5.
 
-    .PARAMETER DefaultBackoffSeconds
-        Base backoff time in seconds. Multiplied by attempt number. Default is 30.
+    .PARAMETER BaseBackoffSeconds
+        Base backoff time in seconds. Doubled with each attempt (exponential). Default is 60.
 
     .OUTPUTS
         Returns the result of the Graph API call.
@@ -163,10 +164,10 @@ function Invoke-GraphWithRetry {
         [scriptblock]$ScriptBlock,
 
         [Parameter()]
-        [int]$MaxRetries = 3,
+        [int]$MaxRetries = 5,
 
         [Parameter()]
-        [int]$DefaultBackoffSeconds = 30
+        [int]$BaseBackoffSeconds = 60
     )
 
     $attempt = 0
@@ -176,14 +177,14 @@ function Invoke-GraphWithRetry {
         }
         catch {
             # Check if this is a throttling error (HTTP 429)
-            if ($_.Exception.Message -match "429|throttl|TooManyRequests") {
+            if ($_.Exception.Message -match "429|throttl|TooManyRequests|Too many retries") {
                 $attempt++
                 if ($attempt -gt $MaxRetries) {
                     throw "Max retries ($MaxRetries) exceeded. Last error: $($_.Exception.Message)"
                 }
 
-                # Calculate backoff time - increases with each attempt
-                $waitSeconds = $DefaultBackoffSeconds * $attempt
+                # Exponential backoff: 60s, 120s, 240s, 480s, 960s
+                $waitSeconds = $BaseBackoffSeconds * [Math]::Pow(2, $attempt - 1)
                 Write-Host "    ⚠ Throttled by Graph API. Waiting ${waitSeconds}s (attempt $attempt/$MaxRetries)..." -ForegroundColor Yellow
                 Start-Sleep -Seconds $waitSeconds
             }
@@ -544,6 +545,11 @@ foreach ($collector in $collectors) {
 
         # Create empty JSON file to prevent dashboard errors
         "[]" | Set-Content -Path $outputPath -Encoding UTF8
+    }
+
+    # Brief pause between collectors to avoid Graph API throttling
+    if ($collector -ne $collectors[-1]) {
+        Start-Sleep -Seconds 5
     }
 }
 

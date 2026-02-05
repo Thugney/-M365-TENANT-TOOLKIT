@@ -130,20 +130,20 @@ function Invoke-GraphWithRetry {
         The script block containing the Graph API call.
 
     .PARAMETER MaxRetries
-        Maximum retry attempts (default 3).
+        Maximum retry attempts (default 5).
 
-    .PARAMETER DefaultBackoffSeconds
-        Base backoff time in seconds (default 30).
+    .PARAMETER BaseBackoffSeconds
+        Base backoff time in seconds, doubles each attempt (default 60).
     #>
     param(
         [Parameter(Mandatory)]
         [scriptblock]$ScriptBlock,
 
         [Parameter()]
-        [int]$MaxRetries = 3,
+        [int]$MaxRetries = 5,
 
         [Parameter()]
-        [int]$DefaultBackoffSeconds = 30
+        [int]$BaseBackoffSeconds = 60
     )
 
     $attempt = 0
@@ -152,10 +152,10 @@ function Invoke-GraphWithRetry {
             return & $ScriptBlock
         }
         catch {
-            if ($_.Exception.Message -match "429|throttl|TooManyRequests") {
+            if ($_.Exception.Message -match "429|throttl|TooManyRequests|Too many retries") {
                 $attempt++
                 if ($attempt -gt $MaxRetries) { throw }
-                $wait = $DefaultBackoffSeconds * $attempt
+                $wait = $BaseBackoffSeconds * [Math]::Pow(2, $attempt - 1)
                 Write-Host "      Throttled. Waiting ${wait}s (attempt $attempt/$MaxRetries)..." -ForegroundColor Yellow
                 Start-Sleep -Seconds $wait
             }
