@@ -109,7 +109,7 @@ const PageAppUsage = (function() {
 
         var descEl = document.createElement('p');
         descEl.className = 'section-description';
-        descEl.textContent = 'Application sign-in analytics from Entra ID audit logs.';
+        descEl.textContent = 'Application inventory and sign-in analytics from Entra ID audit logs.';
         page.appendChild(descEl);
 
         // Summary cards
@@ -129,6 +129,38 @@ const PageAppUsage = (function() {
         cardsGrid.appendChild(makeCard('Unique Users', Object.keys(uniqueUsers).length.toString()));
         cardsGrid.appendChild(makeCard('Interactive %', interactivePct + '%'));
         page.appendChild(cardsGrid);
+
+        // App Inventory Section
+        var inventorySection = document.createElement('div');
+        inventorySection.className = 'subsection';
+        inventorySection.style.marginTop = '24px';
+
+        var inventoryTitle = document.createElement('h3');
+        inventoryTitle.className = 'subsection-title';
+        inventoryTitle.textContent = 'App Inventory';
+        inventoryTitle.style.marginBottom = '12px';
+        inventorySection.appendChild(inventoryTitle);
+
+        var inventoryTableDiv = document.createElement('div');
+        inventoryTableDiv.id = 'app-inventory-table';
+        inventorySection.appendChild(inventoryTableDiv);
+        page.appendChild(inventorySection);
+
+        // Render App Inventory Table
+        Tables.render({
+            containerId: 'app-inventory-table',
+            data: appAgg,
+            columns: [
+                { key: 'appName', label: 'Application Name' },
+                { key: 'userCount', label: 'Users', className: 'cell-right' },
+                { key: 'totalCount', label: 'Sign-ins', className: 'cell-right' },
+                { key: 'interactiveCount', label: 'Interactive', className: 'cell-right' },
+                { key: 'nonInteractiveCount', label: 'Non-Interactive', className: 'cell-right' },
+                { key: 'lastUsed', label: 'Last Used', formatter: Tables.formatters.date }
+            ],
+            pageSize: 15,
+            title: null
+        });
 
         // Enrich data with department
         var enriched = enrichWithDepartment(allSignIns);
@@ -377,22 +409,18 @@ const PageAppUsage = (function() {
     }
 
     function formatInteractive(value) {
-        var span = document.createElement('span');
-        span.className = value ? 'status-badge status-badge-success' : 'status-badge status-badge-neutral';
-        span.textContent = value ? 'Yes' : 'No';
-        return span;
+        if (value) {
+            return '<span class="status-badge status-badge-success">Yes</span>';
+        }
+        return '<span class="status-badge status-badge-neutral">No</span>';
     }
 
     function formatStatus(value, row) {
-        var span = document.createElement('span');
         if (row && row.statusCode === 0) {
-            span.className = 'status-badge status-badge-success';
-            span.textContent = 'Success';
-        } else {
-            span.className = 'status-badge status-badge-critical';
-            span.textContent = value || 'Failed';
+            return '<span class="status-badge status-badge-success">Success</span>';
         }
-        return span;
+        var text = value || 'Failed';
+        return '<span class="status-badge status-badge-critical">' + text + '</span>';
     }
 
     function makeCard(title, value) {
