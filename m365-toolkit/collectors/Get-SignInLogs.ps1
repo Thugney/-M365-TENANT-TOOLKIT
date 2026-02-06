@@ -1,0 +1,294 @@
+# ============================================================================
+# TenantScope
+# Author: Robel (https://github.com/Thugney)
+# Repository: https://github.com/Thugney/-M365-TENANT-TOOLKIT
+# License: MIT
+# ============================================================================
+
+<#
+.SYNOPSIS
+    Collects detailed Azure AD sign-in logs for security analysis.
+
+.DESCRIPTION
+    Retrieves sign-in logs from Azure AD including successful and failed
+    attempts, MFA challenges, conditional access evaluations, and location
+    data. Enables security analysis beyond basic risk detections.
+
+    Graph API endpoint:
+    - GET /auditLogs/signIns
+
+    Required scopes:
+    - AuditLog.Read.All
+    - Directory.Read.All
+
+    Note: Requires Azure AD P1/P2 license for full sign-in log access.
+
+.PARAMETER Config
+    The configuration hashtable loaded from config.json.
+
+.PARAMETER OutputPath
+    Full path where the resulting JSON file will be saved.
+
+.OUTPUTS
+    Writes signin-logs.json to the specified output path.
+
+.EXAMPLE
+    $result = & .\collectors\Get-SignInLogs.ps1 -Config $config -OutputPath ".\data\signin-logs.json"
+#>
+
+#Requires -Version 7.0
+#Requires -Modules Microsoft.Graph.Reports
+
+param(
+    [Parameter(Mandatory)]
+    [hashtable]$Config,
+
+    [Parameter(Mandatory)]
+    [string]$OutputPath
+)
+
+# ============================================================================
+# IMPORT SHARED UTILITIES
+# ============================================================================
+
+. "$PSScriptRoot\..\lib\CollectorBase.ps1"
+
+# ============================================================================
+# LOCAL HELPER FUNCTIONS
+# ============================================================================
+
+function Get-SignInStatus {
+    <#
+    .SYNOPSIS
+        Determines sign-in status from error code.
+    #>
+    param(
+        [int]$ErrorCode,
+        [string]$FailureReason
+    )
+
+    if ($ErrorCode -eq 0) { return "Success" }
+    if ($ErrorCode -eq 50140) { return "MFA Required" }
+    if ($ErrorCode -eq 50074) { return "MFA Prompted" }
+    if ($ErrorCode -eq 50076) { return "MFA Challenge" }
+    if ($ErrorCode -eq 53003) { return "CA Blocked" }
+    if ($ErrorCode -eq 50053) { return "Account Locked" }
+    if ($ErrorCode -eq 50126) { return "Invalid Credentials" }
+    if ($ErrorCode -eq 50057) { return "Account Disabled" }
+    if ($ErrorCode -eq 50055) { return "Password Expired" }
+    return "Failed"
+}
+
+function Get-RiskLevel {
+    <#
+    .SYNOPSIS
+        Maps risk level to severity.
+    #>
+    param([string]$Risk)
+
+    switch ($Risk) {
+        "high"   { return "High" }
+        "medium" { return "Medium" }
+        "low"    { return "Low" }
+        "none"   { return "None" }
+        default  { return "Unknown" }
+    }
+}
+
+# ============================================================================
+# MAIN COLLECTION LOGIC
+# ============================================================================
+
+$errors = @()
+$signInCount = 0
+
+try {
+    Write-Host "    Collecting sign-in logs..." -ForegroundColor Gray
+
+    # Get log retention days from config or default to 7
+    $logDays = if ($Config.collection.signInLogDays) {
+        $Config.collection.signInLogDays
+    } else { 7 }
+
+    $startDate = (Get-Date).AddDays(-$logDays).ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+    $signInData = @{
+        signIns = @()
+        summary = @{
+            totalSignIns = 0
+            successfulSignIns = 0
+            failedSignIns = 0
+            mfaChallenges = 0
+            caBlocked = 0
+            riskySignIns = 0
+            uniqueUsers = 0
+            uniqueApps = 0
+            uniqueLocations = 0
+            topFailureReasons = @()
+            signInsByHour = @{}
+            signInsByCountry = @{}
+        }
+    }
+
+    # Get sign-in logs
+    $signIns = Invoke-GraphWithRetry -ScriptBlock {
+        Invoke-MgGraphRequest -Method GET `
+            -Uri "https://graph.microsoft.com/v1.0/auditLogs/signIns?`$filter=createdDateTime ge $startDate&`$top=500&`$orderby=createdDateTime desc" `
+            -OutputType PSObject
+    } -OperationName "Sign-in logs retrieval"
+
+    $allSignIns = @($signIns.value)
+
+    # Handle pagination (limit to 2000 for performance)
+    $pageCount = 1
+    while ($signIns.'@odata.nextLink' -and $pageCount -lt 4) {
+        $signIns = Invoke-GraphWithRetry -ScriptBlock {
+            Invoke-MgGraphRequest -Method GET -Uri $signIns.'@odata.nextLink' -OutputType PSObject
+        } -OperationName "Sign-in logs pagination"
+        $allSignIns += $signIns.value
+        $pageCount++
+    }
+
+    Write-Host "      Retrieved $($allSignIns.Count) sign-in events" -ForegroundColor Gray
+
+    $uniqueUsers = @{}
+    $uniqueApps = @{}
+    $uniqueLocations = @{}
+    $failureReasons = @{}
+
+    foreach ($signIn in $allSignIns) {
+        $status = Get-SignInStatus -ErrorCode $signIn.status.errorCode -FailureReason $signIn.status.failureReason
+        $riskLevel = Get-RiskLevel -Risk $signIn.riskLevelDuringSignIn
+
+        # Extract location info
+        $location = $signIn.location
+        $country = if ($location.countryOrRegion) { $location.countryOrRegion } else { "Unknown" }
+        $city = if ($location.city) { $location.city } else { "Unknown" }
+
+        $processedSignIn = [PSCustomObject]@{
+            id                    = $signIn.id
+            createdDateTime       = Format-IsoDate -DateValue $signIn.createdDateTime
+            userDisplayName       = $signIn.userDisplayName
+            userPrincipalName     = $signIn.userPrincipalName
+            userId                = $signIn.userId
+            appDisplayName        = $signIn.appDisplayName
+            appId                 = $signIn.appId
+            ipAddress             = $signIn.ipAddress
+            clientAppUsed         = $signIn.clientAppUsed
+            # Status
+            status                = $status
+            errorCode             = $signIn.status.errorCode
+            failureReason         = $signIn.status.failureReason
+            # Risk
+            riskLevel             = $riskLevel
+            riskState             = $signIn.riskState
+            riskDetail            = $signIn.riskDetail
+            # Location
+            country               = $country
+            city                  = $city
+            # Device
+            deviceDetail          = @{
+                browser         = $signIn.deviceDetail.browser
+                operatingSystem = $signIn.deviceDetail.operatingSystem
+                isCompliant     = $signIn.deviceDetail.isCompliant
+                isManaged       = $signIn.deviceDetail.isManaged
+                trustType       = $signIn.deviceDetail.trustType
+            }
+            # MFA & CA
+            mfaDetail             = $signIn.mfaDetail
+            conditionalAccessStatus = $signIn.conditionalAccessStatus
+            isInteractive         = $signIn.isInteractive
+        }
+
+        $signInData.signIns += $processedSignIn
+        $signInCount++
+
+        # Update summaries
+        $signInData.summary.totalSignIns++
+
+        switch ($status) {
+            "Success"     { $signInData.summary.successfulSignIns++ }
+            "CA Blocked"  { $signInData.summary.caBlocked++; $signInData.summary.failedSignIns++ }
+            { $_ -match "MFA" } { $signInData.summary.mfaChallenges++ }
+            default       { if ($signIn.status.errorCode -ne 0) { $signInData.summary.failedSignIns++ } }
+        }
+
+        if ($riskLevel -in @("High", "Medium")) {
+            $signInData.summary.riskySignIns++
+        }
+
+        # Track unique values
+        if ($signIn.userId) { $uniqueUsers[$signIn.userId] = $true }
+        if ($signIn.appId) { $uniqueApps[$signIn.appId] = $true }
+        if ($country -ne "Unknown") { $uniqueLocations[$country] = $true }
+
+        # Track failure reasons
+        if ($signIn.status.errorCode -ne 0 -and $signIn.status.failureReason) {
+            $reason = $signIn.status.failureReason
+            if (-not $failureReasons.ContainsKey($reason)) {
+                $failureReasons[$reason] = 0
+            }
+            $failureReasons[$reason]++
+        }
+
+        # Track by hour
+        $hour = ([DateTime]$signIn.createdDateTime).Hour.ToString("00")
+        if (-not $signInData.summary.signInsByHour.ContainsKey($hour)) {
+            $signInData.summary.signInsByHour[$hour] = 0
+        }
+        $signInData.summary.signInsByHour[$hour]++
+
+        # Track by country
+        if (-not $signInData.summary.signInsByCountry.ContainsKey($country)) {
+            $signInData.summary.signInsByCountry[$country] = 0
+        }
+        $signInData.summary.signInsByCountry[$country]++
+    }
+
+    # Finalize summaries
+    $signInData.summary.uniqueUsers = $uniqueUsers.Count
+    $signInData.summary.uniqueApps = $uniqueApps.Count
+    $signInData.summary.uniqueLocations = $uniqueLocations.Count
+
+    # Top 5 failure reasons
+    $signInData.summary.topFailureReasons = $failureReasons.GetEnumerator() |
+        Sort-Object Value -Descending |
+        Select-Object -First 5 |
+        ForEach-Object {
+            @{
+                reason = $_.Key
+                count = $_.Value
+            }
+        }
+
+    $signInData.collectionDate = (Get-Date).ToString("o")
+    $signInData.logDays = $logDays
+
+    # Save data
+    Save-CollectorData -Data $signInData -OutputPath $OutputPath | Out-Null
+
+    $successRate = if ($signInData.summary.totalSignIns -gt 0) {
+        [Math]::Round(($signInData.summary.successfulSignIns / $signInData.summary.totalSignIns) * 100, 1)
+    } else { 0 }
+
+    Write-Host "    [OK] Collected $signInCount sign-in events (${successRate}% success rate)" -ForegroundColor Green
+
+    return New-CollectorResult -Success $true -Count $signInCount -Errors $errors
+}
+catch {
+    $errorMessage = $_.Exception.Message
+    $errors += $errorMessage
+
+    if ($errorMessage -match "license|P1|P2|Premium|permission|forbidden") {
+        Write-Host "    [!] Sign-in logs require Azure AD P1/P2 license and AuditLog.Read.All permission" -ForegroundColor Yellow
+    }
+
+    Write-Host "    [X] Failed: $errorMessage" -ForegroundColor Red
+
+    Save-CollectorData -Data @{
+        signIns = @()
+        summary = @{}
+    } -OutputPath $OutputPath | Out-Null
+
+    return New-CollectorResult -Success $false -Count 0 -Errors $errors
+}

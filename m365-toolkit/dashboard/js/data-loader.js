@@ -29,24 +29,39 @@ const DataLoader = (function() {
      * Value: parsed JSON array/object
      */
     const dataStore = {
+        // Core identity & licensing
         users: [],
         licenseSkus: [],
         guests: [],
         mfaStatus: [],
         adminRoles: [],
+        // Security & risk
         riskySignins: [],
+        signinLogs: null,
+        defenderAlerts: [],
+        secureScore: null,
+        conditionalAccess: [],
+        asrRules: null,
+        // Device management
         devices: [],
         autopilot: [],
-        defenderAlerts: [],
+        compliancePolicies: [],
+        configurationProfiles: [],
+        windowsUpdateStatus: null,
+        bitlockerStatus: null,
+        appDeployments: null,
+        endpointAnalytics: null,
+        // Applications & governance
         enterpriseApps: [],
+        servicePrincipalSecrets: null,
         auditLogs: [],
         pimActivity: [],
+        // Collaboration
         teams: [],
         sharepointSites: [],
-        trendHistory: [],
-        secureScore: null,
         appSignins: [],
-        conditionalAccess: [],
+        // Metadata
+        trendHistory: [],
         metadata: null
     };
 
@@ -54,24 +69,39 @@ const DataLoader = (function() {
      * Mapping of data types to their JSON file paths
      */
     const dataFiles = {
+        // Core identity & licensing
         users: 'data/users.json',
         licenseSkus: 'data/license-skus.json',
         guests: 'data/guests.json',
         mfaStatus: 'data/mfa-status.json',
         adminRoles: 'data/admin-roles.json',
+        // Security & risk
         riskySignins: 'data/risky-signins.json',
+        signinLogs: 'data/signin-logs.json',
+        defenderAlerts: 'data/defender-alerts.json',
+        secureScore: 'data/secure-score.json',
+        conditionalAccess: 'data/conditional-access.json',
+        asrRules: 'data/asr-rules.json',
+        // Device management
         devices: 'data/devices.json',
         autopilot: 'data/autopilot.json',
-        defenderAlerts: 'data/defender-alerts.json',
+        compliancePolicies: 'data/compliance-policies.json',
+        configurationProfiles: 'data/configuration-profiles.json',
+        windowsUpdateStatus: 'data/windows-update-status.json',
+        bitlockerStatus: 'data/bitlocker-status.json',
+        appDeployments: 'data/app-deployments.json',
+        endpointAnalytics: 'data/endpoint-analytics.json',
+        // Applications & governance
         enterpriseApps: 'data/enterprise-apps.json',
+        servicePrincipalSecrets: 'data/service-principal-secrets.json',
         auditLogs: 'data/audit-logs.json',
         pimActivity: 'data/pim-activity.json',
+        // Collaboration
         teams: 'data/teams.json',
         sharepointSites: 'data/sharepoint-sites.json',
-        trendHistory: 'data/trend-history.json',
-        secureScore: 'data/secure-score.json',
         appSignins: 'data/app-signins.json',
-        conditionalAccess: 'data/conditional-access.json',
+        // Metadata
+        trendHistory: 'data/trend-history.json',
         metadata: 'data/collection-metadata.json'
     };
 

@@ -66,7 +66,9 @@ param(
     [ValidateSet("UserData", "LicenseData", "GuestData", "MFAData", "AdminRoleData",
                  "SignInData", "DeviceData", "AutopilotData", "DefenderData", "EnterpriseAppData",
                  "AuditLogData", "PIMData", "TeamsData", "SharePointData", "SecureScoreData",
-                 "AppSignInData", "ConditionalAccessData")]
+                 "AppSignInData", "ConditionalAccessData", "CompliancePolicies", "ConfigurationProfiles",
+                 "WindowsUpdateStatus", "BitLockerStatus", "AppDeployments", "EndpointAnalytics",
+                 "ServicePrincipalSecrets", "ASRRules", "SignInLogs")]
     [string[]]$CollectorsToRun
 )
 
@@ -463,6 +465,7 @@ $requiredScopes = @(
     "Reports.Read.All",
     "DeviceManagementManagedDevices.Read.All",
     "DeviceManagementConfiguration.Read.All",
+    "DeviceManagementApps.Read.All",
     "SecurityEvents.Read.All",
     "IdentityRiskyUser.Read.All",
     "IdentityRiskEvent.Read.All",
@@ -470,10 +473,12 @@ $requiredScopes = @(
     "RoleAssignmentSchedule.Read.Directory",
     "RoleEligibilitySchedule.Read.Directory",
     "Application.Read.All",
+    "Policy.Read.All",
     "Team.ReadBasic.All",
     "Channel.ReadBasic.All",
     "TeamMember.Read.All",
-    "Sites.Read.All"
+    "Sites.Read.All",
+    "BitLockerKey.Read.All"
 )
 
 Write-Host "  Required scopes:" -ForegroundColor Gray
@@ -525,23 +530,37 @@ Write-Host ""
 
 # Define all collectors with their output files
 $collectors = @(
+    # Core identity & licensing
     @{ Name = "Get-UserData";      Script = "Get-UserData.ps1";      Output = "users.json" },
     @{ Name = "Get-LicenseData";   Script = "Get-LicenseData.ps1";   Output = "license-skus.json" },
     @{ Name = "Get-GuestData";     Script = "Get-GuestData.ps1";     Output = "guests.json" },
     @{ Name = "Get-MFAData";       Script = "Get-MFAData.ps1";       Output = "mfa-status.json" },
     @{ Name = "Get-AdminRoleData"; Script = "Get-AdminRoleData.ps1"; Output = "admin-roles.json" },
+    # Security & risk
     @{ Name = "Get-SignInData";    Script = "Get-SignInData.ps1";    Output = "risky-signins.json" },
+    @{ Name = "Get-SignInLogs";    Script = "Get-SignInLogs.ps1";    Output = "signin-logs.json" },
+    @{ Name = "Get-DefenderData";  Script = "Get-DefenderData.ps1";  Output = "defender-alerts.json" },
+    @{ Name = "Get-SecureScoreData"; Script = "Get-SecureScoreData.ps1"; Output = "secure-score.json" },
+    @{ Name = "Get-ConditionalAccessData"; Script = "Get-ConditionalAccessData.ps1"; Output = "conditional-access.json" },
+    @{ Name = "Get-ASRRules";      Script = "Get-ASRRules.ps1";      Output = "asr-rules.json" },
+    # Device management
     @{ Name = "Get-DeviceData";    Script = "Get-DeviceData.ps1";    Output = "devices.json" },
     @{ Name = "Get-AutopilotData"; Script = "Get-AutopilotData.ps1"; Output = "autopilot.json" },
-    @{ Name = "Get-DefenderData";  Script = "Get-DefenderData.ps1";  Output = "defender-alerts.json" },
+    @{ Name = "Get-CompliancePolicies"; Script = "Get-CompliancePolicies.ps1"; Output = "compliance-policies.json" },
+    @{ Name = "Get-ConfigurationProfiles"; Script = "Get-ConfigurationProfiles.ps1"; Output = "configuration-profiles.json" },
+    @{ Name = "Get-WindowsUpdateStatus"; Script = "Get-WindowsUpdateStatus.ps1"; Output = "windows-update-status.json" },
+    @{ Name = "Get-BitLockerStatus"; Script = "Get-BitLockerStatus.ps1"; Output = "bitlocker-status.json" },
+    @{ Name = "Get-AppDeployments"; Script = "Get-AppDeployments.ps1"; Output = "app-deployments.json" },
+    @{ Name = "Get-EndpointAnalytics"; Script = "Get-EndpointAnalytics.ps1"; Output = "endpoint-analytics.json" },
+    # Applications & governance
     @{ Name = "Get-EnterpriseAppData"; Script = "Get-EnterpriseAppData.ps1"; Output = "enterprise-apps.json" },
+    @{ Name = "Get-ServicePrincipalSecrets"; Script = "Get-ServicePrincipalSecrets.ps1"; Output = "service-principal-secrets.json" },
     @{ Name = "Get-AuditLogData";     Script = "Get-AuditLogData.ps1";     Output = "audit-logs.json" },
     @{ Name = "Get-PIMData";          Script = "Get-PIMData.ps1";          Output = "pim-activity.json" },
+    # Collaboration
     @{ Name = "Get-TeamsData";        Script = "Get-TeamsData.ps1";        Output = "teams.json" },
     @{ Name = "Get-SharePointData";   Script = "Get-SharePointData.ps1";   Output = "sharepoint-sites.json" },
-    @{ Name = "Get-SecureScoreData"; Script = "Get-SecureScoreData.ps1"; Output = "secure-score.json" },
-    @{ Name = "Get-AppSignInData";  Script = "Get-AppSignInData.ps1";  Output = "app-signins.json" },
-    @{ Name = "Get-ConditionalAccessData"; Script = "Get-ConditionalAccessData.ps1"; Output = "conditional-access.json" }
+    @{ Name = "Get-AppSignInData";  Script = "Get-AppSignInData.ps1";  Output = "app-signins.json" }
 )
 
 # Filter collectors if specific ones were requested
