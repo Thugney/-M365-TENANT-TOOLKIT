@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.6] - 2026-02-06
+
+### Fixed
+- **License Overlap Analysis error**: Added `Array.isArray` check for `assignedSkuIds` to prevent "map is not a function" error
+
+### Changed
+- **Auto version display**: Sidebar version now automatically reads from VERSION file during build (no more hardcoded version in index.html)
+
 ## [1.5.5] - 2026-02-06
 
 ### Fixed
