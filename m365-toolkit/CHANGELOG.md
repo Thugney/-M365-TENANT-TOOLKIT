@@ -5,6 +5,26 @@ All notable changes to TenantScope will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-02-06
+
+### Fixed
+- Added missing `Filters.setup()` function - all new dashboard pages now work correctly
+- Fixed `ColumnSelector.create()` API usage in new pages
+- Fixed escaped characters (`\!==`) in JavaScript files from PowerShell heredocs
+- Corrected sample data field names to match dashboard page expectations:
+  - `configuration-profiles.json`: `successDevices` → `successCount`, `errorDevices` → `errorCount`
+  - `bitlocker-status.json`: `hasRecoveryKey` → `recoveryKeyEscrowed`, added `tpmVersion`
+  - `compliance-policies.json`: added `description` and `lastModified` fields
+
+### Added
+- Secure Score now displayed on Security page with:
+  - Summary card showing score percentage
+  - Donut chart visualization
+  - Improvement actions table with progress tracking
+- Sample data files for all 9 new collectors (for testing/demo)
+
+---
+
 ## [2.0.0] - 2026-02-06
 
 ### Added
