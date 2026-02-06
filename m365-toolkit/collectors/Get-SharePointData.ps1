@@ -206,6 +206,10 @@ try {
     if ($reportData.Count -gt 0) {
         $columns = $reportData[0].PSObject.Properties.Name
         Write-Host "      Columns: $($columns -join ', ')" -ForegroundColor Gray
+        # Debug: Show first row data
+        $firstRow = $reportData[0]
+        Write-Host "      First row Site URL: [$($firstRow.'Site URL')]" -ForegroundColor Gray
+        Write-Host "      First row Site Id: [$($firstRow.'Site Id')]" -ForegroundColor Gray
     }
 
     # ========================================================================
@@ -214,12 +218,16 @@ try {
 
     $processedSites = @()
 
+    $skippedCount = 0
     foreach ($row in $reportData) {
         try {
             $siteUrl = $row.'Site URL'
             $siteId = $row.'Site Id'
 
-            if ([string]::IsNullOrWhiteSpace($siteUrl)) { continue }
+            if ([string]::IsNullOrWhiteSpace($siteUrl)) {
+                $skippedCount++
+                continue
+            }
 
             # Parse storage values (report gives bytes)
             $storageUsedBytes = 0
@@ -364,6 +372,7 @@ try {
     # Write results to JSON file
     $processedSites | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath -Encoding UTF8
 
+    Write-Host "      Skipped $skippedCount sites with empty URL" -ForegroundColor Gray
     Write-Host "    Collected $siteCount SharePoint sites" -ForegroundColor Green
 
     return @{
