@@ -47,3 +47,11 @@ m365-toolkit/config.json
 # Build artifacts
 dist/
 output/
+
+# Local development and tooling
+.claude/
+bsure/
+nul
+docs/
+!docs/TenantSccope.png
+m365-toolkit/endpointgraphapi.md

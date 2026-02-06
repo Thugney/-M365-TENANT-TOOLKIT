@@ -28,7 +28,10 @@ TenantScope is a PowerShell-based data collection and dashboard system for Micro
 │       ├─ Get-AuditLogData.ps1                               │
 │       ├─ Get-PIMData.ps1                                    │
 │       ├─ Get-TeamsData.ps1                                  │
-│       └─ Get-SharePointData.ps1                             │
+│       ├─ Get-SharePointData.ps1                             │
+│       ├─ Get-SecureScoreData.ps1                            │
+│       ├─ Get-AppSignInData.ps1                              │
+│       └─ Get-ConditionalAccessData.ps1                      │
 │                                                              │
 │  Output: JSON files in data/ directory                       │
 └─────────────────────────────────────────────────────────────┘
@@ -42,6 +45,8 @@ TenantScope is a PowerShell-based data collection and dashboard system for Micro
 │  • Admin role flags added to users                          │
 │  • Collection metadata generated                            │
 │  • Summary statistics computed                              │
+│  • License overlap analysis                                 │
+│  • Security gap detection                                   │
 │                                                              │
 │  Output: Enhanced JSON files + collection-metadata.json      │
 └─────────────────────────────────────────────────────────────┘
@@ -53,10 +58,12 @@ TenantScope is a PowerShell-based data collection and dashboard system for Micro
 │                                                              │
 │  • Single-page application with hash routing                │
 │  • Central data store (DataLoader module)                   │
-│  • Page-based architecture (12 pages)                       │
+│  • Page-based architecture (18 pages)                       │
 │  • Pure SVG charts (no external dependencies)               │
 │  • CSV export functionality                                 │
 │  • Responsive design with CSS custom properties             │
+│  • Column selector and focus/breakdown analysis             │
+│  • Business intelligence features                           │
 │                                                              │
 │  Build process: scripts/Build-Dashboard.ps1                  │
 └─────────────────────────────────────────────────────────────┘
@@ -113,6 +120,9 @@ TenantScope is a PowerShell-based data collection and dashboard system for Micro
 | Get-PIMData | `/roleManagement/directory` | PIM activations, assignments |
 | Get-TeamsData | `/groups` (filtered) | Microsoft Teams, membership |
 | Get-SharePointData | `/sites` | SharePoint sites, storage, activity |
+| Get-SecureScoreData | `/security/secureScores` | Microsoft Secure Score, improvement actions |
+| Get-AppSignInData | `/auditLogs/signIns` | Application sign-in data, usage analytics |
+| Get-ConditionalAccessData | `/identity/conditionalAccess/policies` | Conditional Access policies, security gap analysis |
 
 ### 3. Configuration System (`config.json`)
 
@@ -138,6 +148,35 @@ TenantScope is a PowerShell-based data collection and dashboard system for Micro
     "auditLogDays": 30,
     "pimActivityDays": 30
   },
+  "currency": {
+    "code": "NOK",
+    "symbol": "kr",
+    "locale": "nb-NO"
+  },
+  "licensePricing": {
+    "SPE_E3": 350,
+    "SPE_E5": 580,
+    "M365EDU_A3_FACULTY": 70,
+    "M365EDU_A1": 0,
+    "M365EDU_A3_STUUSEBNFT": 30,
+    "ENTERPRISEPACK": 270,
+    "EXCHANGESTANDARD": 55,
+    "POWER_BI_PRO": 105,
+    "INTUNE_A": 90,
+    "AAD_PREMIUM": 65,
+    "AAD_PREMIUM_P2": 100,
+    "VISIOCLIENT": 165,
+    "PROJECTPREMIUM": 520,
+    "TEAMS_EXPLORATORY": 0,
+    "FLOW_FREE": 0,
+    "POWERAPPS_VIRAL": 0,
+    "STREAM": 0,
+    "POWER_BI_STANDARD": 0
+  },
+  "licenseOverlapRules": [
+    { "name": "E3 + E5", "higherSku": "SPE_E5", "lowerSku": "SPE_E3", "description": "E5 includes all E3 capabilities" },
+    { "name": "A3 Faculty + E3", "higherSku": "SPE_E3", "lowerSku": "M365EDU_A3_FACULTY", "description": "E3 includes overlapping functionality" }
+  ],
   "dashboard": {
     "title": "TenantScope",
     "subtitle": "M365 Tenant Dashboard"
@@ -166,6 +205,9 @@ TenantScope is a PowerShell-based data collection and dashboard system for Micro
 - `pim-activity.json` - Privileged Identity Management activity
 - `teams.json` - Microsoft Teams data
 - `sharepoint-sites.json` - SharePoint site inventory
+- `secure-score.json` - Microsoft Secure Score and improvement actions
+- `app-signins.json` - Application sign-in data and usage analytics
+- `conditional-access.json` - Conditional Access policies and security gaps
 - `collection-metadata.json` - Collection metadata and summary
 
 **Schema Consistency**: All data files use consistent field naming (camelCase) and ISO 8601 date formatting.
@@ -191,7 +233,7 @@ TenantScope is a PowerShell-based data collection and dashboard system for Micro
 | `js/filters.js` | Table filtering utilities |
 | `js/tables.js` | Table rendering and sorting |
 | `js/export.js` | CSV export functionality |
-| `js/page-*.js` | Page-specific rendering (12 pages) |
+| `js/page-*.js` | Page-specific rendering (18 pages) |
 
 **Data Loading Strategy**:
 1. **Bundled Data**: `data-bundle.js` generated by `Build-Dashboard.ps1` (bypasses CORS)
@@ -431,7 +473,74 @@ window.__M365_DATA = {
 - Mobile-responsive dashboard enhancements
 - Progressive Web App capabilities
 
+ Data Flow Architecture
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  1. COLLECTION (PowerShell)                                     │
+  ├─────────────────────────────────────────────────────────────────┤
+  │                                                                 │
+  │  config.json → Invoke-DataCollection.ps1 → Microsoft Graph API │
+  │                        │                                        │
+  │                        ├── Get-UserData.ps1      → users.json   │
+  │                        ├── Get-LicenseData.ps1   → license-skus.json │
+  │                        ├── Get-GuestData.ps1     → guests.json  │
+  │                        ├── Get-MFAData.ps1       → mfa-status.json │
+  │                        ├── Get-DeviceData.ps1    → devices.json │
+  │                        └── ... (17 collectors total)            │
+  │                                                                 │
+  │                        ↓ Cross-reference                        │
+  │                        Merge MFA + Admin flags into users.json  │
+  └─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  2. STORAGE (JSON Files in /data/)                              │
+  ├─────────────────────────────────────────────────────────────────┤
+  │  users.json, devices.json, guests.json, mfa-status.json,       │
+  │  admin-roles.json, enterprise-apps.json, teams.json,           │
+  │  sharepoint-sites.json, secure-score.json, ...                 │
+  │  collection-metadata.json (summary stats)                       │
+  └─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  3. DASHBOARD (Static HTML + Vanilla JS)                        │
+  ├─────────────────────────────────────────────────────────────────┤
+  │  index.html → app.js → data-loader.js (fetches all JSON)       │
+  │                   │                                             │
+  │                   └── Hash routing (#users, #devices, etc.)     │
+  │                          │                                      │
+  │                          ├── page-overview.js  → Summary cards  │
+  │                          ├── page-users.js     → Users table    │
+  │                          ├── page-devices.js   → Devices table  │
+  │                          └── page-*.js (18 pages)               │
+  └─────────────────────────────────────────────────────────────────┘
+
+  Key Files
+  ┌──────────────┬─────────────────────────────┬────────────────────────────────────────────────┐
+  │    Layer     │            File             │                    Purpose                     │
+  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
+  │ Orchestrator │ Invoke-DataCollection.ps1   │ Runs all collectors, handles cross-referencing │
+  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
+  │ Shared Utils │ lib/CollectorBase.ps1       │ Retry logic, date utils, status helpers        │
+  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
+  │ Collectors   │ collectors/Get-*.ps1        │ 17 scripts, each calls Graph API → writes JSON │
+  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
+  │ Data Store   │ data/*.json                 │ 18 JSON files with tenant data                 │
+  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
+  │ Dashboard    │ dashboard/js/data-loader.js │ Fetches all JSON into memory                   │
+  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
+  │ Pages        │ dashboard/js/page-*.js      │ Renders each dashboard view                    │
+  └──────────────┴─────────────────────────────┴────────────────────────────────────────────────┘
+  Flow Summary
+
+  1. Collect: PowerShell calls Microsoft Graph API → transforms data → writes JSON files
+  2. Store: All data persisted as JSON in /data/ directory
+  3. Render: Dashboard fetches JSON on load → JavaScript renders tables/charts
+
+  The dashboard is a static SPA with hash-based routing - no backend needed after collection.
+
 ---
 
 *Last Updated: February 2026*
-*Architecture Version: 1.0*
+*Architecture Version: 1.2*

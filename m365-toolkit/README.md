@@ -1,9 +1,12 @@
 # TenantScope
 
+![TenantScope](docs/TenantSccope.png)
+
 > A personal IT admin toolkit for Microsoft 365 tenant management and monitoring.
 
-**Author:** Robe ([GitHub](https://github.com/Thugney))
+**Author:** Robe ([GitHub](https://github.com/Thugney), [X](https://x.com/eriteach))
 **Repository:** https://github.com/Thugney/-M365-TENANT-TOOLKIT
+**Version:** [v1.2.0](https://github.com/Thugney/-M365-TENANT-TOOLKIT/releases/tag/v1.2.0) · [Latest Release](https://github.com/Thugney/-M365-TENANT-TOOLKIT/releases/latest)
 **License:** MIT
 
 ## Overview
@@ -109,7 +112,7 @@ m365-toolkit/
 ├── Install-Prerequisites.ps1      # Setup script
 ├── Invoke-DataCollection.ps1      # Main collection orchestrator
 │
-├── collectors/                    # Data collection modules
+├── collectors/                    # Data collection modules (17 scripts)
 │   ├── Get-UserData.ps1
 │   ├── Get-LicenseData.ps1
 │   ├── Get-GuestData.ps1
@@ -118,7 +121,15 @@ m365-toolkit/
 │   ├── Get-SignInData.ps1
 │   ├── Get-DeviceData.ps1
 │   ├── Get-AutopilotData.ps1
-│   └── Get-DefenderData.ps1
+│   ├── Get-DefenderData.ps1
+│   ├── Get-EnterpriseAppData.ps1
+│   ├── Get-AuditLogData.ps1
+│   ├── Get-PIMData.ps1
+│   ├── Get-TeamsData.ps1
+│   ├── Get-SharePointData.ps1
+│   ├── Get-SecureScoreData.ps1
+│   ├── Get-AppSignInData.ps1
+│   └── Get-ConditionalAccessData.ps1
 │
 ├── data/                          # Collected JSON data (gitignored)
 │   └── sample/                    # Sample data for testing
@@ -203,6 +214,39 @@ Intune managed devices with compliance status, encryption state, and sync recenc
 
 ### Lifecycle
 Computed reports for lifecycle management - offboarding issues, onboarding gaps, role hygiene, guest cleanup.
+
+### Enterprise Apps
+Application permissions and usage analytics with risk assessment.
+
+### Teams
+Microsoft Teams inventory, activity tracking, and guest access analysis.
+
+### SharePoint
+Site collection management with storage usage and external sharing monitoring.
+
+### Audit Logs
+Administrative activity monitoring with search and filtering.
+
+### PIM
+Privileged Identity Management activity and role activation tracking.
+
+### App Usage
+Application sign-in analytics and usage patterns.
+
+### Conditional Access
+Conditional Access policy analysis and security gap detection.
+
+### Data Quality
+Data completeness and quality metrics across all collected data.
+
+### License Analysis
+Advanced license utilization and overlap analysis.
+
+### Organization
+Organizational hierarchy and department-level analytics.
+
+### Report
+Custom report generation and export capabilities.
 
 ## Troubleshooting
 
