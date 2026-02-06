@@ -154,22 +154,13 @@ const PageOrganization = (function() {
         cards.appendChild(createCard('Departments', hierarchy.departments.length, 'secondary'));
         container.appendChild(cards);
 
-        // Charts
-        var chartsGrid = el('div', 'charts-grid');
-        var spanChartCard = el('div', 'chart-card');
-        spanChartCard.appendChild(el('h3', 'chart-title', 'Span of Control Distribution'));
-        var spanChartDiv = el('div');
-        spanChartDiv.id = 'span-chart';
-        spanChartCard.appendChild(spanChartDiv);
-        chartsGrid.appendChild(spanChartCard);
+        // Charts row
+        var chartsRow = el('div', 'charts-row');
+        chartsRow.id = 'org-charts-row';
+        container.appendChild(chartsRow);
 
-        var deptChartCard = el('div', 'chart-card');
-        deptChartCard.appendChild(el('h3', 'chart-title', 'Manager Coverage by Department'));
-        var deptChartDiv = el('div');
-        deptChartDiv.id = 'dept-coverage-chart';
-        deptChartCard.appendChild(deptChartDiv);
-        chartsGrid.appendChild(deptChartCard);
-        container.appendChild(chartsGrid);
+        // Render charts using DashboardCharts
+        renderCharts(hierarchy, chartsRow);
 
         // Alert for orphan users
         if (hierarchy.totalOrphans > 0) {
@@ -227,9 +218,7 @@ const PageOrganization = (function() {
             container.appendChild(orphanSection);
         }
 
-        // Render charts
-        renderSpanChart(hierarchy.spanBuckets);
-        renderDeptCoverageChart(hierarchy.departments);
+        // Render focus tables
         renderManagerFocus(hierarchy.managers);
         renderDeptBreakdown(hierarchy.departments);
         renderManagersTable(hierarchy.managers);
@@ -274,50 +263,63 @@ const PageOrganization = (function() {
         return card;
     }
 
-    function renderSpanChart(buckets) {
-        var container = document.getElementById('span-chart');
-        if (!container) return;
+    /**
+     * Renders both charts using DashboardCharts.createChartCard.
+     */
+    function renderCharts(hierarchy, chartsRow) {
+        if (typeof DashboardCharts === 'undefined') return;
 
-        var data = [
-            { label: '1-3 reports', value: buckets['1-3'], color: '#10b981' },
-            { label: '4-7 reports', value: buckets['4-7'], color: '#3b82f6' },
-            { label: '8-15 reports', value: buckets['8-15'], color: '#f59e0b' },
-            { label: '16+ reports', value: buckets['16+'], color: '#ef4444' }
+        // Span of Control chart
+        var spanData = [
+            { label: '1-3 reports', value: hierarchy.spanBuckets['1-3'], color: '#10b981' },
+            { label: '4-7 reports', value: hierarchy.spanBuckets['4-7'], color: '#3b82f6' },
+            { label: '8-15 reports', value: hierarchy.spanBuckets['8-15'], color: '#f59e0b' },
+            { label: '16+ reports', value: hierarchy.spanBuckets['16+'], color: '#ef4444' }
         ].filter(function(d) { return d.value > 0; });
 
-        if (data.length === 0) {
-            container.appendChild(el('div', 'empty-state-small', 'No managers found'));
-            return;
+        var spanTotal = spanData.reduce(function(sum, d) { return sum + d.value; }, 0);
+
+        if (spanData.length > 0) {
+            var spanCard = DashboardCharts.createChartCard(
+                'Span of Control Distribution',
+                spanData,
+                String(spanTotal),
+                'Managers',
+                { size: 200, strokeWidth: 28 }
+            );
+            chartsRow.appendChild(spanCard);
+        } else {
+            var emptySpan = el('div', 'chart-container');
+            emptySpan.appendChild(el('div', 'chart-title', 'Span of Control Distribution'));
+            emptySpan.appendChild(el('div', 'empty-state-small', 'No managers found'));
+            chartsRow.appendChild(emptySpan);
         }
 
-        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
-
-        if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.createDonutChart(container, data, String(total), 'Managers', { size: 180 });
-        }
-    }
-
-    function renderDeptCoverageChart(departments) {
-        var container = document.getElementById('dept-coverage-chart');
-        if (!container) return;
-
-        var top5 = departments.slice(0, 5);
+        // Department Coverage chart
+        var top5 = hierarchy.departments.slice(0, 5);
         var colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
-        var data = top5.map(function(d, i) {
+        var deptData = top5.map(function(d, i) {
             var pct = d.totalUsers > 0 ? Math.round((d.withManager / d.totalUsers) * 100) : 0;
             return { label: d.name + ' (' + pct + '%)', value: d.withManager, color: colors[i % colors.length] };
         });
 
-        if (data.length === 0) {
-            container.appendChild(el('div', 'empty-state-small', 'No department data'));
-            return;
-        }
+        var deptTotal = deptData.reduce(function(sum, d) { return sum + d.value; }, 0);
 
-        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
-
-        if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.createDonutChart(container, data, String(total), 'With Mgr', { size: 180 });
+        if (deptData.length > 0) {
+            var deptCard = DashboardCharts.createChartCard(
+                'Manager Coverage by Department',
+                deptData,
+                String(deptTotal),
+                'With Manager',
+                { size: 200, strokeWidth: 28 }
+            );
+            chartsRow.appendChild(deptCard);
+        } else {
+            var emptyDept = el('div', 'chart-container');
+            emptyDept.appendChild(el('div', 'chart-title', 'Manager Coverage by Department'));
+            emptyDept.appendChild(el('div', 'empty-state-small', 'No department data'));
+            chartsRow.appendChild(emptyDept);
         }
     }
 

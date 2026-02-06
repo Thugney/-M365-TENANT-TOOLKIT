@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-02-06
+
+### Fixed
+- **Organization Structure page charts**: Refactored to use `DashboardCharts.createChartCard` with proper styling and larger chart size (200px)
+- **License Overlap Analysis page charts**: Refactored to use `DashboardCharts.createChartCard` with proper styling and larger chart size (200px)
+
+### Added
+- CSS for `.summary-cards` grid layout with colored border variants for analysis pages
+- CSS for `.summary-card` component with variant classes (primary, info, warning, success, danger)
+- CSS for `.empty-state-small` for compact empty state messages within chart containers
+
 ## [1.5.1] - 2026-02-06
 
 ### Fixed

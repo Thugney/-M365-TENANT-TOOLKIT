@@ -144,24 +144,13 @@ const PageLicenseAnalysis = (function() {
             container.appendChild(alert);
         }
 
-        // Charts
-        var chartsGrid = el('div', 'charts-grid');
+        // Charts row
+        var chartsRow = el('div', 'charts-row');
+        chartsRow.id = 'license-charts-row';
+        container.appendChild(chartsRow);
 
-        var ruleChartCard = el('div', 'chart-card');
-        ruleChartCard.appendChild(el('h3', 'chart-title', 'Overlaps by Rule'));
-        var ruleChartDiv = el('div');
-        ruleChartDiv.id = 'rule-chart';
-        ruleChartCard.appendChild(ruleChartDiv);
-        chartsGrid.appendChild(ruleChartCard);
-
-        var deptChartCard = el('div', 'chart-card');
-        deptChartCard.appendChild(el('h3', 'chart-title', 'Overlaps by Department'));
-        var deptChartDiv = el('div');
-        deptChartDiv.id = 'dept-overlap-chart';
-        deptChartCard.appendChild(deptChartDiv);
-        chartsGrid.appendChild(deptChartCard);
-
-        container.appendChild(chartsGrid);
+        // Render charts using DashboardCharts
+        renderCharts(analysis, currency, chartsRow);
 
         // Focus/Breakdown section
         var fbRow = el('div', 'focus-breakdown-row');
@@ -196,10 +185,6 @@ const PageLicenseAnalysis = (function() {
         tableDiv.id = 'overlaps-table';
         tableSection.appendChild(tableDiv);
         container.appendChild(tableSection);
-
-        // Render charts
-        renderRuleChart(analysis.ruleStats);
-        renderDeptChart(analysis.deptOverlaps, currency);
 
         // Render focus tables
         renderOverlapRulesTable(analysis.ruleStats);
@@ -238,18 +223,21 @@ const PageLicenseAnalysis = (function() {
         return value.toLocaleString() + ' ' + currency;
     }
 
-    function renderRuleChart(ruleStats) {
-        var container = document.getElementById('rule-chart');
-        if (!container) return;
+    /**
+     * Renders both charts using DashboardCharts.createChartCard.
+     */
+    function renderCharts(analysis, currency, chartsRow) {
+        if (typeof DashboardCharts === 'undefined') return;
 
         var colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
-        var data = [];
-        var i = 0;
 
-        Object.keys(ruleStats).forEach(function(ruleName) {
-            var stat = ruleStats[ruleName];
+        // Overlaps by Rule chart
+        var ruleData = [];
+        var i = 0;
+        Object.keys(analysis.ruleStats).forEach(function(ruleName) {
+            var stat = analysis.ruleStats[ruleName];
             if (stat.count > 0) {
-                data.push({
+                ruleData.push({
                     label: ruleName,
                     value: stat.count,
                     color: colors[i % colors.length]
@@ -258,45 +246,55 @@ const PageLicenseAnalysis = (function() {
             }
         });
 
-        if (data.length === 0) {
-            container.appendChild(el('div', 'empty-state-small', 'No overlaps detected'));
-            return;
+        var ruleTotal = ruleData.reduce(function(sum, d) { return sum + d.value; }, 0);
+
+        if (ruleData.length > 0) {
+            var ruleCard = DashboardCharts.createChartCard(
+                'Overlaps by Rule',
+                ruleData,
+                String(ruleTotal),
+                'Overlaps',
+                { size: 200, strokeWidth: 28 }
+            );
+            chartsRow.appendChild(ruleCard);
+        } else {
+            var emptyRule = el('div', 'chart-container');
+            emptyRule.appendChild(el('div', 'chart-title', 'Overlaps by Rule'));
+            emptyRule.appendChild(el('div', 'empty-state-small', 'No overlaps detected'));
+            chartsRow.appendChild(emptyRule);
         }
 
-        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
-
-        if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.createDonutChart(container, data, String(total), 'Overlaps', { size: 180 });
-        }
-    }
-
-    function renderDeptChart(deptOverlaps, currency) {
-        var container = document.getElementById('dept-overlap-chart');
-        if (!container) return;
-
-        var colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-        var data = [];
-        var depts = Object.keys(deptOverlaps).sort(function(a, b) {
-            return deptOverlaps[b].count - deptOverlaps[a].count;
+        // Overlaps by Department chart
+        var deptColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+        var deptData = [];
+        var depts = Object.keys(analysis.deptOverlaps).sort(function(a, b) {
+            return analysis.deptOverlaps[b].count - analysis.deptOverlaps[a].count;
         }).slice(0, 5);
 
-        depts.forEach(function(dept, i) {
-            data.push({
+        depts.forEach(function(dept, idx) {
+            deptData.push({
                 label: dept,
-                value: deptOverlaps[dept].count,
-                color: colors[i % colors.length]
+                value: analysis.deptOverlaps[dept].count,
+                color: deptColors[idx % deptColors.length]
             });
         });
 
-        if (data.length === 0) {
-            container.appendChild(el('div', 'empty-state-small', 'No department data'));
-            return;
-        }
+        var deptTotal = deptData.reduce(function(sum, d) { return sum + d.value; }, 0);
 
-        var total = data.reduce(function(sum, d) { return sum + d.value; }, 0);
-
-        if (typeof DashboardCharts !== 'undefined') {
-            DashboardCharts.createDonutChart(container, data, String(total), 'Users', { size: 180 });
+        if (deptData.length > 0) {
+            var deptCard = DashboardCharts.createChartCard(
+                'Overlaps by Department',
+                deptData,
+                String(deptTotal),
+                'Users',
+                { size: 200, strokeWidth: 28 }
+            );
+            chartsRow.appendChild(deptCard);
+        } else {
+            var emptyDept = el('div', 'chart-container');
+            emptyDept.appendChild(el('div', 'chart-title', 'Overlaps by Department'));
+            emptyDept.appendChild(el('div', 'empty-state-small', 'No department data'));
+            chartsRow.appendChild(emptyDept);
         }
     }
 
