@@ -16,11 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `bitlocker-status.json`: `hasRecoveryKey` → `recoveryKeyEscrowed`, added `tpmVersion`
   - `compliance-policies.json`: added `description` and `lastModified` fields
 - **BitLocker collector now works on real tenants:**
+  - Removed invalid `encryptionState` from $select (was causing BadRequest - property doesn't exist)
   - Fixed `$filter=operatingSystem eq 'Windows'` (was failing because actual OS values are "Windows 10", "Windows 11")
   - Changed to client-side filtering with `-like "Windows*"`
+  - Uses `isEncrypted` boolean only to determine encryption state
   - Added required `User-Agent` header for BitLocker recovery keys API
   - Switched to v1.0 API endpoint for recovery keys
   - Added pagination for recovery keys
+  - Added `recoveryKeyEscrowed` field for dashboard compatibility
   - Dashboard page handles both sample data (array) and real collector output (object)
 - **SharePoint collector resilience for concealed URLs:**
   - Fixed crash when `Sort-Object` returned `$null` on empty arrays
