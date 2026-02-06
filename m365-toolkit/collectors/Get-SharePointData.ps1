@@ -204,6 +204,7 @@ try {
         }
         catch {
             Write-Host "      Warning: Could not fetch sites from API: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "      (Sites.Read.All permission may be required for URL resolution)" -ForegroundColor Yellow
         }
     }
 
@@ -224,9 +225,11 @@ try {
                 $siteUrl = $siteLookup[$siteId].url
             }
 
+            # If no URL available, use site ID as identifier (don't skip)
             if ([string]::IsNullOrWhiteSpace($siteUrl)) {
+                # Create a placeholder URL using site ID for identification
+                $siteUrl = "https://unknown-site/$siteId"
                 $skippedCount++
-                continue
             }
 
             # Parse storage values (report gives bytes)
@@ -368,18 +371,22 @@ try {
     Remove-Item -Path $tempCsvPath -Force -ErrorAction SilentlyContinue
 
     # Sort by: high storage first, then inactive, then by storage descending
-    $processedSites = $processedSites | Sort-Object -Property @{
-        Expression = {
-            if ($_.flags -contains "high-storage") { 0 }
-            elseif ($_.isInactive) { 1 }
-            else { 2 }
-        }
-    }, @{Expression = "storageUsedGB"; Descending = $true}
+    if ($processedSites.Count -gt 0) {
+        $processedSites = $processedSites | Sort-Object -Property @{
+            Expression = {
+                if ($_.flags -contains "high-storage") { 0 }
+                elseif ($_.isInactive) { 1 }
+                else { 2 }
+            }
+        }, @{Expression = "storageUsedGB"; Descending = $true}
+    }
 
-    # Save data using shared utility
-    Save-CollectorData -Data $processedSites -OutputPath $OutputPath | Out-Null
+    # Save data using shared utility (ensure array even if empty)
+    Save-CollectorData -Data @($processedSites) -OutputPath $OutputPath | Out-Null
 
-    Write-Host "      Skipped $skippedCount sites with empty URL" -ForegroundColor Gray
+    if ($skippedCount -gt 0) {
+        Write-Host "      Note: $skippedCount sites have concealed URLs (admin privacy settings)" -ForegroundColor Yellow
+    }
     Write-Host "    [OK] Collected $siteCount SharePoint sites" -ForegroundColor Green
 
     return New-CollectorResult -Success $true -Count $siteCount -Errors $errors
