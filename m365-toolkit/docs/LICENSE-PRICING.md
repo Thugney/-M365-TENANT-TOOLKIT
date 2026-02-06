@@ -50,111 +50,196 @@ The `licensePricing` object maps **SKU Part Numbers** to **monthly cost per lice
 }
 ```
 
-## Step 1: Find Your SKU Part Numbers
+---
 
-### Option A: Run Data Collection First
+## Step-by-Step: Configure Pricing from Admin Portal
 
-After running `Invoke-DataCollection.ps1`, check the generated `data/licenses.json` file. Each license entry includes the `skuPartNumber`:
+### Step 1: View Your Licenses
 
-```json
-{
-  "skuName": "Microsoft 365 E3",
-  "skuPartNumber": "SPE_E3",
-  "totalAssigned": 150
-}
-```
+Go to [admin.microsoft.com](https://admin.microsoft.com) > **Billing** > **Your products**
 
-### Option B: Query Graph API Directly
+![Admin Center Licenses Page](admin-licenses-page.png)
+
+This page shows your subscriptions with:
+- Product name
+- Assigned licenses
+- Purchased quantity
+- Available licenses
+- Subscription status
+- Purchase channel (Volume licensing, Commercial direct)
+
+**Note**: This page does NOT show pricing. You need to go to Billing for that.
+
+### Step 2: Map Product Names to SKU Part Numbers
+
+Based on your licenses page, here's how to map them:
+
+| Product Name (Admin Portal) | SKU Part Number | Notes |
+|-----------------------------|-----------------|-------|
+| Microsoft 365 E3 Existing Customer | `SPE_E3` | Standard M365 E3 |
+| Microsoft 365 F1 | `SPE_F1` | Frontline workers |
+| Microsoft Defender + Purview Suite Add-on for FLW | `MICROSOFT_DEFENDER_PURVIEW_ADDON_FLW` | Add-on for Frontline |
+| Microsoft Defender Suite | `DEFENDER_ENDPOINT_P1` or `MDE_SMB` | Check your licenses.json |
+| Microsoft Teams Rooms Basic | `MTR_PREM` | Meeting rooms |
+| Office 365 A1 for faculty | `STANDARDWOFFPACK_FACULTY` | Education - Free |
+| Office 365 A1 for students | `STANDARDWOFFPACK_STUDENT` | Education - Free |
+| Office 365 F3 | `DESKLESSPACK` | Frontline F3 |
+
+**To get the exact SKU Part Numbers for YOUR tenant:**
 
 ```powershell
-Connect-MgGraph -Scopes "Organization.Read.All"
-Get-MgSubscribedSku | Select-Object SkuPartNumber, SkuId, ConsumedUnits | Format-Table
+# Run this after data collection
+Get-Content ".\data\licenses.json" | ConvertFrom-Json |
+    Select-Object skuName, skuPartNumber | Format-Table
 ```
 
-### Option C: Check Microsoft Admin Center
+Or query directly:
+```powershell
+Connect-MgGraph -Scopes "Organization.Read.All"
+Get-MgSubscribedSku | Select-Object SkuPartNumber, ConsumedUnits | Format-Table
+```
 
-1. Go to [admin.microsoft.com](https://admin.microsoft.com)
-2. Navigate to **Billing** > **Your products**
-3. Click on a subscription to see its Product ID (SKU Part Number)
+### Step 3: Find Your Contract Pricing
 
-## Step 2: Get Your Contract Pricing
+The "Your products" page does not show prices. To find actual costs:
 
-Find your actual per-license monthly costs from:
+#### Option A: Bills & Payments
+1. Go to **Billing** > **Bills & payments**
+2. Open a recent invoice
+3. Find the line items with per-license pricing
 
-1. **Microsoft Admin Center**: Billing > Bills & payments
-2. **Enterprise Agreement Portal**: If you have EA
-3. **CSP Partner Portal**: If purchased through partner
-4. **Your procurement/finance team**: They have the contract details
+#### Option B: Cost Management
+1. Go to **Billing** > **Your products**
+2. Click on a subscription name
+3. Look for "Price" or "Cost" information in the details
 
-### Price Calculation
+#### Option C: Volume Licensing Service Center (VLSC)
+If you have an Enterprise Agreement:
+1. Go to [vlsc.microsoft.com](https://www.vlsc.microsoft.com)
+2. Navigate to your agreement
+3. View your price sheet
 
-If you only have annual pricing, divide by 12:
+#### Option D: Ask Your Finance Team
+Your procurement or finance team has the contract details with actual negotiated rates.
+
+### Step 4: Calculate Monthly Costs
+
+If you only have **annual pricing**, divide by 12:
 
 ```
 Monthly cost = Annual cost per license / 12
 ```
 
-## Step 3: Configure Pricing
+**Example:**
+- Annual E3 cost: 4,200 NOK
+- Monthly cost: 4,200 / 12 = 350 NOK
 
-Add each SKU to the `licensePricing` section:
+### Step 5: Add to config.json
+
+Based on your screenshot, here's an example configuration:
 
 ```json
-"licensePricing": {
-  "SPE_E3": 350,
-  "SPE_E5": 580,
-  "M365EDU_A3_FACULTY": 70,
-  "M365EDU_A1": 0,
-  "ENTERPRISEPACK": 270,
-  "EXCHANGESTANDARD": 55,
-  "POWER_BI_PRO": 105,
-  "INTUNE_A": 90,
-  "AAD_PREMIUM": 65,
-  "AAD_PREMIUM_P2": 100,
-  "VISIOCLIENT": 165,
-  "PROJECTPREMIUM": 520,
-  "TEAMS_EXPLORATORY": 0,
-  "FLOW_FREE": 0,
-  "POWERAPPS_VIRAL": 0
+{
+  "currency": {
+    "code": "NOK",
+    "symbol": "kr",
+    "locale": "nb-NO"
+  },
+  "licensePricing": {
+    "SPE_E3": 350,
+    "SPE_F1": 85,
+    "MICROSOFT_DEFENDER_PURVIEW_ADDON_FLW": 45,
+    "DEFENDER_ENDPOINT_P1": 30,
+    "MTR_PREM": 150,
+    "STANDARDWOFFPACK_FACULTY": 0,
+    "STANDARDWOFFPACK_STUDENT": 0,
+    "DESKLESSPACK": 95
+  }
 }
 ```
 
-**Important**: Set free/trial licenses to `0` to exclude them from cost calculations.
+**Important**:
+- Set free licenses (A1 for students/faculty) to `0`
+- Use your actual contract prices, not list prices
+- Prices should be **monthly per license**
 
-## Common SKU Part Numbers
+---
+
+## Adding New Licenses in the Future
+
+When you purchase new licenses:
+
+### 1. Run Data Collection
+```powershell
+.\Invoke-DataCollection.ps1
+```
+
+### 2. Check for Unknown SKUs
+Open `data/licenses.json` and look for any licenses showing `0` cost:
+
+```powershell
+Get-Content ".\data\licenses.json" | ConvertFrom-Json |
+    Where-Object { $_.monthlyCostPerLicense -eq 0 -and $_.totalAssigned -gt 0 } |
+    Select-Object skuName, skuPartNumber, totalAssigned
+```
+
+### 3. Add Missing SKUs to Config
+Add the new `skuPartNumber` with its monthly cost:
+
+```json
+"licensePricing": {
+  "EXISTING_SKU": 350,
+  "NEW_SKU_PART_NUMBER": 125
+}
+```
+
+### 4. Rebuild Dashboard
+```powershell
+.\scripts\Build-Dashboard.ps1
+```
+
+---
+
+## Common SKU Part Numbers Reference
 
 | SKU Part Number | Product Name |
 |-----------------|--------------|
 | `SPE_E3` | Microsoft 365 E3 |
 | `SPE_E5` | Microsoft 365 E5 |
+| `SPE_F1` | Microsoft 365 F1 |
+| `SPE_F3` | Microsoft 365 F3 |
 | `ENTERPRISEPACK` | Office 365 E3 |
 | `ENTERPRISEPREMIUM` | Office 365 E5 |
-| `M365_F1` | Microsoft 365 F1 |
+| `DESKLESSPACK` | Office 365 F3 |
 | `SPB` | Microsoft 365 Business Premium |
 | `O365_BUSINESS_ESSENTIALS` | Microsoft 365 Business Basic |
 | `O365_BUSINESS_PREMIUM` | Microsoft 365 Business Standard |
 | `EXCHANGESTANDARD` | Exchange Online (Plan 1) |
 | `EXCHANGEENTERPRISE` | Exchange Online (Plan 2) |
 | `POWER_BI_PRO` | Power BI Pro |
-| `POWER_BI_PREMIUM_P1` | Power BI Premium Per User |
 | `INTUNE_A` | Microsoft Intune |
 | `AAD_PREMIUM` | Azure AD Premium P1 |
 | `AAD_PREMIUM_P2` | Azure AD Premium P2 |
 | `EMS` | Enterprise Mobility + Security E3 |
 | `EMSPREMIUM` | Enterprise Mobility + Security E5 |
-| `VISIOCLIENT` | Visio Plan 2 |
-| `PROJECTPREMIUM` | Project Plan 5 |
-| `PROJECTPROFESSIONAL` | Project Plan 3 |
-| `M365EDU_A1` | Microsoft 365 A1 (Education) |
+| `DEFENDER_ENDPOINT_P1` | Microsoft Defender for Endpoint P1 |
+| `DEFENDER_ENDPOINT_P2` | Microsoft Defender for Endpoint P2 |
+| `MTR_PREM` | Microsoft Teams Rooms Pro |
+| `STANDARDWOFFPACK_FACULTY` | Office 365 A1 for Faculty |
+| `STANDARDWOFFPACK_STUDENT` | Office 365 A1 for Students |
 | `M365EDU_A3_FACULTY` | Microsoft 365 A3 for Faculty |
 | `M365EDU_A3_STUDENT` | Microsoft 365 A3 for Students |
-| `M365EDU_A5_FACULTY` | Microsoft 365 A5 for Faculty |
+| `VISIOCLIENT` | Visio Plan 2 |
+| `PROJECTPREMIUM` | Project Plan 5 |
 | `TEAMS_EXPLORATORY` | Microsoft Teams Exploratory |
 | `FLOW_FREE` | Power Automate Free |
 | `POWERAPPS_VIRAL` | Power Apps Free |
 
 For a complete list, see [Microsoft Product Names and SKU IDs](https://learn.microsoft.com/en-us/entra/identity/users/licensing-service-plan-reference).
 
-## Step 4: Configure Overlap Rules (Optional)
+---
+
+## License Overlap Rules (Optional)
 
 Identify users with redundant licenses (e.g., both E3 and E5):
 
@@ -177,11 +262,19 @@ Identify users with redundant licenses (e.g., both E3 and E5):
     "higherSku": "EMSPREMIUM",
     "lowerSku": "EMS",
     "description": "EMS E5 includes all E3 features"
+  },
+  {
+    "name": "F1 + F3",
+    "higherSku": "SPE_F3",
+    "lowerSku": "SPE_F1",
+    "description": "F3 includes all F1 capabilities"
   }
 ]
 ```
 
 The dashboard will flag users with both licenses and calculate potential savings.
+
+---
 
 ## What the Dashboard Shows
 
@@ -196,11 +289,13 @@ Once configured, the Licenses page displays:
 
 The Overview page shows a **License Waste** callout if significant waste is detected.
 
+---
+
 ## Troubleshooting
 
 ### Licenses Show 0 Cost
 
-The SKU is not in your `licensePricing` config. Check:
+The SKU is not in your `licensePricing` config:
 
 1. Run collection to see the exact `skuPartNumber` in `licenses.json`
 2. Add that SKU to your config with the correct price
@@ -219,45 +314,21 @@ If a license appears with its technical name instead of a friendly name:
 2. Check your currency settings match your pricing
 3. Ensure prices are numbers, not strings: `350` not `"350"`
 
-## Example: Complete Configuration
+---
 
-```json
-{
-  "tenantId": "your-tenant-id",
-  "currency": {
-    "code": "USD",
-    "symbol": "$",
-    "locale": "en-US"
-  },
-  "licensePricing": {
-    "SPE_E3": 36,
-    "SPE_E5": 57,
-    "ENTERPRISEPACK": 23,
-    "EXCHANGESTANDARD": 4,
-    "POWER_BI_PRO": 10,
-    "AAD_PREMIUM": 6,
-    "AAD_PREMIUM_P2": 9,
-    "EMS": 10.60,
-    "EMSPREMIUM": 16.40,
-    "INTUNE_A": 8,
-    "TEAMS_EXPLORATORY": 0,
-    "FLOW_FREE": 0,
-    "POWERAPPS_VIRAL": 0
-  },
-  "licenseOverlapRules": [
-    { "name": "E3 + E5", "higherSku": "SPE_E5", "lowerSku": "SPE_E3", "description": "E5 includes all E3" },
-    { "name": "AAD P1 + P2", "higherSku": "AAD_PREMIUM_P2", "lowerSku": "AAD_PREMIUM", "description": "P2 includes P1" },
-    { "name": "O365 E3 + M365 E3", "higherSku": "SPE_E3", "lowerSku": "ENTERPRISEPACK", "description": "M365 E3 includes O365 E3" }
-  ]
-}
-```
+## Quick Reference: Your Tenant
 
-## Updating Prices
+Based on the screenshot, here are your licenses to configure:
 
-When your contract renews or prices change:
+| Product | SKU (verify in licenses.json) | Assigned | Get Price From |
+|---------|-------------------------------|----------|----------------|
+| Microsoft 365 E3 Existing Customer | `SPE_E3` | 281 | Invoice/VLSC |
+| Microsoft 365 F1 | `SPE_F1` | 758 | Invoice/VLSC |
+| Microsoft Defender + Purview Add-on | Check licenses.json | 754 | Invoice/VLSC |
+| Microsoft Defender Suite | Check licenses.json | 280 | Invoice/VLSC |
+| Microsoft Teams Rooms Basic | `MTR_PREM` or similar | 3 | Invoice |
+| Office 365 A1 for faculty | `STANDARDWOFFPACK_FACULTY` | 4 | Free (set to 0) |
+| Office 365 A1 for students | `STANDARDWOFFPACK_STUDENT` | 1 | Free (set to 0) |
+| Office 365 F3 | `DESKLESSPACK` | 11 | Invoice/VLSC |
 
-1. Update the `licensePricing` values in `config.json`
-2. Re-run `Invoke-DataCollection.ps1`
-3. Re-run `Build-Dashboard.ps1`
-
-The dashboard will reflect the new pricing immediately.
+Run data collection first, then check `licenses.json` for exact SKU part numbers before configuring pricing.
