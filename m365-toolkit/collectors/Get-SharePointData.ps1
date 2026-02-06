@@ -221,7 +221,8 @@ try {
         Write-Host "      Fetching site details from Graph Sites API..." -ForegroundColor Gray
         try {
             $allSites = @()
-            $sitesUri = "https://graph.microsoft.com/v1.0/sites?`$select=id,webUrl,displayName,createdDateTime&`$top=999"
+            # Use search=* to list all sites (required for enumeration)
+            $sitesUri = "https://graph.microsoft.com/v1.0/sites?search=*&`$select=id,webUrl,displayName,createdDateTime&`$top=999"
 
             while ($sitesUri) {
                 $response = Invoke-GraphWithRetry -ScriptBlock {
