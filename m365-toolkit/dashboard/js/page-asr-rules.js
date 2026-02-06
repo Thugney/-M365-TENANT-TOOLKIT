@@ -59,14 +59,20 @@ const PageASRRules = (function() {
         html += '<div class="table-container" id="asr-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({ containerId: 'asr-colselector', columns: [
-            { key: 'ruleName', label: 'Rule Name', default: true },
-            { key: 'mode', label: 'Mode', default: true },
-            { key: 'assignedDevices', label: 'Assigned', default: true },
-            { key: 'enabledDevices', label: 'Block Mode', default: true },
-            { key: 'auditDevices', label: 'Audit Mode', default: true },
-            { key: 'coverage', label: 'Coverage', default: true }
-        ], storageKey: 'tenantscope-asr-cols', onChange: applyFilters });
+        colSelector = ColumnSelector.create({
+            containerId: 'asr-colselector',
+            storageKey: 'tenantscope-asr-cols',
+            allColumns: [
+                { key: 'ruleName', label: 'Rule Name' },
+                { key: 'mode', label: 'Mode' },
+                { key: 'assignedDevices', label: 'Assigned' },
+                { key: 'enabledDevices', label: 'Block Mode' },
+                { key: 'auditDevices', label: 'Audit Mode' },
+                { key: 'coverage', label: 'Coverage' }
+            ],
+            defaultVisible: ['ruleName', 'mode', 'assignedDevices', 'enabledDevices', 'auditDevices', 'coverage'],
+            onColumnsChanged: function() { applyFilters(); }
+        });
 
         Filters.setup('asr-search', applyFilters);
         Filters.setup('asr-mode', applyFilters);

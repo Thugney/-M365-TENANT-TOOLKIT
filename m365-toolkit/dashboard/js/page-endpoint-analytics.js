@@ -65,14 +65,20 @@ const PageEndpointAnalytics = (function() {
         html += '<div class="table-container" id="analytics-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({ containerId: 'analytics-colselector', columns: [
-            { key: 'deviceName', label: 'Device', default: true },
-            { key: 'userPrincipalName', label: 'User', default: true },
-            { key: 'healthScore', label: 'Health Score', default: true },
-            { key: 'startupScore', label: 'Startup Score', default: true },
-            { key: 'bootTimeSeconds', label: 'Boot Time', default: true },
-            { key: 'model', label: 'Model', default: true }
-        ], storageKey: 'tenantscope-analytics-cols', onChange: applyFilters });
+        colSelector = ColumnSelector.create({
+            containerId: 'analytics-colselector',
+            storageKey: 'tenantscope-analytics-cols',
+            allColumns: [
+                { key: 'deviceName', label: 'Device' },
+                { key: 'userPrincipalName', label: 'User' },
+                { key: 'healthScore', label: 'Health Score' },
+                { key: 'startupScore', label: 'Startup Score' },
+                { key: 'bootTimeSeconds', label: 'Boot Time' },
+                { key: 'model', label: 'Model' }
+            ],
+            defaultVisible: ['deviceName', 'userPrincipalName', 'healthScore', 'startupScore', 'bootTimeSeconds', 'model'],
+            onColumnsChanged: function() { applyFilters(); }
+        });
 
         Filters.setup('analytics-search', applyFilters);
         Filters.setup('analytics-health', applyFilters);

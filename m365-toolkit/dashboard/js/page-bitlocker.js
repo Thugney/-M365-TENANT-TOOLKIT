@@ -57,13 +57,19 @@ const PageBitLocker = (function() {
         html += '<div class="table-container" id="bitlocker-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({ containerId: 'bitlocker-colselector', columns: [
-            { key: 'deviceName', label: 'Device', default: true },
-            { key: 'userPrincipalName', label: 'User', default: true },
-            { key: 'encryptionState', label: 'Encryption', default: true },
-            { key: 'recoveryKeyEscrowed', label: 'Key Escrowed', default: true },
-            { key: 'tpmVersion', label: 'TPM Version', default: true }
-        ], storageKey: 'tenantscope-bitlocker-cols', onChange: applyFilters });
+        colSelector = ColumnSelector.create({
+            containerId: 'bitlocker-colselector',
+            storageKey: 'tenantscope-bitlocker-cols',
+            allColumns: [
+                { key: 'deviceName', label: 'Device' },
+                { key: 'userPrincipalName', label: 'User' },
+                { key: 'encryptionState', label: 'Encryption' },
+                { key: 'recoveryKeyEscrowed', label: 'Key Escrowed' },
+                { key: 'tpmVersion', label: 'TPM Version' }
+            ],
+            defaultVisible: ['deviceName', 'userPrincipalName', 'encryptionState', 'recoveryKeyEscrowed', 'tpmVersion'],
+            onColumnsChanged: function() { applyFilters(); }
+        });
 
         Filters.setup('bitlocker-search', applyFilters);
         Filters.setup('bitlocker-encryption', applyFilters);

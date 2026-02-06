@@ -62,13 +62,19 @@ const PageCredentialExpiry = (function() {
         html += '<div class="table-container" id="creds-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({ containerId: 'creds-colselector', columns: [
-            { key: 'appDisplayName', label: 'Application', default: true },
-            { key: 'credentialType', label: 'Type', default: true },
-            { key: 'status', label: 'Status', default: true },
-            { key: 'daysUntilExpiry', label: 'Days Left', default: true },
-            { key: 'expiryDate', label: 'Expiry Date', default: true }
-        ], storageKey: 'tenantscope-creds-cols', onChange: applyFilters });
+        colSelector = ColumnSelector.create({
+            containerId: 'creds-colselector',
+            storageKey: 'tenantscope-creds-cols',
+            allColumns: [
+                { key: 'appDisplayName', label: 'Application' },
+                { key: 'credentialType', label: 'Type' },
+                { key: 'status', label: 'Status' },
+                { key: 'daysUntilExpiry', label: 'Days Left' },
+                { key: 'expiryDate', label: 'Expiry Date' }
+            ],
+            defaultVisible: ['appDisplayName', 'credentialType', 'status', 'daysUntilExpiry', 'expiryDate'],
+            onColumnsChanged: function() { applyFilters(); }
+        });
 
         Filters.setup('creds-search', applyFilters);
         Filters.setup('creds-type', applyFilters);

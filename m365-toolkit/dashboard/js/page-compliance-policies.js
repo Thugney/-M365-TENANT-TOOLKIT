@@ -115,18 +115,19 @@ const PageCompliancePolicies = (function() {
         html += '<div class="table-container" id="compliance-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({
+        colSelector = ColumnSelector.create({
             containerId: 'compliance-colselector',
-            columns: [
-                { key: 'displayName', label: 'Policy Name', default: true },
-                { key: 'platform', label: 'Platform', default: true },
-                { key: 'assignedCount', label: 'Assigned', default: true },
-                { key: 'compliantCount', label: 'Compliant', default: true },
-                { key: 'nonCompliantCount', label: 'Non-Compliant', default: true },
-                { key: 'complianceRate', label: 'Compliance %', default: true }
-            ],
             storageKey: 'tenantscope-compliance-cols',
-            onChange: applyFilters
+            allColumns: [
+                { key: 'displayName', label: 'Policy Name' },
+                { key: 'platform', label: 'Platform' },
+                { key: 'assignedCount', label: 'Assigned' },
+                { key: 'compliantCount', label: 'Compliant' },
+                { key: 'nonCompliantCount', label: 'Non-Compliant' },
+                { key: 'complianceRate', label: 'Compliance %' }
+            ],
+            defaultVisible: ['displayName', 'platform', 'assignedCount', 'compliantCount', 'nonCompliantCount', 'complianceRate'],
+            onColumnsChanged: function() { applyFilters(); }
         });
 
         Filters.setup('compliance-search', applyFilters);

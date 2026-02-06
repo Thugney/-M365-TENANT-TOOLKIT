@@ -63,15 +63,21 @@ const PageAppDeployments = (function() {
         html += '<div class="table-container" id="apps-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({ containerId: 'apps-colselector', columns: [
-            { key: 'displayName', label: 'App Name', default: true },
-            { key: 'appType', label: 'Type', default: true },
-            { key: 'publisher', label: 'Publisher', default: true },
-            { key: 'assignedCount', label: 'Assigned', default: true },
-            { key: 'installedCount', label: 'Installed', default: true },
-            { key: 'failedCount', label: 'Failed', default: true },
-            { key: 'installRate', label: 'Install Rate', default: true }
-        ], storageKey: 'tenantscope-apps-cols', onChange: applyFilters });
+        colSelector = ColumnSelector.create({
+            containerId: 'apps-colselector',
+            storageKey: 'tenantscope-apps-cols',
+            allColumns: [
+                { key: 'displayName', label: 'App Name' },
+                { key: 'appType', label: 'Type' },
+                { key: 'publisher', label: 'Publisher' },
+                { key: 'assignedCount', label: 'Assigned' },
+                { key: 'installedCount', label: 'Installed' },
+                { key: 'failedCount', label: 'Failed' },
+                { key: 'installRate', label: 'Install Rate' }
+            ],
+            defaultVisible: ['displayName', 'appType', 'publisher', 'assignedCount', 'installedCount', 'failedCount', 'installRate'],
+            onColumnsChanged: function() { applyFilters(); }
+        });
 
         Filters.setup('apps-search', applyFilters);
         Filters.setup('apps-type', applyFilters);

@@ -72,15 +72,21 @@ const PageSignInLogs = (function() {
         html += '<div class="table-container" id="signin-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({ containerId: 'signin-colselector', columns: [
-            { key: 'createdDateTime', label: 'Time', default: true },
-            { key: 'userPrincipalName', label: 'User', default: true },
-            { key: 'appDisplayName', label: 'Application', default: true },
-            { key: 'status', label: 'Status', default: true },
-            { key: 'mfaSatisfied', label: 'MFA', default: true },
-            { key: 'location', label: 'Location', default: true },
-            { key: 'riskLevel', label: 'Risk', default: true }
-        ], storageKey: 'tenantscope-signin-cols', onChange: applyFilters });
+        colSelector = ColumnSelector.create({
+            containerId: 'signin-colselector',
+            storageKey: 'tenantscope-signin-cols',
+            allColumns: [
+                { key: 'createdDateTime', label: 'Time' },
+                { key: 'userPrincipalName', label: 'User' },
+                { key: 'appDisplayName', label: 'Application' },
+                { key: 'status', label: 'Status' },
+                { key: 'mfaSatisfied', label: 'MFA' },
+                { key: 'location', label: 'Location' },
+                { key: 'riskLevel', label: 'Risk' }
+            ],
+            defaultVisible: ['createdDateTime', 'userPrincipalName', 'appDisplayName', 'status', 'mfaSatisfied', 'location', 'riskLevel'],
+            onColumnsChanged: function() { applyFilters(); }
+        });
 
         Filters.setup('signin-search', applyFilters);
         Filters.setup('signin-status', applyFilters);

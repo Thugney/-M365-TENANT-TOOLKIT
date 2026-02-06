@@ -59,13 +59,19 @@ const PageConfigurationProfiles = (function() {
         html += '<div class="table-container" id="profiles-table"></div>';
         container.innerHTML = html;
 
-        colSelector = new ColumnSelector({ containerId: 'profiles-colselector', columns: [
-            { key: 'displayName', label: 'Profile Name', default: true },
-            { key: 'profileType', label: 'Type', default: true },
-            { key: 'platform', label: 'Platform', default: true },
-            { key: 'successCount', label: 'Success', default: true },
-            { key: 'errorCount', label: 'Errors', default: true }
-        ], storageKey: 'tenantscope-profiles-cols', onChange: applyFilters });
+        colSelector = ColumnSelector.create({
+            containerId: 'profiles-colselector',
+            storageKey: 'tenantscope-profiles-cols',
+            allColumns: [
+                { key: 'displayName', label: 'Profile Name' },
+                { key: 'profileType', label: 'Type' },
+                { key: 'platform', label: 'Platform' },
+                { key: 'successCount', label: 'Success' },
+                { key: 'errorCount', label: 'Errors' }
+            ],
+            defaultVisible: ['displayName', 'profileType', 'platform', 'successCount', 'errorCount'],
+            onColumnsChanged: function() { applyFilters(); }
+        });
 
         Filters.setup('profiles-search', applyFilters);
         Filters.setup('profiles-platform', applyFilters);
