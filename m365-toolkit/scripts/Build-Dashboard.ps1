@@ -113,25 +113,40 @@ if (-not (Test-Path $dashboardDataPath)) {
 
 # Define data files to copy
 $dataFiles = @(
+    # Core identity & licensing
     "users.json",
     "license-skus.json",
     "guests.json",
     "mfa-status.json",
     "admin-roles.json",
+    # Security & risk
     "risky-signins.json",
+    "signin-logs.json",
+    "defender-alerts.json",
+    "secure-score.json",
+    "conditional-access.json",
+    "asr-rules.json",
+    # Device management
     "devices.json",
     "autopilot.json",
-    "defender-alerts.json",
+    "compliance-policies.json",
+    "configuration-profiles.json",
+    "windows-update-status.json",
+    "bitlocker-status.json",
+    "app-deployments.json",
+    "endpoint-analytics.json",
+    # Applications & governance
     "enterprise-apps.json",
+    "service-principal-secrets.json",
     "audit-logs.json",
     "pim-activity.json",
+    # Collaboration
     "teams.json",
     "sharepoint-sites.json",
-    "collection-metadata.json",
-    "trend-history.json",
-    "secure-score.json",
     "app-signins.json",
-    "conditional-access.json"
+    # Metadata
+    "collection-metadata.json",
+    "trend-history.json"
 )
 
 # Copy each file
@@ -192,25 +207,40 @@ $bundleLines += "window.__M365_VERSION = `"$appVersion`";"
 
 # Map of JS property names to JSON file names
 $bundleMap = @{
-    "users"          = "users.json"
-    "licenseSkus"    = "license-skus.json"
-    "guests"         = "guests.json"
-    "mfaStatus"      = "mfa-status.json"
-    "adminRoles"     = "admin-roles.json"
-    "riskySignins"   = "risky-signins.json"
-    "devices"        = "devices.json"
-    "autopilot"      = "autopilot.json"
-    "defenderAlerts"  = "defender-alerts.json"
-    "enterpriseApps"  = "enterprise-apps.json"
-    "auditLogs"       = "audit-logs.json"
-    "pimActivity"     = "pim-activity.json"
-    "teams"           = "teams.json"
-    "sharepointSites" = "sharepoint-sites.json"
-    "metadata"        = "collection-metadata.json"
-    "trendHistory"    = "trend-history.json"
-    "secureScore"     = "secure-score.json"
-    "appSignins"      = "app-signins.json"
-    "conditionalAccess" = "conditional-access.json"
+    # Core identity & licensing
+    "users"                   = "users.json"
+    "licenseSkus"             = "license-skus.json"
+    "guests"                  = "guests.json"
+    "mfaStatus"               = "mfa-status.json"
+    "adminRoles"              = "admin-roles.json"
+    # Security & risk
+    "riskySignins"            = "risky-signins.json"
+    "signinLogs"              = "signin-logs.json"
+    "defenderAlerts"          = "defender-alerts.json"
+    "secureScore"             = "secure-score.json"
+    "conditionalAccess"       = "conditional-access.json"
+    "asrRules"                = "asr-rules.json"
+    # Device management
+    "devices"                 = "devices.json"
+    "autopilot"               = "autopilot.json"
+    "compliancePolicies"      = "compliance-policies.json"
+    "configurationProfiles"   = "configuration-profiles.json"
+    "windowsUpdateStatus"     = "windows-update-status.json"
+    "bitlockerStatus"         = "bitlocker-status.json"
+    "appDeployments"          = "app-deployments.json"
+    "endpointAnalytics"       = "endpoint-analytics.json"
+    # Applications & governance
+    "enterpriseApps"          = "enterprise-apps.json"
+    "servicePrincipalSecrets" = "service-principal-secrets.json"
+    "auditLogs"               = "audit-logs.json"
+    "pimActivity"             = "pim-activity.json"
+    # Collaboration
+    "teams"                   = "teams.json"
+    "sharepointSites"         = "sharepoint-sites.json"
+    "appSignins"              = "app-signins.json"
+    # Metadata
+    "metadata"                = "collection-metadata.json"
+    "trendHistory"            = "trend-history.json"
 }
 
 foreach ($entry in $bundleMap.GetEnumerator()) {
