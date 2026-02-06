@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Sites no longer skipped when URLs are concealed - uses site ID as identifier
   - Added hint about Sites.Read.All permission for URL resolution
   - Improved messaging for admin privacy settings
+- **Dashboard pages now handle nested collector data structures:**
+  - page-credential-expiry.js: Flattens credentials from nested applications
+  - page-signin-logs.js: Extracts signIns array from collector output
+  - page-asr-rules.js: Extracts rulesArray from collector output
+  - page-app-deployments.js: Extracts apps array from collector output
+  - page-endpoint-analytics.js: Extracts and normalizes deviceScores with field mapping
+  - page-pim.js: Adds null check to prevent "filter is not a function" error
 
 ### Added
 - Secure Score now displayed on Security page with:
