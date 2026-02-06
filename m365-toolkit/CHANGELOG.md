@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `configuration-profiles.json`: `successDevices` → `successCount`, `errorDevices` → `errorCount`
   - `bitlocker-status.json`: `hasRecoveryKey` → `recoveryKeyEscrowed`, added `tpmVersion`
   - `compliance-policies.json`: added `description` and `lastModified` fields
+- **BitLocker collector now works on real tenants:**
+  - Fixed `$filter=operatingSystem eq 'Windows'` (was failing because actual OS values are "Windows 10", "Windows 11")
+  - Changed to client-side filtering with `-like "Windows*"`
+  - Added required `User-Agent` header for BitLocker recovery keys API
+  - Switched to v1.0 API endpoint for recovery keys
+  - Added pagination for recovery keys
+  - Dashboard page handles both sample data (array) and real collector output (object)
 
 ### Added
 - Secure Score now displayed on Security page with:
