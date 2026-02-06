@@ -327,6 +327,14 @@
         setupMobileMenu();
         setupNavGroups();
 
+        // Update version from build bundle
+        if (window.__M365_VERSION) {
+            var versionEl = document.querySelector('.sidebar-version');
+            if (versionEl) {
+                versionEl.textContent = 'v' + window.__M365_VERSION;
+            }
+        }
+
         // Load data
         const dataLoaded = await DataLoader.loadAll();
 
