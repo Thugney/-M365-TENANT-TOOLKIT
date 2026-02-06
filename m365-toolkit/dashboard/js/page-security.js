@@ -28,6 +28,7 @@ const PageSecurity = (function() {
         const adminRoles = DataLoader.getData('adminRoles');
         const allUsers = DataLoader.getData('users');
         const defenderAlerts = DataLoader.getData('defenderAlerts');
+        const secureScore = DataLoader.getData('secureScore');
 
         // Apply department filter to user-centric data
         const users = (typeof DepartmentFilter !== 'undefined')
@@ -44,6 +45,11 @@ const PageSecurity = (function() {
         const activeAlerts = defenderAlerts.filter(a => a.status !== 'resolved');
         const highAlerts = defenderAlerts.filter(a => a.severity === 'high' && a.status !== 'resolved');
 
+        // Secure Score data
+        const hasSecureScore = secureScore && secureScore.scorePct !== undefined;
+        const scorePct = hasSecureScore ? secureScore.scorePct : null;
+        const scoreClass = scorePct >= 70 ? 'success' : (scorePct >= 40 ? 'warning' : 'critical');
+
         // Total admins (unique)
         const adminUserIds = new Set();
         adminRoles.forEach(role => {
@@ -58,6 +64,10 @@ const PageSecurity = (function() {
 
             <!-- Summary Cards -->
             <div class="cards-grid">
+                <div class="card ${hasSecureScore ? (scorePct >= 70 ? 'card-success' : (scorePct >= 40 ? 'card-warning' : 'card-critical')) : ''}">
+                    <div class="card-label">Secure Score</div>
+                    <div class="card-value ${hasSecureScore ? scoreClass : ''}">${hasSecureScore ? scorePct + '%' : '--'}</div>
+                </div>
                 <div class="card ${highRiskCount > 0 ? 'card-critical' : ''}">
                     <div class="card-label">High Risk Sign-ins</div>
                     <div class="card-value ${highRiskCount > 0 ? 'critical' : 'success'}">${highRiskCount}</div>
@@ -78,6 +88,19 @@ const PageSecurity = (function() {
 
             <!-- MFA Chart -->
             <div class="charts-row" id="security-charts"></div>
+
+            <!-- Secure Score Improvement Actions -->
+            ${hasSecureScore && secureScore.controlScores && secureScore.controlScores.length > 0 ? `
+            <div class="section">
+                <div class="section-header">
+                    <div>
+                        <h3 class="section-title">Secure Score: ${secureScore.currentScore} / ${secureScore.maxScore} (${scorePct}%)</h3>
+                        <p class="section-subtitle">Top improvement actions to increase your security posture</p>
+                    </div>
+                </div>
+                <div id="secure-score-actions-table"></div>
+            </div>
+            ` : ''}
 
             <!-- Risky Sign-ins Section -->
             <div class="section">
@@ -123,6 +146,26 @@ const PageSecurity = (function() {
                 <div id="defender-alerts-table"></div>
             </div>
         `;
+
+        // Render Secure Score actions table
+        if (hasSecureScore && secureScore.controlScores && secureScore.controlScores.length > 0) {
+            Tables.render({
+                containerId: 'secure-score-actions-table',
+                data: secureScore.controlScores,
+                columns: [
+                    { key: 'name', label: 'Control Name' },
+                    { key: 'description', label: 'Description' },
+                    { key: 'scoreInPercentage', label: 'Progress', formatter: function(v) {
+                        const cls = v >= 80 ? 'text-success' : (v >= 50 ? 'text-warning' : 'text-critical');
+                        return `<span class="${cls}">${v}%</span>`;
+                    }},
+                    { key: 'maxScore', label: 'Max Points', formatter: function(v) {
+                        return `<span class="text-muted">${v}</span>`;
+                    }}
+                ],
+                pageSize: 10
+            });
+        }
 
         // Render risky sign-ins table
         Tables.render({
@@ -170,10 +213,25 @@ const PageSecurity = (function() {
             pageSize: 10
         });
 
-        // Render MFA chart
+        // Render charts
         var chartsRow = document.getElementById('security-charts');
         if (chartsRow) {
             var C = DashboardCharts.colors;
+
+            // Secure Score chart
+            if (hasSecureScore) {
+                var scoreColor = scorePct >= 70 ? C.green : (scorePct >= 40 ? C.yellow : C.red);
+                chartsRow.appendChild(DashboardCharts.createChartCard(
+                    'Secure Score',
+                    [
+                        { value: scorePct, label: 'Achieved', color: scoreColor },
+                        { value: 100 - scorePct, label: 'Remaining', color: C.gray }
+                    ],
+                    scorePct + '%', 'of ' + secureScore.maxScore + ' points'
+                ));
+            }
+
+            // MFA Coverage chart
             var mfaRegistered = users.filter(u => u.mfaRegistered && u.accountEnabled).length;
             var enabledUsers = users.filter(u => u.accountEnabled).length;
             var mfaPct = enabledUsers > 0 ? Math.round((mfaRegistered / enabledUsers) * 100) : 0;
