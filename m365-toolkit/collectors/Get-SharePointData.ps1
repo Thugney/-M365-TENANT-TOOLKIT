@@ -202,14 +202,61 @@ try {
     $reportData = Import-Csv -Path $tempCsvPath
     Write-Host "      Report contains $($reportData.Count) sites" -ForegroundColor Gray
 
-    # Debug: Show actual column names if first row exists
+    # ========================================================================
+    # Check if URLs are concealed (privacy settings enabled)
+    # ========================================================================
+
+    $urlsConcealed = $false
     if ($reportData.Count -gt 0) {
-        $columns = $reportData[0].PSObject.Properties.Name
-        Write-Host "      Columns: $($columns -join ', ')" -ForegroundColor Gray
-        # Debug: Show first row data
         $firstRow = $reportData[0]
-        Write-Host "      First row Site URL: [$($firstRow.'Site URL')]" -ForegroundColor Gray
-        Write-Host "      First row Site Id: [$($firstRow.'Site Id')]" -ForegroundColor Gray
+        if ([string]::IsNullOrWhiteSpace($firstRow.'Site URL') -and -not [string]::IsNullOrWhiteSpace($firstRow.'Site Id')) {
+            $urlsConcealed = $true
+            Write-Host "      Site URLs are concealed - fetching from Sites API..." -ForegroundColor Yellow
+        }
+    }
+
+    # Build site lookup from Sites API if URLs are concealed
+    $siteLookup = @{}
+    if ($urlsConcealed) {
+        Write-Host "      Fetching site details from Graph Sites API..." -ForegroundColor Gray
+        try {
+            $allSites = @()
+            $sitesUri = "https://graph.microsoft.com/v1.0/sites?`$select=id,webUrl,displayName,createdDateTime&`$top=999"
+
+            while ($sitesUri) {
+                $response = Invoke-GraphWithRetry -ScriptBlock {
+                    Invoke-MgGraphRequest -Method GET -Uri $sitesUri
+                }
+                if ($response.value) {
+                    $allSites += $response.value
+                }
+                $sitesUri = $response.'@odata.nextLink'
+
+                if ($allSites.Count % 500 -eq 0 -and $allSites.Count -gt 0) {
+                    Write-Host "      Fetched $($allSites.Count) sites from API..." -ForegroundColor Gray
+                }
+            }
+
+            Write-Host "      Retrieved $($allSites.Count) sites from Sites API" -ForegroundColor Gray
+
+            # Build lookup by site ID (extract GUID from composite ID)
+            foreach ($site in $allSites) {
+                # Site ID format from Sites API: "contoso.sharepoint.com,guid1,guid2"
+                # Site ID format from Reports: just the GUID
+                $siteIdParts = $site.id -split ','
+                if ($siteIdParts.Count -ge 2) {
+                    $siteGuid = $siteIdParts[1]
+                    $siteLookup[$siteGuid] = @{
+                        url = $site.webUrl
+                        displayName = $site.displayName
+                        createdDateTime = $site.createdDateTime
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Host "      Warning: Could not fetch sites from API: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
     }
 
     # ========================================================================
@@ -223,6 +270,11 @@ try {
         try {
             $siteUrl = $row.'Site URL'
             $siteId = $row.'Site Id'
+
+            # If URLs are concealed, try to get URL from lookup
+            if ($urlsConcealed -and [string]::IsNullOrWhiteSpace($siteUrl) -and $siteLookup.ContainsKey($siteId)) {
+                $siteUrl = $siteLookup[$siteId].url
+            }
 
             if ([string]::IsNullOrWhiteSpace($siteUrl)) {
                 $skippedCount++
@@ -270,33 +322,41 @@ try {
             $lastActivityDate = $row.'Last Activity Date'
             if ([string]::IsNullOrWhiteSpace($lastActivityDate)) { $lastActivityDate = $null }
 
-            $createdDate = $row.'Site Created Date'
-            if ([string]::IsNullOrWhiteSpace($createdDate)) { $createdDate = $null }
+            # Get created date from lookup if available (report doesn't include it)
+            $createdDate = $null
+            if ($urlsConcealed -and $siteLookup.ContainsKey($siteId)) {
+                $createdDate = $siteLookup[$siteId].createdDateTime
+            }
 
             # Classify template and personal site status
             $rootWebTemplate = $row.'Root Web Template'
             $template = Get-SiteTemplate -RootWebTemplate $rootWebTemplate -SiteUrl $siteUrl
             $isPersonalSite = ($template -eq "OneDrive")
 
-            # Determine group connection
-            $groupId = $row.'Group Id'
-            $isGroupConnected = (-not [string]::IsNullOrWhiteSpace($groupId))
+            # Determine group connection from template (Group Id not in report)
+            $isGroupConnected = ($template -eq "Group")
 
             # Calculate activity status
             $daysSinceActivity = Get-DaysSinceDate -DateValue $lastActivityDate
             $isInactive = ($null -ne $daysSinceActivity -and $daysSinceActivity -ge $inactiveThreshold) -or
                           ($null -eq $lastActivityDate)
 
-            # Owner info from report
+            # Owner info from report (may be concealed)
             $ownerName = $row.'Owner Display Name'
             $ownerUpn = $row.'Owner Principal Name'
-            $siteName = $row.'Site URL'.Split('/')[-1]
+            $siteName = if ($siteUrl) { $siteUrl.Split('/')[-1] } else { $siteId }
 
-            # Use a display name from the report if available
-            $displayName = if ($ownerName -and $template -eq "OneDrive") {
-                "$ownerName - OneDrive"
-            } else {
-                $siteName
+            # Use display name from lookup if available, else fall back to site name
+            $displayName = $null
+            if ($urlsConcealed -and $siteLookup.ContainsKey($siteId) -and $siteLookup[$siteId].displayName) {
+                $displayName = $siteLookup[$siteId].displayName
+            }
+            if (-not $displayName) {
+                $displayName = if ($ownerName -and $template -eq "OneDrive") {
+                    "$ownerName - OneDrive"
+                } else {
+                    $siteName
+                }
             }
 
             # Build flags array
@@ -327,7 +387,6 @@ try {
                 isInactive          = $isInactive
                 createdDateTime     = $createdDate
                 isGroupConnected    = $isGroupConnected
-                groupId             = if ($isGroupConnected) { $groupId } else { $null }
                 template            = $template
                 isPersonalSite      = $isPersonalSite
                 # Sharing & governance fields (beta endpoint)

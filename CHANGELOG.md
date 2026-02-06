@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.8] - 2026-02-06
+
+### Fixed
+- **SharePoint collector concealed URLs**: When tenant has "Display concealed names" disabled, collector now fetches site URLs from the Sites API using Site IDs
+- **SharePoint collector missing columns**: Removed references to `Site Created Date` and `Group Id` columns that don't exist in the reports API response
+
+### Changed
+- SharePoint collector now uses Sites API as fallback when report URLs are empty
+- Site display names now fetched from Sites API when available
+
 ## [1.5.7] - 2026-02-06
 
 ### Fixed
