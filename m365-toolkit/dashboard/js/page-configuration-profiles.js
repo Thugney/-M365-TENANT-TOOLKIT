@@ -15,9 +15,9 @@ const PageConfigurationProfiles = (function() {
             exact: {}
         };
         var platformFilter = Filters.getValue('profiles-platform');
-        if (platformFilter && platformFilter \!== 'all') filterConfig.exact.platform = platformFilter;
+        if (platformFilter && platformFilter !== 'all') filterConfig.exact.platform = platformFilter;
         var typeFilter = Filters.getValue('profiles-type');
-        if (typeFilter && typeFilter \!== 'all') filterConfig.exact.profileType = typeFilter;
+        if (typeFilter && typeFilter !== 'all') filterConfig.exact.profileType = typeFilter;
         renderTable(Filters.apply(profiles, filterConfig));
     }
 
@@ -32,7 +32,7 @@ const PageConfigurationProfiles = (function() {
             { key: 'errorCount', label: 'Errors', formatter: function(v) { return v ? '<span class="text-critical font-bold">' + v + '</span>' : '<span class="text-muted">0</span>'; } },
             { key: 'lastModified', label: 'Last Modified', formatter: Tables.formatters.date }
         ];
-        Tables.render({ containerId: 'profiles-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) \!== -1; }), pageSize: 50 });
+        Tables.render({ containerId: 'profiles-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) !== -1; }), pageSize: 50 });
     }
 
     function render(container) {

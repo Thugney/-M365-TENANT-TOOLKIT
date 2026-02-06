@@ -11,7 +11,7 @@ const PageBitLocker = (function() {
         var devices = DataLoader.getData('bitlockerStatus') || [];
         var filterConfig = { search: Filters.getValue('bitlocker-search'), searchFields: ['deviceName', 'userPrincipalName'], exact: {} };
         var encFilter = Filters.getValue('bitlocker-encryption');
-        if (encFilter && encFilter \!== 'all') filterConfig.exact.encryptionState = encFilter;
+        if (encFilter && encFilter !== 'all') filterConfig.exact.encryptionState = encFilter;
         var filteredData = Filters.apply(devices, filterConfig);
         var keyFilter = Filters.getValue('bitlocker-key');
         if (keyFilter === 'escrowed') filteredData = filteredData.filter(function(d) { return d.recoveryKeyEscrowed === true; });
@@ -31,7 +31,7 @@ const PageBitLocker = (function() {
             { key: 'recoveryKeyEscrowed', label: 'Key Escrowed', formatter: function(v) { return v === true ? '<span class="text-success">Yes</span>' : '<span class="text-critical">No</span>'; }},
             { key: 'tpmVersion', label: 'TPM Version' }
         ];
-        Tables.render({ containerId: 'bitlocker-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) \!== -1; }), pageSize: 50 });
+        Tables.render({ containerId: 'bitlocker-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) !== -1; }), pageSize: 50 });
     }
 
     function render(container) {

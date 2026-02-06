@@ -11,7 +11,7 @@ const PageAppDeployments = (function() {
         var apps = DataLoader.getData('appDeployments') || [];
         var filterConfig = { search: Filters.getValue('apps-search'), searchFields: ['displayName', 'publisher', 'appType'], exact: {} };
         var typeFilter = Filters.getValue('apps-type');
-        if (typeFilter && typeFilter \!== 'all') filterConfig.exact.appType = typeFilter;
+        if (typeFilter && typeFilter !== 'all') filterConfig.exact.appType = typeFilter;
         var filteredData = Filters.apply(apps, filterConfig);
         var statusFilter = Filters.getValue('apps-status');
         if (statusFilter === 'failing') filteredData = filteredData.filter(function(a) { return a.failedCount > 0; });
@@ -35,7 +35,7 @@ const PageAppDeployments = (function() {
                 return '<span class="' + cls + '">' + pct + '%</span>';
             }}
         ];
-        Tables.render({ containerId: 'apps-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) \!== -1; }), pageSize: 50 });
+        Tables.render({ containerId: 'apps-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) !== -1; }), pageSize: 50 });
     }
 
     function render(container) {

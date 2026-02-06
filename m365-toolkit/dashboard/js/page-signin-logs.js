@@ -11,13 +11,13 @@ const PageSignInLogs = (function() {
         var logs = DataLoader.getData('signinLogs') || [];
         var filterConfig = { search: Filters.getValue('signin-search'), searchFields: ['userPrincipalName', 'userDisplayName', 'appDisplayName', 'ipAddress', 'location'], exact: {} };
         var statusFilter = Filters.getValue('signin-status');
-        if (statusFilter && statusFilter \!== 'all') filterConfig.exact.status = statusFilter;
+        if (statusFilter && statusFilter !== 'all') filterConfig.exact.status = statusFilter;
         var filteredData = Filters.apply(logs, filterConfig);
         var mfaFilter = Filters.getValue('signin-mfa');
         if (mfaFilter === 'satisfied') filteredData = filteredData.filter(function(l) { return l.mfaSatisfied === true; });
         else if (mfaFilter === 'notsatisfied') filteredData = filteredData.filter(function(l) { return l.mfaSatisfied === false; });
         var riskFilter = Filters.getValue('signin-risk');
-        if (riskFilter && riskFilter \!== 'all') filteredData = filteredData.filter(function(l) { return l.riskLevel === riskFilter; });
+        if (riskFilter && riskFilter !== 'all') filteredData = filteredData.filter(function(l) { return l.riskLevel === riskFilter; });
         renderTable(filteredData);
     }
 
@@ -45,7 +45,7 @@ const PageSignInLogs = (function() {
                 return '<span class="badge ' + (risks[v] || 'badge-neutral') + '">' + (v || 'None') + '</span>';
             }}
         ];
-        Tables.render({ containerId: 'signin-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) \!== -1; }), pageSize: 100 });
+        Tables.render({ containerId: 'signin-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) !== -1; }), pageSize: 100 });
     }
 
     function render(container) {
@@ -54,7 +54,7 @@ const PageSignInLogs = (function() {
         var success = logs.filter(function(l) { return l.status === 'success'; }).length;
         var failure = logs.filter(function(l) { return l.status === 'failure'; }).length;
         var mfaCount = logs.filter(function(l) { return l.mfaSatisfied === true; }).length;
-        var risky = logs.filter(function(l) { return l.riskLevel && l.riskLevel \!== 'none'; }).length;
+        var risky = logs.filter(function(l) { return l.riskLevel && l.riskLevel !== 'none'; }).length;
 
         var html = '<div class="page-header"><h2>Sign-In Logs</h2></div>';
         html += '<div class="summary-cards">';

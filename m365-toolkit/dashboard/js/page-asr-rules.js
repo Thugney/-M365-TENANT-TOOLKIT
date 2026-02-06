@@ -11,7 +11,7 @@ const PageASRRules = (function() {
         var rules = DataLoader.getData('asrRules') || [];
         var filterConfig = { search: Filters.getValue('asr-search'), searchFields: ['ruleName', 'ruleId', 'description'], exact: {} };
         var modeFilter = Filters.getValue('asr-mode');
-        if (modeFilter && modeFilter \!== 'all') filterConfig.exact.mode = modeFilter;
+        if (modeFilter && modeFilter !== 'all') filterConfig.exact.mode = modeFilter;
         renderTable(Filters.apply(rules, filterConfig));
     }
 
@@ -34,7 +34,7 @@ const PageASRRules = (function() {
                 return '<span class="' + cls + '">' + pct + '%</span>';
             }}
         ];
-        Tables.render({ containerId: 'asr-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) \!== -1; }), pageSize: 50 });
+        Tables.render({ containerId: 'asr-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) !== -1; }), pageSize: 50 });
     }
 
     function render(container) {

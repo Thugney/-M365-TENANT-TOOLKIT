@@ -17,14 +17,14 @@ const PageCompliancePolicies = (function() {
         };
 
         var platformFilter = Filters.getValue('compliance-platform');
-        if (platformFilter && platformFilter \!== 'all') {
+        if (platformFilter && platformFilter !== 'all') {
             filterConfig.exact.platform = platformFilter;
         }
 
         var filteredData = Filters.apply(policies, filterConfig);
 
         var assignmentFilter = Filters.getValue('compliance-assignment');
-        if (assignmentFilter && assignmentFilter \!== 'all') {
+        if (assignmentFilter && assignmentFilter !== 'all') {
             if (assignmentFilter === 'assigned') {
                 filteredData = filteredData.filter(function(p) { return p.assignedCount > 0; });
             } else if (assignmentFilter === 'unassigned') {
@@ -52,7 +52,7 @@ const PageCompliancePolicies = (function() {
         Tables.render({
             containerId: 'compliance-table',
             data: data,
-            columns: allDefs.filter(function(col) { return visible.indexOf(col.key) \!== -1; }),
+            columns: allDefs.filter(function(col) { return visible.indexOf(col.key) !== -1; }),
             pageSize: 50,
             onRowClick: showPolicyDetails
         });
