@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.5] - 2026-02-06
+
+### Fixed
+- **App Sign-In collector skip token error**: Replaced SDK cmdlet with direct REST API to handle pagination properly on large tenants
+- **Graceful degradation**: If skip token expires mid-collection, collector now keeps partial data instead of failing completely
+
+### Changed
+- App Sign-In collector now uses manual pagination with 500 records per page
+- Added page limit (20 pages / 10,000 records max) to prevent excessively long collection runs
+- Uses `$select` parameter to reduce API response payload size
+
 ## [1.5.4] - 2026-02-06
 
 ### Changed
