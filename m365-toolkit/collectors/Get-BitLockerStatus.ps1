@@ -97,9 +97,10 @@ try {
 
     # Get managed devices with encryption information
     # Fetch all devices and filter Windows client-side (server-side filter not reliable)
+    # Note: encryptionState is NOT a valid property - use isEncrypted only
     $devicesResponse = Invoke-GraphWithRetry -ScriptBlock {
         Invoke-MgGraphRequest -Method GET `
-            -Uri "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$select=id,deviceName,userPrincipalName,operatingSystem,osVersion,isEncrypted,encryptionState,complianceState,lastSyncDateTime,model,manufacturer,serialNumber" `
+            -Uri "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$select=id,deviceName,userPrincipalName,operatingSystem,osVersion,isEncrypted,complianceState,lastSyncDateTime,model,manufacturer,serialNumber" `
             -OutputType PSObject
     } -OperationName "Device encryption retrieval"
 
@@ -176,7 +177,6 @@ try {
         totalDevices = 0
         encryptedDevices = 0
         notEncryptedDevices = 0
-        suspendedDevices = 0
         unknownDevices = 0
         devicesWithRecoveryKeys = 0
         encryptionRate = 0
@@ -186,13 +186,14 @@ try {
         $hasRecoveryKey = $recoveryKeys.ContainsKey($device.id)
         $recoveryKeyInfo = if ($hasRecoveryKey) { $recoveryKeys[$device.id] } else { @() }
 
-        # Determine encryption status
-        $encryptionStatus = if ($device.isEncrypted) {
-            "Encrypted"
-        } elseif ($device.encryptionState) {
-            Get-EncryptionState -State $device.encryptionState
+        # Determine encryption state (isEncrypted is boolean only - no encryptionState in API)
+        # Use lowercase values to match dashboard expectations
+        $encryptionState = if ($null -eq $device.isEncrypted) {
+            "unknown"
+        } elseif ($device.isEncrypted -eq $true) {
+            "encrypted"
         } else {
-            "Unknown"
+            "notEncrypted"
         }
 
         $daysSinceSync = Get-DaysSinceDate -DateValue $device.lastSyncDateTime
@@ -210,14 +211,14 @@ try {
             daysSinceSync     = $daysSinceSync
             # Encryption info
             isEncrypted       = [bool]$device.isEncrypted
-            encryptionStatus  = $encryptionStatus
-            # Recovery keys
+            encryptionState   = $encryptionState
+            # Recovery keys (use recoveryKeyEscrowed for dashboard compatibility)
             hasRecoveryKey    = $hasRecoveryKey
+            recoveryKeyEscrowed = $hasRecoveryKey
             recoveryKeyCount  = $recoveryKeyInfo.Count
             recoveryKeys      = $recoveryKeyInfo
             # Compliance flags
-            needsEncryption   = (-not $device.isEncrypted -and $encryptionStatus -ne "Encrypted")
-            isSuspended       = ($encryptionStatus -eq "Suspended")
+            needsEncryption   = ($encryptionState -eq "notEncrypted")
         }
 
         $processedDevices += $processedDevice
@@ -225,10 +226,9 @@ try {
 
         # Update summary
         $summary.totalDevices++
-        switch ($encryptionStatus) {
-            "Encrypted"     { $summary.encryptedDevices++ }
-            "Not Encrypted" { $summary.notEncryptedDevices++ }
-            "Suspended"     { $summary.suspendedDevices++ }
+        switch ($encryptionState) {
+            "encrypted"     { $summary.encryptedDevices++ }
+            "notEncrypted"  { $summary.notEncryptedDevices++ }
             default         { $summary.unknownDevices++ }
         }
         if ($hasRecoveryKey) { $summary.devicesWithRecoveryKeys++ }
@@ -239,15 +239,14 @@ try {
         $summary.encryptionRate = [Math]::Round(($summary.encryptedDevices / $summary.totalDevices) * 100, 1)
     }
 
-    # Sort by encryption status (not encrypted first)
+    # Sort by encryption state (not encrypted first)
     $processedDevices = $processedDevices | Sort-Object -Property @{
         Expression = {
-            switch ($_.encryptionStatus) {
-                "Not Encrypted" { 0 }
-                "Suspended"     { 1 }
-                "Unknown"       { 2 }
-                "Encrypted"     { 3 }
-                default         { 4 }
+            switch ($_.encryptionState) {
+                "notEncrypted"  { 0 }
+                "unknown"       { 1 }
+                "encrypted"     { 2 }
+                default         { 3 }
             }
         }
     }
