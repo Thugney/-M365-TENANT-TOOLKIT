@@ -95,24 +95,25 @@ $deviceCount = 0
 try {
     Write-Host "    Collecting BitLocker encryption status..." -ForegroundColor Gray
 
-    # Get managed devices with encryption information
-    # Fetch all devices and filter Windows client-side (server-side filter not reliable)
-    # Note: encryptionState is NOT a valid property - use isEncrypted only
-    $devicesResponse = Invoke-GraphWithRetry -ScriptBlock {
-        Invoke-MgGraphRequest -Method GET `
-            -Uri "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$select=id,deviceName,userPrincipalName,operatingSystem,osVersion,isEncrypted,complianceState,lastSyncDateTime,model,manufacturer,serialNumber" `
-            -OutputType PSObject
-    } -OperationName "Device encryption retrieval"
+    # Get managed devices - use v1.0 endpoint without $select for maximum compatibility
+    # Some tenants have issues with specific field selections
+    $allDevices = @()
+    $devicesUri = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices"
 
-    $allDevices = @($devicesResponse.value)
-
-    # Handle pagination
-    while ($devicesResponse.'@odata.nextLink') {
+    do {
         $devicesResponse = Invoke-GraphWithRetry -ScriptBlock {
-            Invoke-MgGraphRequest -Method GET -Uri $devicesResponse.'@odata.nextLink' -OutputType PSObject
-        } -OperationName "Device pagination"
-        $allDevices += $devicesResponse.value
-    }
+            Invoke-MgGraphRequest -Method GET -Uri $devicesUri -OutputType PSObject
+        } -OperationName "Device retrieval"
+
+        if ($devicesResponse.value) {
+            $allDevices += $devicesResponse.value
+        }
+        $devicesUri = $devicesResponse.'@odata.nextLink'
+
+        if ($allDevices.Count % 100 -eq 0 -and $allDevices.Count -gt 0) {
+            Write-Host "      Retrieved $($allDevices.Count) devices..." -ForegroundColor Gray
+        }
+    } while ($devicesUri)
 
     # Filter to Windows devices only (client-side)
     $allDevices = $allDevices | Where-Object { $_.operatingSystem -like "Windows*" }
