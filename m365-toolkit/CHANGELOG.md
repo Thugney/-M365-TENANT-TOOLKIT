@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Overview tabs feature donut charts, analytics grids with mini-bars, and actionable insights
   - Data tabs have unified filterable tables with column selectors and CSV export
 
+- **Overview Page Redesign**:
+  - Tab navigation: Overview, Quick Stats
+  - Tenant Health donut chart showing composite score (MFA + Compliance + Alerts)
+  - Analytics grid: User Composition, Security Status, Device Status, License Status
+  - Actionable insights for MFA gaps, compliance issues, alerts, license waste, secure score
+  - Clickable insights navigate to relevant pages
+  - Quick Stats tab retains original charts, license utilization, and activity panels
+
 - **Identity Pages Redesign** (Users, Guests, Organization, Lifecycle):
   - Tab navigation: Overview, Analysis, All Data
   - Donut charts showing account status, risk levels, activity
