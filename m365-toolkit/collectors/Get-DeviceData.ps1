@@ -103,6 +103,122 @@ function Get-ManagementAgent {
     }
 }
 
+function Get-EnrollmentTypeDisplay {
+    <#
+    .SYNOPSIS
+        Returns a readable enrollment type label.
+    #>
+    param([string]$EnrollmentType)
+
+    switch ($EnrollmentType) {
+        "userEnrollment"                    { return "User Enrollment" }
+        "deviceEnrollmentManager"           { return "DEM" }
+        "appleBulkWithUser"                 { return "Apple Bulk (User)" }
+        "appleBulkWithoutUser"              { return "Apple Bulk" }
+        "windowsAzureADJoin"                { return "Azure AD Join" }
+        "windowsBulkUserless"               { return "Bulk Userless" }
+        "windowsAutoEnrollment"             { return "Auto Enrollment" }
+        "windowsBulkAzureDomainJoin"        { return "Bulk Domain Join" }
+        "windowsCoManagement"               { return "Co-Management" }
+        "windowsAzureADJoinUsingDeviceAuth" { return "Device Auth Join" }
+        "appleUserEnrollment"               { return "Apple User Enroll" }
+        "appleUserEnrollmentWithServiceAccount" { return "Apple User + SA" }
+        "azureAdJoinUsingAzureVmExtension"  { return "Azure VM Join" }
+        "androidEnterpriseDedicatedDevice"  { return "Android Dedicated" }
+        "androidEnterpriseFullyManaged"     { return "Android Fully Managed" }
+        "androidEnterpriseCorporateWorkProfile" { return "Android Work Profile" }
+        default                             { return $EnrollmentType }
+    }
+}
+
+function Get-RegistrationStateDisplay {
+    <#
+    .SYNOPSIS
+        Returns a readable device registration state.
+    #>
+    param([string]$State)
+
+    switch ($State) {
+        "notRegistered"                     { return "Not Registered" }
+        "registered"                        { return "Registered" }
+        "revoked"                           { return "Revoked" }
+        "keyConflict"                       { return "Key Conflict" }
+        "approvalPending"                   { return "Approval Pending" }
+        "certificateReset"                  { return "Certificate Reset" }
+        "notRegisteredPendingEnrollment"    { return "Pending Enrollment" }
+        "unknown"                           { return "Unknown" }
+        default                             { return $State }
+    }
+}
+
+function Get-ThreatStateDisplay {
+    <#
+    .SYNOPSIS
+        Returns a readable partner threat state.
+    #>
+    param([string]$State)
+
+    switch ($State) {
+        "unknown"        { return "Unknown" }
+        "activated"      { return "Active" }
+        "deactivated"    { return "Deactivated" }
+        "secured"        { return "Secured" }
+        "lowSeverity"    { return "Low" }
+        "mediumSeverity" { return "Medium" }
+        "highSeverity"   { return "High" }
+        "unresponsive"   { return "Unresponsive" }
+        "compromised"    { return "Compromised" }
+        "misconfigured"  { return "Misconfigured" }
+        default          { return $State }
+    }
+}
+
+function Get-ExchangeAccessStateDisplay {
+    <#
+    .SYNOPSIS
+        Returns a readable Exchange access state.
+    #>
+    param([string]$State)
+
+    switch ($State) {
+        "none"        { return "None" }
+        "unknown"     { return "Unknown" }
+        "allowed"     { return "Allowed" }
+        "blocked"     { return "Blocked" }
+        "quarantined" { return "Quarantined" }
+        default       { return $State }
+    }
+}
+
+function Get-ChassisType {
+    <#
+    .SYNOPSIS
+        Determines chassis type from device model string.
+    #>
+    param([string]$Model, [string]$OS)
+
+    if ([string]::IsNullOrWhiteSpace($Model)) { return $null }
+
+    $modelLower = $Model.ToLower()
+
+    # Mobile devices
+    if ($OS -eq "iOS" -or $OS -eq "Android") {
+        if ($modelLower -match "ipad|tablet|tab") { return "Tablet" }
+        return "Phone"
+    }
+
+    # Apple Mac
+    if ($modelLower -match "macbook") { return "Laptop" }
+    if ($modelLower -match "imac|mac mini|mac pro|mac studio") { return "Desktop" }
+
+    # Windows/Other
+    if ($modelLower -match "surface pro|surface go") { return "Tablet" }
+    if ($modelLower -match "thinkpad|latitude|elitebook|probook|zbook|precision|xps|inspiron|pavilion|envy|spectre|surface laptop|macbook|ideapad|yoga") { return "Laptop" }
+    if ($modelLower -match "optiplex|prodesk|thinkcentre|elitedesk|tower|desktop|workstation") { return "Desktop" }
+
+    return $null
+}
+
 # ============================================================================
 # MAIN COLLECTION LOGIC
 # ============================================================================
@@ -119,10 +235,38 @@ try {
         $staleThreshold = 90
     }
 
-    # Retrieve all managed devices from Intune
-    $managedDevices = Invoke-GraphWithRetry -ScriptBlock {
-        Get-MgDeviceManagementManagedDevice -All
-    } -OperationName "Intune device retrieval"
+    # Retrieve all managed devices from Intune with extended properties
+    # Using direct API call to get all properties including those requiring $select
+    $managedDevices = $null
+
+    try {
+        # Try using cmdlet with -Property for all needed fields
+        $managedDevices = Invoke-GraphWithRetry -ScriptBlock {
+            Get-MgDeviceManagementManagedDevice -All -Property @(
+                "id", "deviceName", "userPrincipalName", "operatingSystem", "osVersion",
+                "complianceState", "lastSyncDateTime", "enrolledDateTime",
+                "managedDeviceOwnerType", "manufacturer", "model", "serialNumber",
+                "isEncrypted", "managementAgent", "managedDeviceCertificateExpirationDate",
+                "userDisplayName", "autopilotEnrolled", "deviceCategoryDisplayName",
+                "totalStorageSpaceInBytes", "freeStorageSpaceInBytes", "wiFiMacAddress",
+                "joinType", "azureADDeviceId", "deviceEnrollmentType", "deviceRegistrationState",
+                "jailBroken", "isSupervised", "partnerReportedThreatState",
+                "exchangeAccessState", "exchangeAccessStateReason", "exchangeLastSuccessfulSyncDateTime",
+                "physicalMemoryInBytes", "ethernetMacAddress", "phoneNumber", "subscriberCarrier",
+                "imei", "meid", "iccid", "udid", "enrollmentProfileName",
+                "androidSecurityPatchLevel", "complianceGracePeriodExpirationDateTime",
+                "activationLockBypassCode", "notes", "managedDeviceName", "userId", "emailAddress",
+                "azureADRegistered", "easActivated", "easActivationDateTime", "easDeviceId"
+            )
+        } -OperationName "Intune device retrieval"
+    }
+    catch {
+        # Fallback to basic retrieval if extended properties fail
+        Write-Host "      Extended properties unavailable, using standard retrieval..." -ForegroundColor Yellow
+        $managedDevices = Invoke-GraphWithRetry -ScriptBlock {
+            Get-MgDeviceManagementManagedDevice -All
+        } -OperationName "Intune device retrieval (fallback)"
+    }
 
     Write-Host "      Retrieved $($managedDevices.Count) devices from Intune" -ForegroundColor Gray
 
@@ -153,31 +297,113 @@ try {
         # Get Windows lifecycle info using shared utility
         $winLifecycle = Get-WindowsLifecycleInfo -OsVersion $device.OsVersion
 
-        # Build output object
+        # Get simplified OS for processing
+        $simplifiedOS = Get-SimplifiedOS -OperatingSystem $device.OperatingSystem
+
+        # Calculate physical memory in GB
+        $physicalMemoryGB = $null
+        if ($device.PhysicalMemoryInBytes -and $device.PhysicalMemoryInBytes -gt 0) {
+            $physicalMemoryGB = [Math]::Round($device.PhysicalMemoryInBytes / 1GB, 1)
+        }
+
+        # Calculate compliance grace period days
+        $graceExpiryDays = Get-DaysUntilDate -DateValue $device.ComplianceGracePeriodExpirationDateTime
+        $inGracePeriod = $null -ne $graceExpiryDays -and $graceExpiryDays -gt 0
+
+        # Determine threat level severity
+        $threatSeverity = $null
+        if ($device.PartnerReportedThreatState) {
+            switch ($device.PartnerReportedThreatState) {
+                "compromised"    { $threatSeverity = "critical" }
+                "highSeverity"   { $threatSeverity = "high" }
+                "mediumSeverity" { $threatSeverity = "medium" }
+                "lowSeverity"    { $threatSeverity = "low" }
+                "secured"        { $threatSeverity = "none" }
+                default          { $threatSeverity = "unknown" }
+            }
+        }
+
+        # Build output object with ALL properties for Endpoint Admins
         $processedDevice = [PSCustomObject]@{
+            # ===== CORE IDENTITY =====
             id                     = $device.Id
             deviceName             = $device.DeviceName
+            managedDeviceName      = $device.ManagedDeviceName
             userPrincipalName      = $device.UserPrincipalName
-            os                     = Get-SimplifiedOS -OperatingSystem $device.OperatingSystem
+            primaryUserDisplayName = $device.UserDisplayName
+            userId                 = $device.UserId
+            emailAddress           = $device.EmailAddress
+
+            # ===== AZURE AD INTEGRATION =====
+            azureAdDeviceId        = $device.AzureADDeviceId
+            azureAdRegistered      = if ($null -ne $device.AzureADRegistered) { [bool]$device.AzureADRegistered } else { $null }
+
+            # ===== OPERATING SYSTEM =====
+            os                     = $simplifiedOS
             osVersion              = $device.OsVersion
+            windowsType            = $winLifecycle.windowsType
+            windowsRelease         = $winLifecycle.windowsRelease
+            windowsBuild           = $winLifecycle.windowsBuild
+            windowsEOL             = $winLifecycle.windowsEOL
+            windowsSupported       = $winLifecycle.windowsSupported
+            androidSecurityPatchLevel = $device.AndroidSecurityPatchLevel
+
+            # ===== COMPLIANCE =====
             complianceState        = $complianceState
+            complianceGracePeriodExpiry = Format-IsoDate -DateValue $device.ComplianceGracePeriodExpirationDateTime
+            complianceGraceDays    = $graceExpiryDays
+            inGracePeriod          = $inGracePeriod
+
+            # ===== SYNC & ACTIVITY =====
             lastSync               = Format-IsoDate -DateValue $device.LastSyncDateTime
             daysSinceSync          = $daysSinceSync
             isStale                = $isStale
             enrolledDateTime       = Format-IsoDate -DateValue $device.EnrolledDateTime
+
+            # ===== OWNERSHIP & ENROLLMENT =====
             ownership              = $ownership
+            deviceEnrollmentType   = $device.DeviceEnrollmentType
+            enrollmentTypeDisplay  = Get-EnrollmentTypeDisplay -EnrollmentType $device.DeviceEnrollmentType
+            deviceRegistrationState = $device.DeviceRegistrationState
+            registrationStateDisplay = Get-RegistrationStateDisplay -State $device.DeviceRegistrationState
+            enrollmentProfileName  = $device.EnrollmentProfileName
+
+            # ===== HARDWARE =====
             manufacturer           = $device.Manufacturer
             model                  = $device.Model
             serialNumber           = $device.SerialNumber
+            chassisType            = Get-ChassisType -Model $device.Model -OS $simplifiedOS
+            deviceCategory         = $device.DeviceCategoryDisplayName
+            physicalMemoryGB       = $physicalMemoryGB
+
+            # ===== SECURITY =====
             isEncrypted            = [bool]$device.IsEncrypted
+            jailBroken             = $device.JailBroken
+            isSupervised           = if ($null -ne $device.IsSupervised) { [bool]$device.IsSupervised } else { $null }
+            partnerThreatState     = $device.PartnerReportedThreatState
+            threatStateDisplay     = Get-ThreatStateDisplay -State $device.PartnerReportedThreatState
+            threatSeverity         = $threatSeverity
+            activationLockBypass   = if ($device.ActivationLockBypassCode) { $true } else { $false }
+
+            # ===== MANAGEMENT =====
             managementAgent        = $managementAgent
+            joinType               = $device.JoinType
+            autopilotEnrolled      = [bool]$device.AutopilotEnrolled
+
+            # ===== CERTIFICATES =====
             certExpiryDate         = Format-IsoDate -DateValue $device.ManagedDeviceCertificateExpirationDate
             daysUntilCertExpiry    = $daysUntilCertExpiry
             certStatus             = $certStatus
-            # Extended fields
-            primaryUserDisplayName = $device.UserDisplayName
-            autopilotEnrolled      = [bool]$device.AutopilotEnrolled
-            deviceCategory         = $device.DeviceCategoryDisplayName
+
+            # ===== EXCHANGE (EAS) =====
+            exchangeAccessState    = $device.ExchangeAccessState
+            exchangeAccessDisplay  = Get-ExchangeAccessStateDisplay -State $device.ExchangeAccessState
+            exchangeAccessReason   = $device.ExchangeAccessStateReason
+            exchangeLastSync       = Format-IsoDate -DateValue $device.ExchangeLastSuccessfulSyncDateTime
+            easActivated           = if ($null -ne $device.EasActivated) { [bool]$device.EasActivated } else { $null }
+            easDeviceId            = $device.EasDeviceId
+
+            # ===== STORAGE =====
             totalStorageGB         = if ($device.TotalStorageSpaceInBytes -and $device.TotalStorageSpaceInBytes -gt 0) {
                                          [Math]::Round($device.TotalStorageSpaceInBytes / 1GB, 1)
                                      } else { $null }
@@ -188,14 +414,21 @@ try {
                                          $used = $device.TotalStorageSpaceInBytes - $device.FreeStorageSpaceInBytes
                                          [Math]::Round(($used / $device.TotalStorageSpaceInBytes) * 100, 1)
                                      } else { $null }
+
+            # ===== NETWORK =====
             wifiMacAddress         = $device.WiFiMacAddress
-            joinType               = $device.JoinType
-            # Windows lifecycle fields
-            windowsRelease         = $winLifecycle.windowsRelease
-            windowsBuild           = $winLifecycle.windowsBuild
-            windowsType            = $winLifecycle.windowsType
-            windowsEOL             = $winLifecycle.windowsEOL
-            windowsSupported       = $winLifecycle.windowsSupported
+            ethernetMacAddress     = $device.EthernetMacAddress
+            phoneNumber            = $device.PhoneNumber
+            subscriberCarrier      = $device.SubscriberCarrier
+
+            # ===== MOBILE IDENTIFIERS =====
+            imei                   = $device.Imei
+            meid                   = $device.Meid
+            iccid                  = $device.Iccid
+            udid                   = $device.Udid
+
+            # ===== ADMIN NOTES =====
+            notes                  = $device.Notes
         }
 
         $processedDevices += $processedDevice
@@ -259,6 +492,49 @@ try {
     # Autopilot counts
     $autopilotCount = ($processedDevices | Where-Object { $_.autopilotEnrolled -eq $true }).Count
     $notAutopilotCount = ($processedDevices | Where-Object { $_.autopilotEnrolled -eq $false }).Count
+
+    # Security counts (new)
+    $jailbrokenCount = ($processedDevices | Where-Object { $_.jailBroken -eq "True" -or $_.jailBroken -eq $true }).Count
+    $supervisedCount = ($processedDevices | Where-Object { $_.isSupervised -eq $true }).Count
+    $unsupervisedIos = ($processedDevices | Where-Object { $_.os -eq "iOS" -and $_.isSupervised -ne $true }).Count
+    $threatHighCount = ($processedDevices | Where-Object { $_.threatSeverity -eq "high" -or $_.threatSeverity -eq "critical" }).Count
+    $threatMediumCount = ($processedDevices | Where-Object { $_.threatSeverity -eq "medium" }).Count
+    $compromisedCount = ($processedDevices | Where-Object { $_.partnerThreatState -eq "compromised" }).Count
+    $inGracePeriodCount = ($processedDevices | Where-Object { $_.inGracePeriod -eq $true }).Count
+
+    # Enrollment type breakdown
+    $enrollmentTypeBreakdown = @{}
+    foreach ($device in $processedDevices) {
+        $enrollType = if ($device.enrollmentTypeDisplay) { $device.enrollmentTypeDisplay } else { "Unknown" }
+        if (-not $enrollmentTypeBreakdown.ContainsKey($enrollType)) {
+            $enrollmentTypeBreakdown[$enrollType] = 0
+        }
+        $enrollmentTypeBreakdown[$enrollType]++
+    }
+    $enrollmentTypeArray = @()
+    foreach ($key in $enrollmentTypeBreakdown.Keys | Sort-Object { $enrollmentTypeBreakdown[$_] } -Descending) {
+        $enrollmentTypeArray += [PSCustomObject]@{
+            name = $key
+            count = $enrollmentTypeBreakdown[$key]
+        }
+    }
+
+    # Chassis type breakdown
+    $chassisBreakdown = @{}
+    foreach ($device in $processedDevices) {
+        $chassis = if ($device.chassisType) { $device.chassisType } else { "Unknown" }
+        if (-not $chassisBreakdown.ContainsKey($chassis)) {
+            $chassisBreakdown[$chassis] = 0
+        }
+        $chassisBreakdown[$chassis]++
+    }
+    $chassisBreakdownArray = @()
+    foreach ($key in $chassisBreakdown.Keys | Sort-Object { $chassisBreakdown[$_] } -Descending) {
+        $chassisBreakdownArray += [PSCustomObject]@{
+            name = $key
+            count = $chassisBreakdown[$key]
+        }
+    }
 
     # OS breakdown
     $osBreakdown = @{}
@@ -330,31 +606,57 @@ try {
 
     # Build summary object
     $summary = [PSCustomObject]@{
+        # Core counts
         totalDevices           = $deviceCount
         compliant              = $compliantCount
         noncompliant           = $noncompliantCount
         unknown                = $unknownCount
+        inGracePeriod          = $inGracePeriodCount
+
+        # Encryption
         encrypted              = $encryptedCount
         notEncrypted           = $notEncryptedCount
+
+        # Activity
         stale                  = $staleCount
         active                 = $activeCount
+
+        # Certificates
         certExpired            = $certExpiredCount
         certCritical           = $certCriticalCount
         certWarning            = $certWarningCount
         certHealthy            = $certHealthyCount
         certUnknown            = $certUnknownCount
+
+        # Windows
         windows11              = $windows11Count
         windows10              = $windows10Count
         windowsSupported       = $windowsSupportedCount
         windowsUnsupported     = $windowsUnsupportedCount
+
+        # Ownership
         corporate              = $corporateCount
         personal               = $personalCount
+
+        # Enrollment
         autopilotEnrolled      = $autopilotCount
         notAutopilotEnrolled   = $notAutopilotCount
-        osBreakdown            = $osBreakdownArray
-        manufacturerBreakdown  = $manufacturerBreakdownArray
-        modelBreakdown         = $modelBreakdownArray
+
+        # Security
+        jailbroken             = $jailbrokenCount
+        supervised             = $supervisedCount
+        unsupervisedIos        = $unsupervisedIos
+        threatHigh             = $threatHighCount
+        threatMedium           = $threatMediumCount
+        compromised            = $compromisedCount
+
+        # Breakdowns
+        osBreakdown             = $osBreakdownArray
+        manufacturerBreakdown   = $manufacturerBreakdownArray
+        modelBreakdown          = $modelBreakdownArray
         windowsReleaseBreakdown = $windowsReleaseArray
+        enrollmentTypeBreakdown = $enrollmentTypeArray
+        chassisTypeBreakdown    = $chassisBreakdownArray
     }
 
     # ============================================================================
@@ -398,6 +700,54 @@ try {
             affectedDevices   = $certExpiredCount
             recommendedAction = "Re-enroll devices with expired certificates to restore management capabilities"
             category          = "Certificate"
+        }
+    }
+
+    # Critical: Compromised devices (threat partner detected)
+    if ($compromisedCount -gt 0) {
+        $insights += [PSCustomObject]@{
+            id                = "compromised-devices"
+            severity          = "critical"
+            description       = "$compromisedCount device$(if($compromisedCount -ne 1){'s'}) $(if($compromisedCount -eq 1){'is'}else{'are'}) reported as compromised by threat detection partner"
+            affectedDevices   = $compromisedCount
+            recommendedAction = "Immediately investigate compromised devices and initiate incident response"
+            category          = "Security"
+        }
+    }
+
+    # Critical: Jailbroken devices
+    if ($jailbrokenCount -gt 0) {
+        $insights += [PSCustomObject]@{
+            id                = "jailbroken-devices"
+            severity          = "critical"
+            description       = "$jailbrokenCount device$(if($jailbrokenCount -ne 1){'s'}) $(if($jailbrokenCount -eq 1){'is'}else{'are'}) jailbroken or rooted"
+            affectedDevices   = $jailbrokenCount
+            recommendedAction = "Block access from jailbroken devices - they bypass security controls"
+            category          = "Security"
+        }
+    }
+
+    # High: High-severity threats detected
+    if ($threatHighCount -gt 0) {
+        $insights += [PSCustomObject]@{
+            id                = "high-threats"
+            severity          = "high"
+            description       = "$threatHighCount device$(if($threatHighCount -ne 1){'s'}) $(if($threatHighCount -eq 1){'has'}else{'have'}) high or critical severity threats"
+            affectedDevices   = $threatHighCount
+            recommendedAction = "Review threat details and initiate remediation for high-severity threats"
+            category          = "Security"
+        }
+    }
+
+    # High: Unsupervised iOS devices
+    if ($unsupervisedIos -gt 0) {
+        $insights += [PSCustomObject]@{
+            id                = "unsupervised-ios"
+            severity          = "high"
+            description       = "$unsupervisedIos iOS device$(if($unsupervisedIos -ne 1){'s'}) $(if($unsupervisedIos -eq 1){'is'}else{'are'}) not supervised"
+            affectedDevices   = $unsupervisedIos
+            recommendedAction = "Consider supervision for corporate iOS devices to enable full MDM capabilities"
+            category          = "Management"
         }
     }
 

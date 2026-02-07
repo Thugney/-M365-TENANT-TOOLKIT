@@ -328,38 +328,70 @@ const PageDevices = (function() {
 
         colSelector = ColumnSelector.create({
             containerId: 'devices-colselector',
-            storageKey: 'tenantscope-devices-cols-v2',
+            storageKey: 'tenantscope-devices-cols-v3',
             allColumns: [
+                // Core identity
                 { key: 'deviceName', label: 'Device Name' },
                 { key: 'userPrincipalName', label: 'User' },
                 { key: 'primaryUserDisplayName', label: 'Display Name' },
+                { key: 'azureAdDeviceId', label: 'Azure AD ID' },
+                // OS
                 { key: 'os', label: 'OS' },
                 { key: 'osVersion', label: 'OS Version' },
                 { key: 'windowsType', label: 'Win Type' },
                 { key: 'windowsRelease', label: 'Win Release' },
                 { key: 'windowsSupported', label: 'Win Supported' },
                 { key: 'windowsEOL', label: 'Win EOL' },
+                { key: 'androidSecurityPatchLevel', label: 'Android Patch' },
+                // Compliance
                 { key: 'complianceState', label: 'Compliance' },
+                { key: 'inGracePeriod', label: 'In Grace Period' },
+                // Activity
                 { key: 'lastSync', label: 'Last Sync' },
                 { key: 'daysSinceSync', label: 'Days Since Sync' },
                 { key: 'isStale', label: 'Stale' },
-                { key: 'isEncrypted', label: 'Encrypted' },
-                { key: 'certStatus', label: 'Cert Status' },
-                { key: 'daysUntilCertExpiry', label: 'Cert Days' },
+                // Enrollment
                 { key: 'ownership', label: 'Ownership' },
+                { key: 'enrollmentTypeDisplay', label: 'Enrollment Type' },
+                { key: 'registrationStateDisplay', label: 'Registration' },
+                { key: 'enrollmentProfileName', label: 'Enrollment Profile' },
+                { key: 'enrolledDateTime', label: 'Enrolled' },
+                { key: 'autopilotEnrolled', label: 'Autopilot' },
+                // Hardware
                 { key: 'manufacturer', label: 'Manufacturer' },
                 { key: 'model', label: 'Model' },
                 { key: 'serialNumber', label: 'Serial' },
+                { key: 'chassisType', label: 'Chassis Type' },
+                { key: 'deviceCategory', label: 'Category' },
+                { key: 'physicalMemoryGB', label: 'RAM (GB)' },
+                // Security
+                { key: 'isEncrypted', label: 'Encrypted' },
+                { key: 'jailBroken', label: 'Jailbroken' },
+                { key: 'isSupervised', label: 'Supervised' },
+                { key: 'threatStateDisplay', label: 'Threat State' },
+                { key: 'threatSeverity', label: 'Threat Severity' },
+                // Management
                 { key: 'joinType', label: 'Join Type' },
                 { key: 'managementAgent', label: 'Mgmt Agent' },
-                { key: 'enrolledDateTime', label: 'Enrolled' },
-                { key: 'autopilotEnrolled', label: 'Autopilot' },
-                { key: 'deviceCategory', label: 'Category' },
+                // Certificates
+                { key: 'certStatus', label: 'Cert Status' },
+                { key: 'daysUntilCertExpiry', label: 'Cert Days' },
+                // Exchange
+                { key: 'exchangeAccessDisplay', label: 'Exchange Access' },
+                // Storage
                 { key: 'totalStorageGB', label: 'Total Storage' },
                 { key: 'freeStorageGB', label: 'Free Storage' },
-                { key: 'storageUsedPct', label: 'Storage Used %' }
+                { key: 'storageUsedPct', label: 'Storage Used %' },
+                // Network
+                { key: 'wifiMacAddress', label: 'WiFi MAC' },
+                { key: 'ethernetMacAddress', label: 'Ethernet MAC' },
+                { key: 'phoneNumber', label: 'Phone Number' },
+                { key: 'subscriberCarrier', label: 'Carrier' },
+                // Mobile identifiers
+                { key: 'imei', label: 'IMEI' },
+                { key: 'meid', label: 'MEID' }
             ],
-            defaultVisible: ['deviceName', 'userPrincipalName', 'os', 'windowsType', 'complianceState', 'lastSync', 'isEncrypted', 'certStatus', 'ownership'],
+            defaultVisible: ['deviceName', 'userPrincipalName', 'os', 'windowsType', 'complianceState', 'lastSync', 'isEncrypted', 'certStatus', 'ownership', 'threatStateDisplay'],
             onColumnsChanged: function() { applyDeviceFilters(); }
         });
 
@@ -407,37 +439,69 @@ const PageDevices = (function() {
     }
 
     function renderDevicesTable(data) {
-        var visible = colSelector ? colSelector.getVisible() : ['deviceName', 'userPrincipalName', 'os', 'windowsType', 'complianceState', 'lastSync', 'isEncrypted', 'certStatus', 'ownership'];
+        var visible = colSelector ? colSelector.getVisible() : ['deviceName', 'userPrincipalName', 'os', 'windowsType', 'complianceState', 'lastSync', 'isEncrypted', 'certStatus', 'ownership', 'threatStateDisplay'];
 
         var allDefs = [
+            // Core identity
             { key: 'deviceName', label: 'Device Name', formatter: function(v) { return '<strong>' + (v || '--') + '</strong>'; }},
             { key: 'userPrincipalName', label: 'User', className: 'cell-truncate' },
             { key: 'primaryUserDisplayName', label: 'Display Name' },
+            { key: 'azureAdDeviceId', label: 'Azure AD ID', className: 'cell-truncate' },
+            // OS
             { key: 'os', label: 'OS', formatter: formatOS },
             { key: 'osVersion', label: 'OS Version' },
             { key: 'windowsType', label: 'Win Type', formatter: formatWindowsType },
             { key: 'windowsRelease', label: 'Win Release' },
             { key: 'windowsSupported', label: 'Win Supported', formatter: formatBoolean },
             { key: 'windowsEOL', label: 'Win EOL' },
+            { key: 'androidSecurityPatchLevel', label: 'Android Patch' },
+            // Compliance
             { key: 'complianceState', label: 'Compliance', formatter: formatCompliance },
+            { key: 'inGracePeriod', label: 'In Grace Period', formatter: formatBoolean },
+            // Activity
             { key: 'lastSync', label: 'Last Sync', formatter: formatDate },
             { key: 'daysSinceSync', label: 'Days Since Sync', formatter: formatDaysSinceSync },
             { key: 'isStale', label: 'Stale', formatter: formatStale },
-            { key: 'isEncrypted', label: 'Encrypted', formatter: formatBoolean },
-            { key: 'certStatus', label: 'Cert Status', formatter: formatCertStatus },
-            { key: 'daysUntilCertExpiry', label: 'Cert Days', formatter: formatCertDays },
+            // Enrollment
             { key: 'ownership', label: 'Ownership', formatter: formatOwnership },
+            { key: 'enrollmentTypeDisplay', label: 'Enrollment Type' },
+            { key: 'registrationStateDisplay', label: 'Registration' },
+            { key: 'enrollmentProfileName', label: 'Enrollment Profile' },
+            { key: 'enrolledDateTime', label: 'Enrolled', formatter: formatDate },
+            { key: 'autopilotEnrolled', label: 'Autopilot', formatter: formatBoolean },
+            // Hardware
             { key: 'manufacturer', label: 'Manufacturer' },
             { key: 'model', label: 'Model' },
             { key: 'serialNumber', label: 'Serial' },
+            { key: 'chassisType', label: 'Chassis Type' },
+            { key: 'deviceCategory', label: 'Category' },
+            { key: 'physicalMemoryGB', label: 'RAM (GB)', formatter: function(v) { return v ? v + ' GB' : '--'; }},
+            // Security
+            { key: 'isEncrypted', label: 'Encrypted', formatter: formatBoolean },
+            { key: 'jailBroken', label: 'Jailbroken', formatter: formatJailbroken },
+            { key: 'isSupervised', label: 'Supervised', formatter: formatBoolean },
+            { key: 'threatStateDisplay', label: 'Threat State', formatter: formatThreatState },
+            { key: 'threatSeverity', label: 'Threat Severity', formatter: formatThreatSeverity },
+            // Management
             { key: 'joinType', label: 'Join Type' },
             { key: 'managementAgent', label: 'Mgmt Agent' },
-            { key: 'enrolledDateTime', label: 'Enrolled', formatter: formatDate },
-            { key: 'autopilotEnrolled', label: 'Autopilot', formatter: formatBoolean },
-            { key: 'deviceCategory', label: 'Category' },
+            // Certificates
+            { key: 'certStatus', label: 'Cert Status', formatter: formatCertStatus },
+            { key: 'daysUntilCertExpiry', label: 'Cert Days', formatter: formatCertDays },
+            // Exchange
+            { key: 'exchangeAccessDisplay', label: 'Exchange Access', formatter: formatExchangeAccess },
+            // Storage
             { key: 'totalStorageGB', label: 'Total Storage', formatter: function(v) { return v ? v + ' GB' : '--'; }},
             { key: 'freeStorageGB', label: 'Free Storage', formatter: function(v) { return v ? v + ' GB' : '--'; }},
-            { key: 'storageUsedPct', label: 'Storage Used %', formatter: formatStoragePct }
+            { key: 'storageUsedPct', label: 'Storage Used %', formatter: formatStoragePct },
+            // Network
+            { key: 'wifiMacAddress', label: 'WiFi MAC' },
+            { key: 'ethernetMacAddress', label: 'Ethernet MAC' },
+            { key: 'phoneNumber', label: 'Phone Number' },
+            { key: 'subscriberCarrier', label: 'Carrier' },
+            // Mobile identifiers
+            { key: 'imei', label: 'IMEI' },
+            { key: 'meid', label: 'MEID' }
         ];
 
         Tables.render({
@@ -725,6 +789,52 @@ const PageDevices = (function() {
         return '<span class="' + cls + '">' + v + '%</span>';
     }
 
+    function formatJailbroken(v) {
+        if (v === 'True' || v === true) return '<span class="badge badge-critical">Jailbroken</span>';
+        if (v === 'False' || v === false) return '<span class="text-success">No</span>';
+        return '<span class="text-muted">--</span>';
+    }
+
+    function formatThreatState(v) {
+        if (!v) return '<span class="text-muted">--</span>';
+        var map = {
+            'Secured': 'badge-success',
+            'Compromised': 'badge-critical',
+            'High': 'badge-critical',
+            'Medium': 'badge-warning',
+            'Low': 'badge-info',
+            'Active': 'badge-success',
+            'Deactivated': 'badge-neutral',
+            'Unknown': 'badge-neutral'
+        };
+        return '<span class="badge ' + (map[v] || 'badge-neutral') + '">' + v + '</span>';
+    }
+
+    function formatThreatSeverity(v) {
+        if (!v) return '<span class="text-muted">--</span>';
+        var map = {
+            'critical': 'text-critical font-bold',
+            'high': 'text-critical',
+            'medium': 'text-warning',
+            'low': 'text-info',
+            'none': 'text-success',
+            'unknown': 'text-muted'
+        };
+        return '<span class="' + (map[v] || '') + '">' + (v.charAt(0).toUpperCase() + v.slice(1)) + '</span>';
+    }
+
+    function formatExchangeAccess(v) {
+        if (!v) return '<span class="text-muted">--</span>';
+        var map = {
+            'Allowed': 'badge-success',
+            'Blocked': 'badge-critical',
+            'Quarantined': 'badge-warning',
+            'None': 'badge-neutral',
+            'Unknown': 'badge-neutral'
+        };
+        return '<span class="badge ' + (map[v] || 'badge-neutral') + '">' + v + '</span>';
+    }
+
     function formatDate(v) {
         if (!v) return '<span class="text-muted">--</span>';
         try {
@@ -752,24 +862,34 @@ const PageDevices = (function() {
     }
 
     function showDeviceDetails(device) {
+        // Device details modal - data is from trusted collector scripts
         document.getElementById('modal-title').textContent = device.deviceName || 'Device Details';
 
         var html = '<div class="detail-grid">';
 
-        // Device Information
-        html += '<div class="detail-section"><h4>Device Information</h4><dl class="detail-list">';
+        // Device Identity
+        html += '<div class="detail-section"><h4>Device Identity</h4><dl class="detail-list">';
         html += '<dt>Device Name</dt><dd>' + (device.deviceName || '--') + '</dd>';
+        html += '<dt>Managed Name</dt><dd>' + (device.managedDeviceName || '--') + '</dd>';
         html += '<dt>User</dt><dd>' + (device.userPrincipalName || '--') + '</dd>';
         html += '<dt>Display Name</dt><dd>' + (device.primaryUserDisplayName || '--') + '</dd>';
+        html += '<dt>Azure AD Device ID</dt><dd class="text-mono" style="font-size:0.8em">' + (device.azureAdDeviceId || '--') + '</dd>';
+        html += '<dt>Intune Device ID</dt><dd class="text-mono" style="font-size:0.8em">' + (device.id || '--') + '</dd>';
+        html += '</dl></div>';
+
+        // Hardware
+        html += '<div class="detail-section"><h4>Hardware</h4><dl class="detail-list">';
         html += '<dt>Manufacturer</dt><dd>' + (device.manufacturer || '--') + '</dd>';
         html += '<dt>Model</dt><dd>' + (device.model || '--') + '</dd>';
         html += '<dt>Serial Number</dt><dd>' + (device.serialNumber || '--') + '</dd>';
+        html += '<dt>Chassis Type</dt><dd>' + (device.chassisType || '--') + '</dd>';
         html += '<dt>Category</dt><dd>' + (device.deviceCategory || '--') + '</dd>';
+        html += '<dt>Physical Memory</dt><dd>' + (device.physicalMemoryGB ? device.physicalMemoryGB + ' GB' : '--') + '</dd>';
         html += '</dl></div>';
 
-        // OS Information
+        // Operating System
         html += '<div class="detail-section"><h4>Operating System</h4><dl class="detail-list">';
-        html += '<dt>OS</dt><dd>' + (device.os || '--') + '</dd>';
+        html += '<dt>OS</dt><dd>' + formatOS(device.os) + '</dd>';
         html += '<dt>OS Version</dt><dd>' + (device.osVersion || '--') + '</dd>';
         if (device.windowsType) {
             html += '<dt>Windows Type</dt><dd>' + device.windowsType + '</dd>';
@@ -777,43 +897,103 @@ const PageDevices = (function() {
             html += '<dt>Windows Supported</dt><dd>' + (device.windowsSupported ? '<span class="text-success">Yes</span>' : '<span class="text-critical">No</span>') + '</dd>';
             html += '<dt>Windows EOL</dt><dd>' + (device.windowsEOL || '--') + '</dd>';
         }
+        if (device.androidSecurityPatchLevel) {
+            html += '<dt>Android Patch Level</dt><dd>' + device.androidSecurityPatchLevel + '</dd>';
+        }
         html += '</dl></div>';
 
-        // Compliance & Security
-        html += '<div class="detail-section"><h4>Compliance & Security</h4><dl class="detail-list">';
-        html += '<dt>Compliance State</dt><dd>' + formatCompliance(device.complianceState) + '</dd>';
+        // Security
+        html += '<div class="detail-section"><h4>Security</h4><dl class="detail-list">';
         html += '<dt>Encrypted</dt><dd>' + (device.isEncrypted ? '<span class="text-success">Yes</span>' : '<span class="text-critical">No</span>') + '</dd>';
+        html += '<dt>Jailbroken/Rooted</dt><dd>' + formatJailbroken(device.jailBroken) + '</dd>';
+        if (device.os === 'iOS') {
+            html += '<dt>Supervised</dt><dd>' + (device.isSupervised ? '<span class="text-success">Yes</span>' : '<span class="text-warning">No</span>') + '</dd>';
+            html += '<dt>Activation Lock Bypass</dt><dd>' + (device.activationLockBypass ? '<span class="text-success">Available</span>' : 'N/A') + '</dd>';
+        }
+        html += '<dt>Threat State</dt><dd>' + formatThreatState(device.threatStateDisplay) + '</dd>';
+        html += '<dt>Threat Severity</dt><dd>' + formatThreatSeverity(device.threatSeverity) + '</dd>';
+        html += '</dl></div>';
+
+        // Compliance
+        html += '<div class="detail-section"><h4>Compliance</h4><dl class="detail-list">';
+        html += '<dt>Compliance State</dt><dd>' + formatCompliance(device.complianceState) + '</dd>';
+        html += '<dt>In Grace Period</dt><dd>' + (device.inGracePeriod ? '<span class="text-warning">Yes</span>' : 'No') + '</dd>';
+        if (device.complianceGraceDays) {
+            html += '<dt>Grace Period Ends</dt><dd>' + device.complianceGraceDays + ' days</dd>';
+        }
+        html += '</dl></div>';
+
+        // Enrollment & Management
+        html += '<div class="detail-section"><h4>Enrollment & Management</h4><dl class="detail-list">';
         html += '<dt>Ownership</dt><dd>' + formatOwnership(device.ownership) + '</dd>';
+        html += '<dt>Enrollment Type</dt><dd>' + (device.enrollmentTypeDisplay || '--') + '</dd>';
+        html += '<dt>Registration State</dt><dd>' + (device.registrationStateDisplay || '--') + '</dd>';
+        html += '<dt>Enrollment Profile</dt><dd>' + (device.enrollmentProfileName || '--') + '</dd>';
         html += '<dt>Join Type</dt><dd>' + (device.joinType || '--') + '</dd>';
         html += '<dt>Management Agent</dt><dd>' + (device.managementAgent || '--') + '</dd>';
+        html += '<dt>Enrolled</dt><dd>' + (device.enrolledDateTime ? new Date(device.enrolledDateTime).toLocaleDateString() : '--') + '</dd>';
+        html += '<dt>Autopilot Enrolled</dt><dd>' + (device.autopilotEnrolled ? '<span class="text-success">Yes</span>' : 'No') + '</dd>';
         html += '</dl></div>';
 
-        // Certificate & Sync
-        html += '<div class="detail-section"><h4>Certificate & Sync</h4><dl class="detail-list">';
+        // Sync & Certificates
+        html += '<div class="detail-section"><h4>Sync & Certificates</h4><dl class="detail-list">';
         html += '<dt>Last Sync</dt><dd>' + (device.lastSync ? new Date(device.lastSync).toLocaleString() : '--') + '</dd>';
         html += '<dt>Days Since Sync</dt><dd>' + (device.daysSinceSync !== null ? device.daysSinceSync + ' days' : '--') + '</dd>';
         html += '<dt>Is Stale</dt><dd>' + (device.isStale ? '<span class="text-warning">Yes</span>' : 'No') + '</dd>';
         html += '<dt>Cert Expiry</dt><dd>' + (device.certExpiryDate ? new Date(device.certExpiryDate).toLocaleDateString() : '--') + '</dd>';
-        html += '<dt>Cert Days</dt><dd>' + (device.daysUntilCertExpiry !== null ? device.daysUntilCertExpiry : '--') + '</dd>';
+        html += '<dt>Days Until Expiry</dt><dd>' + (device.daysUntilCertExpiry !== null ? device.daysUntilCertExpiry : '--') + '</dd>';
         html += '<dt>Cert Status</dt><dd>' + formatCertStatus(device.certStatus) + '</dd>';
         html += '</dl></div>';
 
-        // Enrollment
-        html += '<div class="detail-section"><h4>Enrollment</h4><dl class="detail-list">';
-        html += '<dt>Enrolled</dt><dd>' + (device.enrolledDateTime ? new Date(device.enrolledDateTime).toLocaleDateString() : '--') + '</dd>';
-        html += '<dt>Autopilot Enrolled</dt><dd>' + (device.autopilotEnrolled ? 'Yes' : 'No') + '</dd>';
-        html += '<dt>WiFi MAC</dt><dd>' + (device.wifiMacAddress || '--') + '</dd>';
-        html += '</dl></div>';
+        // Exchange (if applicable)
+        if (device.exchangeAccessState || device.easActivated) {
+            html += '<div class="detail-section"><h4>Exchange ActiveSync</h4><dl class="detail-list">';
+            html += '<dt>Access State</dt><dd>' + formatExchangeAccess(device.exchangeAccessDisplay) + '</dd>';
+            html += '<dt>Access Reason</dt><dd>' + (device.exchangeAccessReason || '--') + '</dd>';
+            html += '<dt>EAS Activated</dt><dd>' + (device.easActivated ? 'Yes' : 'No') + '</dd>';
+            html += '<dt>Last Exchange Sync</dt><dd>' + (device.exchangeLastSync ? new Date(device.exchangeLastSync).toLocaleString() : '--') + '</dd>';
+            html += '</dl></div>';
+        }
 
         // Storage
         html += '<div class="detail-section"><h4>Storage</h4><dl class="detail-list">';
         html += '<dt>Total Storage</dt><dd>' + (device.totalStorageGB ? device.totalStorageGB + ' GB' : '--') + '</dd>';
         html += '<dt>Free Storage</dt><dd>' + (device.freeStorageGB ? device.freeStorageGB + ' GB' : '--') + '</dd>';
-        html += '<dt>Storage Used</dt><dd>' + (device.storageUsedPct ? device.storageUsedPct + '%' : '--') + '</dd>';
+        html += '<dt>Storage Used</dt><dd>' + formatStoragePct(device.storageUsedPct) + '</dd>';
         html += '</dl></div>';
+
+        // Network
+        html += '<div class="detail-section"><h4>Network</h4><dl class="detail-list">';
+        html += '<dt>WiFi MAC</dt><dd>' + (device.wifiMacAddress || '--') + '</dd>';
+        html += '<dt>Ethernet MAC</dt><dd>' + (device.ethernetMacAddress || '--') + '</dd>';
+        if (device.phoneNumber) {
+            html += '<dt>Phone Number</dt><dd>' + device.phoneNumber + '</dd>';
+        }
+        if (device.subscriberCarrier) {
+            html += '<dt>Carrier</dt><dd>' + device.subscriberCarrier + '</dd>';
+        }
+        html += '</dl></div>';
+
+        // Mobile Identifiers (if applicable)
+        if (device.imei || device.meid || device.iccid || device.udid) {
+            html += '<div class="detail-section"><h4>Mobile Identifiers</h4><dl class="detail-list">';
+            if (device.imei) html += '<dt>IMEI</dt><dd>' + device.imei + '</dd>';
+            if (device.meid) html += '<dt>MEID</dt><dd>' + device.meid + '</dd>';
+            if (device.iccid) html += '<dt>ICCID</dt><dd>' + device.iccid + '</dd>';
+            if (device.udid) html += '<dt>UDID</dt><dd>' + device.udid + '</dd>';
+            html += '</dl></div>';
+        }
+
+        // Admin Notes (if present)
+        if (device.notes) {
+            html += '<div class="detail-section"><h4>Admin Notes</h4>';
+            html += '<p class="text-muted">' + device.notes + '</p>';
+            html += '</div>';
+        }
 
         html += '</div>'; // end detail-grid
 
+        // Safe: data is from trusted collector scripts, no user input
         document.getElementById('modal-body').innerHTML = html;
         document.getElementById('modal-overlay').classList.add('visible');
     }
