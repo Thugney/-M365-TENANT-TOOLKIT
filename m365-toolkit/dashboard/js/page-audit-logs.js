@@ -47,87 +47,213 @@ const PageAuditLogs = (function() {
     function renderOverview(container, state) {
         container.textContent = '';
 
-        // Charts row
-        var chartsRow = document.createElement('div');
-        chartsRow.className = 'charts-row';
-        chartsRow.id = 'audit-charts';
-        container.appendChild(chartsRow);
+        // Calculate stats
+        var total = state.totalEvents;
+        var successPct = total > 0 ? Math.round((state.successCount / total) * 100) : 0;
+        var failurePct = total > 0 ? Math.round((state.failureCount / total) * 100) : 0;
 
-        if (typeof DashboardCharts !== 'undefined') {
-            var C = DashboardCharts.colors;
+        // Build analytics section with donut chart
+        var section = document.createElement('div');
+        section.className = 'analytics-section';
 
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'Result Distribution',
-                [
-                    { value: state.successCount, label: 'Success', color: C.green },
-                    { value: state.failureCount, label: 'Failure', color: C.red }
-                ],
-                state.totalEvents > 0 ? Math.round((state.successCount / state.totalEvents) * 100) + '%' : '0%',
-                'success rate'
-            ));
+        var sectionTitle = document.createElement('h3');
+        sectionTitle.textContent = 'Audit Activity Overview';
+        section.appendChild(sectionTitle);
 
-            var categorySegments = Object.entries(state.categories)
-                .sort(function(a, b) { return b[1] - a[1]; })
-                .slice(0, 6)
-                .map(function(entry, idx) {
-                    var catColors = [C.blue, C.teal, C.purple, C.orange, C.indigo, C.gray];
-                    return { value: entry[1], label: entry[0], color: catColors[idx] || C.gray };
-                });
+        var complianceOverview = document.createElement('div');
+        complianceOverview.className = 'compliance-overview';
 
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'Events by Category',
-                categorySegments,
-                String(Object.keys(state.categories).length), 'categories'
-            ));
+        // Donut chart
+        var chartContainer = document.createElement('div');
+        chartContainer.className = 'compliance-chart';
+        var donutDiv = document.createElement('div');
+        donutDiv.className = 'donut-chart';
+
+        var circumference = 2 * Math.PI * 40;
+        var successDash = (successPct / 100) * circumference;
+        var failureDash = (failurePct / 100) * circumference;
+
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('class', 'donut');
+
+        var bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        bgCircle.setAttribute('cx', '50');
+        bgCircle.setAttribute('cy', '50');
+        bgCircle.setAttribute('r', '40');
+        bgCircle.setAttribute('fill', 'none');
+        bgCircle.setAttribute('stroke', 'var(--bg-tertiary)');
+        bgCircle.setAttribute('stroke-width', '12');
+        svg.appendChild(bgCircle);
+
+        if (successPct > 0) {
+            var successCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            successCircle.setAttribute('cx', '50');
+            successCircle.setAttribute('cy', '50');
+            successCircle.setAttribute('r', '40');
+            successCircle.setAttribute('fill', 'none');
+            successCircle.setAttribute('stroke', 'var(--success)');
+            successCircle.setAttribute('stroke-width', '12');
+            successCircle.setAttribute('stroke-dasharray', successDash + ' ' + circumference);
+            successCircle.setAttribute('stroke-dashoffset', '0');
+            successCircle.setAttribute('transform', 'rotate(-90 50 50)');
+            svg.appendChild(successCircle);
         }
+        if (failurePct > 0) {
+            var failCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            failCircle.setAttribute('cx', '50');
+            failCircle.setAttribute('cy', '50');
+            failCircle.setAttribute('r', '40');
+            failCircle.setAttribute('fill', 'none');
+            failCircle.setAttribute('stroke', 'var(--critical)');
+            failCircle.setAttribute('stroke-width', '12');
+            failCircle.setAttribute('stroke-dasharray', failureDash + ' ' + circumference);
+            failCircle.setAttribute('stroke-dashoffset', String(-successDash));
+            failCircle.setAttribute('transform', 'rotate(-90 50 50)');
+            svg.appendChild(failCircle);
+        }
+
+        donutDiv.appendChild(svg);
+
+        var donutCenter = document.createElement('div');
+        donutCenter.className = 'donut-center';
+        var donutValue = document.createElement('span');
+        donutValue.className = 'donut-value';
+        donutValue.textContent = successPct + '%';
+        var donutLabel = document.createElement('span');
+        donutLabel.className = 'donut-label';
+        donutLabel.textContent = 'Success Rate';
+        donutCenter.appendChild(donutValue);
+        donutCenter.appendChild(donutLabel);
+        donutDiv.appendChild(donutCenter);
+        chartContainer.appendChild(donutDiv);
+        complianceOverview.appendChild(chartContainer);
+
+        // Legend
+        var legend = document.createElement('div');
+        legend.className = 'compliance-legend';
+        var legendItems = [
+            { cls: 'bg-success', label: 'Successful', value: state.successCount },
+            { cls: 'bg-critical', label: 'Failed', value: state.failureCount },
+            { cls: 'bg-info', label: 'Total Events', value: total },
+            { cls: 'bg-primary', label: 'Categories', value: Object.keys(state.categories).length }
+        ];
+        legendItems.forEach(function(item) {
+            var legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            var dot = document.createElement('span');
+            dot.className = 'legend-dot ' + item.cls;
+            legendItem.appendChild(dot);
+            legendItem.appendChild(document.createTextNode(' ' + item.label + ': '));
+            var strong = document.createElement('strong');
+            strong.textContent = item.value;
+            legendItem.appendChild(strong);
+            legend.appendChild(legendItem);
+        });
+        complianceOverview.appendChild(legend);
+        section.appendChild(complianceOverview);
+        container.appendChild(section);
 
         // Analytics grid
         var analyticsGrid = document.createElement('div');
         analyticsGrid.className = 'analytics-grid';
 
-        // Category breakdown card
-        var categoryCard = createAnalyticsCard('Top Categories');
-        var sortedCats = Object.entries(state.categories).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
-        sortedCats.forEach(function(cat) {
-            addStatRow(categoryCard, cat[0], cat[1], '');
+        // Top Categories card
+        var sortedCats = Object.entries(state.categories).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 4);
+        var maxCatCount = sortedCats.length > 0 ? sortedCats[0][1] : 1;
+        var catRows = sortedCats.map(function(cat) {
+            return { name: cat[0], count: cat[1], pct: Math.round((cat[1] / maxCatCount) * 100), cls: 'bg-info', showCount: true };
         });
-        analyticsGrid.appendChild(categoryCard);
+        if (catRows.length === 0) {
+            catRows = [{ name: 'No categories', count: '--', pct: 0, cls: 'bg-neutral' }];
+        }
+        analyticsGrid.appendChild(createPlatformCard('Top Categories', catRows));
 
-        // Operation type breakdown card
+        // Operation Types card
         var opTypes = {};
         state.auditLogs.forEach(function(e) {
             var op = e.operationType || 'Other';
             opTypes[op] = (opTypes[op] || 0) + 1;
         });
-        var opCard = createAnalyticsCard('Operation Types');
-        var sortedOps = Object.entries(opTypes).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
-        sortedOps.forEach(function(op) {
-            addStatRow(opCard, op[0], op[1], '');
+        var sortedOps = Object.entries(opTypes).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 4);
+        var maxOpCount = sortedOps.length > 0 ? sortedOps[0][1] : 1;
+        var opRows = sortedOps.map(function(op) {
+            return { name: op[0], count: op[1], pct: Math.round((op[1] / maxOpCount) * 100), cls: 'bg-primary', showCount: true };
         });
-        analyticsGrid.appendChild(opCard);
+        if (opRows.length === 0) {
+            opRows = [{ name: 'No operations', count: '--', pct: 0, cls: 'bg-neutral' }];
+        }
+        analyticsGrid.appendChild(createPlatformCard('Operation Types', opRows));
 
-        // Top initiators card
+        // Top Initiators card
         var initiators = {};
         state.auditLogs.forEach(function(e) {
             var init = e.initiatedBy || e.initiatedByApp || 'Unknown';
             initiators[init] = (initiators[init] || 0) + 1;
         });
-        var initCard = createAnalyticsCard('Top Initiators');
-        var sortedInit = Object.entries(initiators).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
-        sortedInit.forEach(function(init) {
-            addStatRow(initCard, init[0], init[1], '');
+        var sortedInit = Object.entries(initiators).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 4);
+        var maxInitCount = sortedInit.length > 0 ? sortedInit[0][1] : 1;
+        var initRows = sortedInit.map(function(init) {
+            return { name: init[0], count: init[1], pct: Math.round((init[1] / maxInitCount) * 100), cls: 'bg-warning', showCount: true };
         });
-        analyticsGrid.appendChild(initCard);
+        if (initRows.length === 0) {
+            initRows = [{ name: 'Unknown', count: '--', pct: 0, cls: 'bg-neutral' }];
+        }
+        analyticsGrid.appendChild(createPlatformCard('Top Initiators', initRows));
 
-        // Result breakdown card
-        var resultCard = createAnalyticsCard('Result Summary');
-        addStatRow(resultCard, 'Successful', state.successCount, 'text-success');
-        addStatRow(resultCard, 'Failed', state.failureCount, state.failureCount > 0 ? 'text-critical' : 'text-success');
-        var successRate = state.totalEvents > 0 ? Math.round((state.successCount / state.totalEvents) * 100) : 0;
-        addStatRow(resultCard, 'Success Rate', successRate + '%', successRate >= 95 ? 'text-success' : successRate >= 80 ? 'text-warning' : 'text-critical');
-        analyticsGrid.appendChild(resultCard);
+        // Result Summary card
+        var resultRows = [
+            { name: 'Successful', count: state.successCount, pct: successPct, cls: 'bg-success' },
+            { name: 'Failed', count: state.failureCount, pct: failurePct, cls: 'bg-critical' }
+        ];
+        analyticsGrid.appendChild(createPlatformCard('Result Summary', resultRows));
 
         container.appendChild(analyticsGrid);
+
+        // Insights section
+        var insightsList = document.createElement('div');
+        insightsList.className = 'insights-list';
+
+        // High failure rate insight
+        if (failurePct > 10) {
+            insightsList.appendChild(createInsightCard('critical', 'HIGH FAILURE RATE', 'Audit Failures',
+                state.failureCount + ' operations failed (' + failurePct + '% failure rate). High failure rates may indicate configuration issues or attack attempts.',
+                'Review failed operations to identify patterns and root causes.'));
+        } else if (failurePct > 5) {
+            insightsList.appendChild(createInsightCard('warning', 'ELEVATED FAILURES', 'Audit Failures',
+                state.failureCount + ' operations failed (' + failurePct + '% failure rate). Monitor for potential issues.',
+                'Investigate recurring failure patterns in the failed events table below.'));
+        }
+
+        // Admin activity insight
+        var adminOps = state.auditLogs.filter(function(e) {
+            var activity = (e.activityDisplayName || '').toLowerCase();
+            return activity.includes('admin') || activity.includes('role') || activity.includes('permission');
+        });
+        if (adminOps.length > 0) {
+            insightsList.appendChild(createInsightCard('info', 'ADMIN ACTIVITY', 'Administrative Changes',
+                adminOps.length + ' administrative operation' + (adminOps.length !== 1 ? 's' : '') + ' detected. Review for unauthorized changes.',
+                'Verify that admin operations align with approved change requests.'));
+        }
+
+        // User management insight
+        var userMgmtOps = state.auditLogs.filter(function(e) {
+            var activity = (e.activityDisplayName || '').toLowerCase();
+            return activity.includes('user') || activity.includes('member') || activity.includes('group');
+        });
+        if (userMgmtOps.length > 10) {
+            insightsList.appendChild(createInsightCard('info', 'USER MANAGEMENT', 'Identity Changes',
+                userMgmtOps.length + ' user/group management operation' + (userMgmtOps.length !== 1 ? 's' : '') + ' detected in the collection period.',
+                'Review for bulk changes or unusual patterns.'));
+        }
+
+        if (failurePct <= 5 && state.totalEvents > 0) {
+            insightsList.appendChild(createInsightCard('success', 'HEALTHY', 'Audit Status',
+                'Audit operations show a healthy ' + successPct + '% success rate with ' + total + ' total events.',
+                null));
+        }
+
+        container.appendChild(insightsList);
 
         // Failed events table
         var failedEvents = state.auditLogs.filter(function(e) { return e.result === 'failure'; });
@@ -158,6 +284,78 @@ const PageAuditLogs = (function() {
         }
     }
 
+    /**
+     * Creates a platform-style analytics card with mini-bars.
+     */
+    function createPlatformCard(title, rows) {
+        var card = document.createElement('div');
+        card.className = 'analytics-card';
+        var h4 = document.createElement('h4');
+        h4.textContent = title;
+        card.appendChild(h4);
+        var list = document.createElement('div');
+        list.className = 'platform-list';
+        rows.forEach(function(row) {
+            var rowDiv = document.createElement('div');
+            rowDiv.className = 'platform-row';
+            var name = document.createElement('span');
+            name.className = 'platform-name';
+            name.textContent = row.name;
+            rowDiv.appendChild(name);
+            var policies = document.createElement('span');
+            policies.className = 'platform-policies';
+            policies.textContent = row.count;
+            rowDiv.appendChild(policies);
+            var miniBar = document.createElement('div');
+            miniBar.className = 'mini-bar';
+            var fill = document.createElement('div');
+            fill.className = 'mini-bar-fill ' + row.cls;
+            fill.style.width = row.pct + '%';
+            miniBar.appendChild(fill);
+            rowDiv.appendChild(miniBar);
+            var rate = document.createElement('span');
+            rate.className = 'platform-rate';
+            rate.textContent = row.showCount ? row.count : (row.pct + '%');
+            rowDiv.appendChild(rate);
+            list.appendChild(rowDiv);
+        });
+        card.appendChild(list);
+        return card;
+    }
+
+    /**
+     * Creates an insight card with badge, description, and action.
+     */
+    function createInsightCard(type, badge, category, description, action) {
+        var card = document.createElement('div');
+        card.className = 'insight-card insight-' + type;
+        var header = document.createElement('div');
+        header.className = 'insight-header';
+        var badgeSpan = document.createElement('span');
+        badgeSpan.className = 'badge badge-' + type;
+        badgeSpan.textContent = badge;
+        header.appendChild(badgeSpan);
+        var catSpan = document.createElement('span');
+        catSpan.className = 'insight-category';
+        catSpan.textContent = category;
+        header.appendChild(catSpan);
+        card.appendChild(header);
+        var descP = document.createElement('p');
+        descP.className = 'insight-description';
+        descP.textContent = description;
+        card.appendChild(descP);
+        if (action) {
+            var actionP = document.createElement('p');
+            actionP.className = 'insight-action';
+            var strong = document.createElement('strong');
+            strong.textContent = 'Action: ';
+            actionP.appendChild(strong);
+            actionP.appendChild(document.createTextNode(action));
+            card.appendChild(actionP);
+        }
+        return card;
+    }
+
     function renderEventsTab(container, state) {
         container.textContent = '';
         var tableDiv = document.createElement('div');
@@ -180,39 +378,6 @@ const PageAuditLogs = (function() {
             pageSize: 25,
             onRowClick: showAuditLogDetails
         });
-    }
-
-    /**
-     * Creates an analytics card with title and stat-list container.
-     */
-    function createAnalyticsCard(title) {
-        var card = document.createElement('div');
-        card.className = 'analytics-card';
-        var h4 = document.createElement('h4');
-        h4.textContent = title;
-        card.appendChild(h4);
-        var statList = document.createElement('div');
-        statList.className = 'stat-list';
-        card.appendChild(statList);
-        return card;
-    }
-
-    /**
-     * Adds a stat row to an analytics card.
-     */
-    function addStatRow(card, label, value, valueClass) {
-        var statList = card.querySelector('.stat-list');
-        var row = document.createElement('div');
-        row.className = 'stat-row';
-        var labelSpan = document.createElement('span');
-        labelSpan.className = 'stat-label';
-        labelSpan.textContent = label;
-        var valueSpan = document.createElement('span');
-        valueSpan.className = 'stat-value' + (valueClass ? ' ' + valueClass : '');
-        valueSpan.textContent = String(value);
-        row.appendChild(labelSpan);
-        row.appendChild(valueSpan);
-        statList.appendChild(row);
     }
 
     /**

@@ -106,75 +106,179 @@ const PageSecurity = (function() {
     }
 
     function renderOverview(container, data) {
-        // Build overview content using DOM methods for security
-        container.textContent = '';
-
-        // Charts row
-        var chartsRow = document.createElement('div');
-        chartsRow.className = 'charts-row';
-        chartsRow.id = 'security-charts';
-        container.appendChild(chartsRow);
-
-        // Analytics grid
-        var analyticsGrid = document.createElement('div');
-        analyticsGrid.className = 'analytics-grid';
-
-        // Risk Level Breakdown card
-        var riskCard = createAnalyticsCard('Risky Sign-ins by Level');
-        var lowRiskCount = data.riskySignins.filter(function(r) { return r.riskLevel === 'low'; }).length;
-        addStatRow(riskCard, 'High Risk', data.highRiskCount, data.highRiskCount > 0 ? 'text-critical' : 'text-success');
-        addStatRow(riskCard, 'Medium Risk', data.mediumRiskCount, data.mediumRiskCount > 0 ? 'text-warning' : 'text-success');
-        addStatRow(riskCard, 'Low Risk', lowRiskCount, '');
-        analyticsGrid.appendChild(riskCard);
-
-        // MFA Status Breakdown card
+        // Calculate key metrics
         var mfaRegistered = data.users.filter(function(u) { return u.mfaRegistered && u.accountEnabled; }).length;
         var enabledUsers = data.users.filter(function(u) { return u.accountEnabled; }).length;
         var mfaPct = enabledUsers > 0 ? Math.round((mfaRegistered / enabledUsers) * 100) : 0;
         var mfaClass = mfaPct >= 90 ? 'text-success' : mfaPct >= 70 ? 'text-warning' : 'text-critical';
-        var mfaCard = createAnalyticsCard('MFA Enrollment Status');
-        addStatRow(mfaCard, 'Enrolled', mfaRegistered, 'text-success');
-        addStatRow(mfaCard, 'Not Enrolled', data.noMfaUsers.length, data.noMfaUsers.length > 0 ? 'text-critical' : 'text-success');
-        addStatRow(mfaCard, 'Coverage Rate', mfaPct + '%', mfaClass);
-        analyticsGrid.appendChild(mfaCard);
 
-        // Alert Status Breakdown card
+        var lowRiskCount = data.riskySignins.filter(function(r) { return r.riskLevel === 'low'; }).length;
+        var totalRiskySignins = data.riskySignins.length;
+
         var newAlerts = data.defenderAlerts.filter(function(a) { return a.status === 'new'; }).length;
         var inProgressAlerts = data.defenderAlerts.filter(function(a) { return a.status === 'inProgress'; }).length;
         var resolvedAlerts = data.defenderAlerts.filter(function(a) { return a.status === 'resolved'; }).length;
-        var alertCard = createAnalyticsCard('Defender Alert Status');
-        addStatRow(alertCard, 'New', newAlerts, newAlerts > 0 ? 'text-critical' : 'text-success');
-        addStatRow(alertCard, 'In Progress', inProgressAlerts, inProgressAlerts > 0 ? 'text-warning' : '');
-        addStatRow(alertCard, 'Resolved', resolvedAlerts, 'text-success');
-        addStatRow(alertCard, 'High Severity Active', data.highAlerts.length, data.highAlerts.length > 0 ? 'text-critical' : 'text-success');
-        analyticsGrid.appendChild(alertCard);
+        var totalAlerts = data.defenderAlerts.length;
 
-        // Admin Roles card
+        var html = '';
+
+        // Security Posture Overview Section
+        html += '<div class="analytics-section">';
+        html += '<h3>Security Posture Overview</h3>';
+        html += '<div class="compliance-overview">';
+
+        // Donut chart for MFA coverage
+        var radius = 40;
+        var circumference = 2 * Math.PI * radius;
+        var mfaOffset = circumference - (mfaPct / 100) * circumference;
+        var mfaColor = mfaPct >= 90 ? 'var(--color-success)' : mfaPct >= 70 ? 'var(--color-warning)' : 'var(--color-critical)';
+
+        html += '<div class="compliance-chart">';
+        html += '<div class="donut-chart">';
+        html += '<svg viewBox="0 0 100 100" class="donut">';
+        html += '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="var(--color-bg-tertiary)" stroke-width="10"/>';
+        html += '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="' + mfaColor + '" stroke-width="10" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + mfaOffset + '" stroke-linecap="round"/>';
+        html += '</svg>';
+        html += '<div class="donut-center"><span class="donut-value ' + mfaClass + '">' + mfaPct + '%</span><span class="donut-label">MFA Coverage</span></div>';
+        html += '</div></div>';
+
+        // Legend
+        html += '<div class="compliance-legend">';
+        html += '<div class="legend-item"><span class="legend-dot bg-success"></span> MFA Enrolled: <strong>' + mfaRegistered + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-critical"></span> No MFA: <strong>' + data.noMfaUsers.length + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-warning"></span> High Risk Sign-ins: <strong>' + data.highRiskCount + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-info"></span> Active Alerts: <strong>' + (newAlerts + inProgressAlerts) + '</strong></div>';
+        html += '</div></div></div>';
+
+        // Analytics Grid with platform-list pattern
+        html += '<div class="analytics-grid">';
+
+        // Risk Level Distribution
+        html += '<div class="analytics-card"><h4>Risky Sign-ins by Level</h4>';
+        html += '<div class="platform-list">';
+        var riskLevels = [
+            { label: 'High Risk', count: data.highRiskCount, color: 'bg-critical' },
+            { label: 'Medium Risk', count: data.mediumRiskCount, color: 'bg-warning' },
+            { label: 'Low Risk', count: lowRiskCount, color: 'bg-info' }
+        ];
+        riskLevels.forEach(function(r) {
+            var pct = totalRiskySignins > 0 ? Math.round((r.count / totalRiskySignins) * 100) : 0;
+            html += '<div class="platform-row">';
+            html += '<span class="platform-name">' + r.label + '</span>';
+            html += '<span class="platform-policies">' + r.count + '</span>';
+            html += '<div class="mini-bar"><div class="mini-bar-fill ' + r.color + '" style="width:' + pct + '%"></div></div>';
+            html += '<span class="platform-rate">' + pct + '%</span>';
+            html += '</div>';
+        });
+        html += '</div></div>';
+
+        // MFA Enrollment Status
+        html += '<div class="analytics-card"><h4>MFA Enrollment</h4>';
+        html += '<div class="platform-list">';
+        var enrolledPct = enabledUsers > 0 ? Math.round((mfaRegistered / enabledUsers) * 100) : 0;
+        var notEnrolledPct = enabledUsers > 0 ? Math.round((data.noMfaUsers.length / enabledUsers) * 100) : 0;
+        html += '<div class="platform-row"><span class="platform-name">Enrolled</span><span class="platform-policies">' + mfaRegistered + ' users</span>';
+        html += '<div class="mini-bar"><div class="mini-bar-fill bg-success" style="width:' + enrolledPct + '%"></div></div><span class="platform-rate">' + enrolledPct + '%</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">Not Enrolled</span><span class="platform-policies">' + data.noMfaUsers.length + ' users</span>';
+        html += '<div class="mini-bar"><div class="mini-bar-fill bg-critical" style="width:' + notEnrolledPct + '%"></div></div><span class="platform-rate">' + notEnrolledPct + '%</span></div>';
+        html += '</div></div>';
+
+        // Defender Alerts Status
+        html += '<div class="analytics-card"><h4>Defender Alert Status</h4>';
+        html += '<div class="platform-list">';
+        var alertStatuses = [
+            { label: 'New', count: newAlerts, color: 'bg-critical' },
+            { label: 'In Progress', count: inProgressAlerts, color: 'bg-warning' },
+            { label: 'Resolved', count: resolvedAlerts, color: 'bg-success' }
+        ];
+        alertStatuses.forEach(function(a) {
+            var pct = totalAlerts > 0 ? Math.round((a.count / totalAlerts) * 100) : 0;
+            html += '<div class="platform-row">';
+            html += '<span class="platform-name">' + a.label + '</span>';
+            html += '<span class="platform-policies">' + a.count + '</span>';
+            html += '<div class="mini-bar"><div class="mini-bar-fill ' + a.color + '" style="width:' + pct + '%"></div></div>';
+            html += '<span class="platform-rate">' + pct + '%</span>';
+            html += '</div>';
+        });
+        html += '</div></div>';
+
+        // Admin Roles Summary
         var highPrivRoles = data.adminRoles.filter(function(r) { return r.isHighPrivilege; });
         var highPrivMembers = 0;
         highPrivRoles.forEach(function(r) { highPrivMembers += r.memberCount || 0; });
-        var adminCard = createAnalyticsCard('Admin Role Summary');
-        addStatRow(adminCard, 'Total Admin Roles', data.adminRoles.length, '');
-        addStatRow(adminCard, 'High Privilege Roles', highPrivRoles.length, 'text-warning');
-        addStatRow(adminCard, 'High Priv Members', highPrivMembers, 'text-warning');
-        addStatRow(adminCard, 'Total Admin Accounts', data.adminCount, '');
-        analyticsGrid.appendChild(adminCard);
+        html += '<div class="analytics-card"><h4>Admin Role Summary</h4>';
+        html += '<div class="platform-list">';
+        html += '<div class="platform-row"><span class="platform-name">Total Admin Roles</span><span class="platform-policies">' + data.adminRoles.length + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">High Privilege Roles</span><span class="platform-policies text-warning">' + highPrivRoles.length + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">High Priv Members</span><span class="platform-policies text-warning">' + highPrivMembers + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">Total Admin Accounts</span><span class="platform-policies">' + data.adminCount + '</span></div>';
+        html += '</div></div>';
 
-        container.appendChild(analyticsGrid);
+        html += '</div>'; // end analytics-grid
 
-        // High Risk Sign-ins table
+        // Insight Cards for issues needing attention
+        var hasIssues = data.highRiskCount > 0 || data.noMfaUsers.length > 0 || newAlerts > 0 || data.highAlerts.length > 0;
+        if (hasIssues) {
+            html += '<div class="analytics-section"><h3>Issues Needing Attention</h3>';
+            html += '<div class="insights-list">';
+
+            if (data.highAlerts.length > 0) {
+                html += '<div class="insight-card insight-critical">';
+                html += '<div class="insight-header"><span class="badge badge-critical">HIGH</span><span class="insight-category">Security Alerts</span></div>';
+                html += '<p class="insight-description">' + data.highAlerts.length + ' high severity Defender alert' + (data.highAlerts.length > 1 ? 's' : '') + ' require immediate attention.</p>';
+                html += '<p class="insight-action"><strong>Action:</strong> Review alerts in Microsoft Defender portal and take remediation steps.</p>';
+                html += '</div>';
+            }
+
+            if (data.highRiskCount > 0) {
+                html += '<div class="insight-card insight-critical">';
+                html += '<div class="insight-header"><span class="badge badge-critical">HIGH</span><span class="insight-category">Risky Sign-ins</span></div>';
+                html += '<p class="insight-description">' + data.highRiskCount + ' high risk sign-in' + (data.highRiskCount > 1 ? 's' : '') + ' detected. Potential account compromise.</p>';
+                html += '<p class="insight-action"><strong>Action:</strong> Investigate users, require password reset, and enable MFA if not already.</p>';
+                html += '</div>';
+            }
+
+            if (data.noMfaUsers.length > 0 && mfaPct < 90) {
+                html += '<div class="insight-card insight-warning">';
+                html += '<div class="insight-header"><span class="badge badge-warning">MEDIUM</span><span class="insight-category">MFA Coverage Gap</span></div>';
+                html += '<p class="insight-description">' + data.noMfaUsers.length + ' enabled user' + (data.noMfaUsers.length > 1 ? 's' : '') + ' without MFA registration. Current coverage: ' + mfaPct + '%.</p>';
+                html += '<p class="insight-action"><strong>Action:</strong> Enable MFA for all users. Consider Conditional Access policies requiring MFA.</p>';
+                html += '</div>';
+            }
+
+            if (newAlerts > 3) {
+                html += '<div class="insight-card insight-info">';
+                html += '<div class="insight-header"><span class="badge badge-info">INFO</span><span class="insight-category">Alert Backlog</span></div>';
+                html += '<p class="insight-description">' + newAlerts + ' new alerts pending review. Recommend establishing regular alert triage process.</p>';
+                html += '<p class="insight-action"><strong>Action:</strong> Set up alert automation rules or dedicate time for daily alert review.</p>';
+                html += '</div>';
+            }
+
+            html += '</div></div>';
+        }
+
+        // Summary Tables
         var highRiskSignins = data.riskySignins.filter(function(r) { return r.riskLevel === 'high' || r.riskLevel === 'medium'; });
         if (highRiskSignins.length > 0) {
-            var riskSection = document.createElement('div');
-            riskSection.className = 'analytics-section';
-            var riskTitle = document.createElement('h3');
-            riskTitle.textContent = 'Risky Sign-ins Requiring Attention (' + highRiskSignins.length + ')';
-            riskSection.appendChild(riskTitle);
-            var riskTableDiv = document.createElement('div');
-            riskTableDiv.id = 'risky-signins-overview-table';
-            riskSection.appendChild(riskTableDiv);
-            container.appendChild(riskSection);
+            html += '<div class="analytics-section"><h3>Risky Sign-ins (' + highRiskSignins.length + ')</h3>';
+            html += '<div id="risky-signins-overview-table"></div></div>';
+        }
 
+        if (data.noMfaUsers.length > 0) {
+            html += '<div class="analytics-section"><h3>Users Without MFA (' + data.noMfaUsers.length + ')</h3>';
+            html += '<div id="mfa-gaps-overview-table"></div></div>';
+        }
+
+        if (data.hasSecureScore && data.secureScore.controlScores && data.secureScore.controlScores.length > 0) {
+            html += '<div class="analytics-section"><h3>Secure Score Improvements</h3>';
+            html += '<p class="section-description">Top actions to improve security posture</p>';
+            html += '<div id="secure-score-actions-table"></div></div>';
+        }
+
+        container.innerHTML = html;
+
+        // Render tables
+        if (highRiskSignins.length > 0) {
             Tables.render({
                 containerId: 'risky-signins-overview-table',
                 data: highRiskSignins.slice(0, 10),
@@ -189,18 +293,7 @@ const PageSecurity = (function() {
             });
         }
 
-        // Users without MFA table
         if (data.noMfaUsers.length > 0) {
-            var mfaSection = document.createElement('div');
-            mfaSection.className = 'analytics-section';
-            var mfaTitle = document.createElement('h3');
-            mfaTitle.textContent = 'Users Without MFA (' + data.noMfaUsers.length + ')';
-            mfaSection.appendChild(mfaTitle);
-            var mfaTableDiv = document.createElement('div');
-            mfaTableDiv.id = 'mfa-gaps-overview-table';
-            mfaSection.appendChild(mfaTableDiv);
-            container.appendChild(mfaSection);
-
             Tables.render({
                 containerId: 'mfa-gaps-overview-table',
                 data: data.noMfaUsers.slice(0, 10),
@@ -214,35 +307,20 @@ const PageSecurity = (function() {
             });
         }
 
-        // Secure Score Improvements section
         if (data.hasSecureScore && data.secureScore.controlScores && data.secureScore.controlScores.length > 0) {
-            var scoreSection = document.createElement('div');
-            scoreSection.className = 'analytics-section';
-            var scoreTitle = document.createElement('h3');
-            scoreTitle.textContent = 'Secure Score Improvements';
-            scoreSection.appendChild(scoreTitle);
-            var scoreDesc = document.createElement('p');
-            scoreDesc.className = 'section-description';
-            scoreDesc.textContent = 'Top improvement actions to increase your security posture';
-            scoreSection.appendChild(scoreDesc);
-            var scoreTableDiv = document.createElement('div');
-            scoreTableDiv.className = 'table-container';
-            scoreTableDiv.id = 'secure-score-actions-table';
-            scoreSection.appendChild(scoreTableDiv);
-            container.appendChild(scoreSection);
-
+            var incompleteControls = data.secureScore.controlScores.filter(function(c) { return !c.isComplete; });
             Tables.render({
                 containerId: 'secure-score-actions-table',
-                data: data.secureScore.controlScores,
+                data: incompleteControls.slice(0, 10),
                 columns: [
                     { key: 'name', label: 'Control Name' },
-                    { key: 'description', label: 'Description' },
+                    { key: 'description', label: 'Description', className: 'cell-truncate' },
                     { key: 'scoreInPercentage', label: 'Progress', formatter: function(v) {
                         var cls = v >= 80 ? 'text-success' : (v >= 50 ? 'text-warning' : 'text-critical');
                         return '<span class="' + cls + '">' + v + '%</span>';
                     }},
-                    { key: 'maxScore', label: 'Max Points', formatter: function(v) {
-                        return '<span class="text-muted">' + v + '</span>';
+                    { key: 'potentialPoints', label: 'Potential', formatter: function(v) {
+                        return '<span class="text-success">+' + (v || 0) + '</span>';
                     }}
                 ],
                 pageSize: 10
@@ -250,39 +328,6 @@ const PageSecurity = (function() {
         }
 
         renderSecurityCharts(data);
-    }
-
-    /**
-     * Creates an analytics card with title and stat-list container.
-     */
-    function createAnalyticsCard(title) {
-        var card = document.createElement('div');
-        card.className = 'analytics-card';
-        var h4 = document.createElement('h4');
-        h4.textContent = title;
-        card.appendChild(h4);
-        var statList = document.createElement('div');
-        statList.className = 'stat-list';
-        card.appendChild(statList);
-        return card;
-    }
-
-    /**
-     * Adds a stat row to an analytics card.
-     */
-    function addStatRow(card, label, value, valueClass) {
-        var statList = card.querySelector('.stat-list');
-        var row = document.createElement('div');
-        row.className = 'stat-row';
-        var labelSpan = document.createElement('span');
-        labelSpan.className = 'stat-label';
-        labelSpan.textContent = label;
-        var valueSpan = document.createElement('span');
-        valueSpan.className = 'stat-value' + (valueClass ? ' ' + valueClass : '');
-        valueSpan.textContent = String(value);
-        row.appendChild(labelSpan);
-        row.appendChild(valueSpan);
-        statList.appendChild(row);
     }
 
     function renderSecurityCharts(data) {

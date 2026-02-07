@@ -341,117 +341,252 @@ const PagePIM = (function() {
     }
 
     function renderOverview(container) {
-        container.textContent = '';
-
-        // Charts row
-        var chartsRow = document.createElement('div');
-        chartsRow.className = 'charts-row';
-        chartsRow.id = 'pim-charts';
-        container.appendChild(chartsRow);
-
         var requests = pimState.requests;
         var eligible = pimState.eligible;
+        var total = requests.length;
 
-        if (typeof DashboardCharts !== 'undefined') {
-            var C = DashboardCharts.colors;
+        // Calculate stats
+        var provisionedCount = requests.filter(function(e) { return e.status === 'Provisioned'; }).length;
+        var pendingCount = requests.filter(function(e) { return e.status === 'PendingApproval' || e.status === 'PendingAdminDecision'; }).length;
+        var revokedCount = requests.filter(function(e) { return e.status === 'Revoked'; }).length;
+        var selfActivateCount = requests.filter(function(e) { return e.action === 'selfActivate'; }).length;
+        var adminAssignCount = requests.filter(function(e) { return e.action === 'adminAssign'; }).length;
+        var adminRemoveCount = requests.filter(function(e) { return e.action === 'adminRemove'; }).length;
+        var activeActivations = requests.filter(function(e) { return e.action === 'selfActivate' && e.status === 'Provisioned'; });
 
-            var selfActivateCount = requests.filter(function(e) { return e.action === 'selfActivate'; }).length;
-            var adminAssignCount = requests.filter(function(e) { return e.action === 'adminAssign'; }).length;
-            var adminRemoveCount = requests.filter(function(e) { return e.action === 'adminRemove'; }).length;
-            var otherActionCount = requests.length - selfActivateCount - adminAssignCount - adminRemoveCount;
+        // Calculate percentages
+        var provisionedPct = total > 0 ? Math.round((provisionedCount / total) * 100) : 0;
+        var pendingPct = total > 0 ? Math.round((pendingCount / total) * 100) : 0;
+        var revokedPct = total > 0 ? Math.round((revokedCount / total) * 100) : 0;
 
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'Action Distribution',
-                [
-                    { value: selfActivateCount, label: 'Self Activate', color: C.orange },
-                    { value: adminAssignCount, label: 'Admin Assign', color: C.blue },
-                    { value: adminRemoveCount, label: 'Admin Remove', color: C.red },
-                    { value: otherActionCount, label: 'Other', color: C.gray }
-                ],
-                String(requests.length), 'total requests'
-            ));
+        // Build HTML using DOM methods
+        container.textContent = '';
 
-            var provisionedCount = requests.filter(function(e) { return e.status === 'Provisioned'; }).length;
-            var revokedCount = requests.filter(function(e) { return e.status === 'Revoked'; }).length;
-            var pendingCount = requests.filter(function(e) { return e.status === 'PendingApproval' || e.status === 'PendingAdminDecision'; }).length;
-            var otherStatusCount = requests.length - provisionedCount - revokedCount - pendingCount;
+        var section = document.createElement('div');
+        section.className = 'analytics-section';
 
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'Request Status',
-                [
-                    { value: provisionedCount, label: 'Provisioned', color: C.green },
-                    { value: revokedCount, label: 'Revoked', color: C.gray },
-                    { value: pendingCount, label: 'Pending', color: C.yellow },
-                    { value: otherStatusCount, label: 'Other', color: C.purple }
-                ],
-                requests.length > 0
-                    ? Math.round((provisionedCount / requests.length) * 100) + '%'
-                    : '0%',
-                'provisioned'
-            ));
+        var sectionTitle = document.createElement('h3');
+        sectionTitle.textContent = 'PIM Activity Overview';
+        section.appendChild(sectionTitle);
+
+        var complianceOverview = document.createElement('div');
+        complianceOverview.className = 'compliance-overview';
+
+        // Donut chart
+        var chartContainer = document.createElement('div');
+        chartContainer.className = 'compliance-chart';
+        var donutDiv = document.createElement('div');
+        donutDiv.className = 'donut-chart';
+
+        var circumference = 2 * Math.PI * 40;
+        var provisionedDash = (provisionedPct / 100) * circumference;
+        var pendingDash = (pendingPct / 100) * circumference;
+        var revokedDash = (revokedPct / 100) * circumference;
+
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('class', 'donut');
+
+        var bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        bgCircle.setAttribute('cx', '50');
+        bgCircle.setAttribute('cy', '50');
+        bgCircle.setAttribute('r', '40');
+        bgCircle.setAttribute('fill', 'none');
+        bgCircle.setAttribute('stroke', 'var(--bg-tertiary)');
+        bgCircle.setAttribute('stroke-width', '12');
+        svg.appendChild(bgCircle);
+
+        if (provisionedPct > 0) {
+            var provCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            provCircle.setAttribute('cx', '50');
+            provCircle.setAttribute('cy', '50');
+            provCircle.setAttribute('r', '40');
+            provCircle.setAttribute('fill', 'none');
+            provCircle.setAttribute('stroke', 'var(--success)');
+            provCircle.setAttribute('stroke-width', '12');
+            provCircle.setAttribute('stroke-dasharray', provisionedDash + ' ' + circumference);
+            provCircle.setAttribute('stroke-dashoffset', '0');
+            provCircle.setAttribute('transform', 'rotate(-90 50 50)');
+            svg.appendChild(provCircle);
         }
+        if (pendingPct > 0) {
+            var pendCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            pendCircle.setAttribute('cx', '50');
+            pendCircle.setAttribute('cy', '50');
+            pendCircle.setAttribute('r', '40');
+            pendCircle.setAttribute('fill', 'none');
+            pendCircle.setAttribute('stroke', 'var(--warning)');
+            pendCircle.setAttribute('stroke-width', '12');
+            pendCircle.setAttribute('stroke-dasharray', pendingDash + ' ' + circumference);
+            pendCircle.setAttribute('stroke-dashoffset', String(-provisionedDash));
+            pendCircle.setAttribute('transform', 'rotate(-90 50 50)');
+            svg.appendChild(pendCircle);
+        }
+        if (revokedPct > 0) {
+            var revCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            revCircle.setAttribute('cx', '50');
+            revCircle.setAttribute('cy', '50');
+            revCircle.setAttribute('r', '40');
+            revCircle.setAttribute('fill', 'none');
+            revCircle.setAttribute('stroke', 'var(--text-muted)');
+            revCircle.setAttribute('stroke-width', '12');
+            revCircle.setAttribute('stroke-dasharray', revokedDash + ' ' + circumference);
+            revCircle.setAttribute('stroke-dashoffset', String(-(provisionedDash + pendingDash)));
+            revCircle.setAttribute('transform', 'rotate(-90 50 50)');
+            svg.appendChild(revCircle);
+        }
+
+        donutDiv.appendChild(svg);
+
+        var donutCenter = document.createElement('div');
+        donutCenter.className = 'donut-center';
+        var donutValue = document.createElement('span');
+        donutValue.className = 'donut-value';
+        donutValue.textContent = provisionedPct + '%';
+        var donutLabel = document.createElement('span');
+        donutLabel.className = 'donut-label';
+        donutLabel.textContent = 'Provisioned';
+        donutCenter.appendChild(donutValue);
+        donutCenter.appendChild(donutLabel);
+        donutDiv.appendChild(donutCenter);
+        chartContainer.appendChild(donutDiv);
+        complianceOverview.appendChild(chartContainer);
+
+        // Legend
+        var legend = document.createElement('div');
+        legend.className = 'compliance-legend';
+        var legendItems = [
+            { cls: 'bg-success', label: 'Provisioned', value: provisionedCount },
+            { cls: 'bg-warning', label: 'Pending', value: pendingCount },
+            { cls: 'bg-neutral', label: 'Revoked', value: revokedCount },
+            { cls: 'bg-info', label: 'Total Requests', value: total },
+            { cls: 'bg-primary', label: 'Eligible Roles', value: eligible.length }
+        ];
+        legendItems.forEach(function(item) {
+            var legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            var dot = document.createElement('span');
+            dot.className = 'legend-dot ' + item.cls;
+            legendItem.appendChild(dot);
+            legendItem.appendChild(document.createTextNode(' ' + item.label + ': '));
+            var strong = document.createElement('strong');
+            strong.textContent = item.value;
+            legendItem.appendChild(strong);
+            legend.appendChild(legendItem);
+        });
+        complianceOverview.appendChild(legend);
+        section.appendChild(complianceOverview);
+        container.appendChild(section);
 
         // Analytics grid
         var analyticsGrid = document.createElement('div');
         analyticsGrid.className = 'analytics-grid';
 
-        // Action breakdown card
-        var selfActivateCount = requests.filter(function(e) { return e.action === 'selfActivate'; }).length;
-        var adminAssignCount = requests.filter(function(e) { return e.action === 'adminAssign'; }).length;
-        var adminRemoveCount = requests.filter(function(e) { return e.action === 'adminRemove'; }).length;
-        var actionCard = createAnalyticsCard('Action Breakdown');
-        addStatRow(actionCard, 'Self Activations', selfActivateCount, 'text-warning');
-        addStatRow(actionCard, 'Admin Assignments', adminAssignCount, '');
-        addStatRow(actionCard, 'Admin Removals', adminRemoveCount, 'text-critical');
+        // Action Distribution card
+        var selfPct = total > 0 ? Math.round((selfActivateCount / total) * 100) : 0;
+        var assignPct = total > 0 ? Math.round((adminAssignCount / total) * 100) : 0;
+        var removePct = total > 0 ? Math.round((adminRemoveCount / total) * 100) : 0;
+        var otherActionCount = total - selfActivateCount - adminAssignCount - adminRemoveCount;
+        var otherActionPct = total > 0 ? Math.round((otherActionCount / total) * 100) : 0;
+
+        var actionCard = createPlatformCard('Action Distribution', [
+            { name: 'Self Activate', count: selfActivateCount, pct: selfPct, cls: 'bg-warning' },
+            { name: 'Admin Assign', count: adminAssignCount, pct: assignPct, cls: 'bg-info' },
+            { name: 'Admin Remove', count: adminRemoveCount, pct: removePct, cls: 'bg-critical' },
+            { name: 'Other', count: otherActionCount, pct: otherActionPct, cls: 'bg-neutral' }
+        ]);
         analyticsGrid.appendChild(actionCard);
 
-        // Status breakdown card
-        var provisionedCount = requests.filter(function(e) { return e.status === 'Provisioned'; }).length;
-        var revokedCount = requests.filter(function(e) { return e.status === 'Revoked'; }).length;
-        var pendingApproval = requests.filter(function(e) { return e.status === 'PendingApproval'; }).length;
-        var pendingAdmin = requests.filter(function(e) { return e.status === 'PendingAdminDecision'; }).length;
-        var statusCard = createAnalyticsCard('Request Status');
-        addStatRow(statusCard, 'Provisioned', provisionedCount, 'text-success');
-        addStatRow(statusCard, 'Pending Approval', pendingApproval, pendingApproval > 0 ? 'text-warning' : '');
-        addStatRow(statusCard, 'Pending Admin Decision', pendingAdmin, pendingAdmin > 0 ? 'text-warning' : '');
-        addStatRow(statusCard, 'Revoked', revokedCount, '');
+        // Status Breakdown card
+        var statusCard = createPlatformCard('Request Status', [
+            { name: 'Provisioned', count: provisionedCount, pct: provisionedPct, cls: 'bg-success' },
+            { name: 'Pending Approval', count: pendingCount, pct: pendingPct, cls: 'bg-warning' },
+            { name: 'Revoked', count: revokedCount, pct: revokedPct, cls: 'bg-neutral' }
+        ]);
         analyticsGrid.appendChild(statusCard);
 
-        // Role breakdown card
+        // Top Activated Roles
         var roleStats = {};
         requests.forEach(function(r) {
             var role = r.roleName || 'Unknown';
             roleStats[role] = (roleStats[role] || 0) + 1;
         });
-        var roleCard = createAnalyticsCard('Top Activated Roles');
-        var topRoles = Object.entries(roleStats).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
-        topRoles.forEach(function(r) {
-            addStatRow(roleCard, r[0], r[1], '');
+        var topRoles = Object.entries(roleStats).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 4);
+        var maxRoleCount = topRoles.length > 0 ? topRoles[0][1] : 1;
+        var roleRows = topRoles.map(function(r) {
+            return { name: r[0], count: r[1], pct: Math.round((r[1] / maxRoleCount) * 100), cls: 'bg-info', showCount: true };
         });
-        if (topRoles.length === 0) {
-            addStatRow(roleCard, 'No activations', '--', 'text-muted');
+        if (roleRows.length === 0) {
+            roleRows = [{ name: 'No activations', count: '--', pct: 0, cls: 'bg-neutral' }];
         }
+        var roleCard = createPlatformCard('Top Activated Roles', roleRows);
         analyticsGrid.appendChild(roleCard);
 
-        // Eligible roles breakdown card
+        // Eligible Role Distribution
         var eligibleRoles = {};
         eligible.forEach(function(e) {
             var role = e.roleName || 'Unknown';
             eligibleRoles[role] = (eligibleRoles[role] || 0) + 1;
         });
-        var eligibleCard = createAnalyticsCard('Eligible Role Distribution');
-        var topEligible = Object.entries(eligibleRoles).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
-        topEligible.forEach(function(r) {
-            addStatRow(eligibleCard, r[0], r[1], '');
+        var topEligible = Object.entries(eligibleRoles).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 4);
+        var maxEligibleCount = topEligible.length > 0 ? topEligible[0][1] : 1;
+        var eligibleRows = topEligible.map(function(r) {
+            return { name: r[0], count: r[1], pct: Math.round((r[1] / maxEligibleCount) * 100), cls: 'bg-primary', showCount: true };
         });
-        if (topEligible.length === 0) {
-            addStatRow(eligibleCard, 'No eligible roles', '--', 'text-muted');
+        if (eligibleRows.length === 0) {
+            eligibleRows = [{ name: 'No eligible roles', count: '--', pct: 0, cls: 'bg-neutral' }];
         }
+        var eligibleCard = createPlatformCard('Eligible Role Distribution', eligibleRows);
         analyticsGrid.appendChild(eligibleCard);
 
         container.appendChild(analyticsGrid);
 
-        // Pending approvals requiring attention
+        // Insights section
+        var insightsList = document.createElement('div');
+        insightsList.className = 'insights-list';
+
+        // Pending approvals insight
+        if (pendingCount > 0) {
+            insightsList.appendChild(createInsightCard('critical', 'ACTION REQUIRED', 'Pending Approvals',
+                pendingCount + ' PIM request' + (pendingCount !== 1 ? 's' : '') + ' awaiting approval. Delayed approvals may block user access to critical roles.',
+                'Review pending requests and approve or deny based on justification and business need.'));
+        }
+
+        // Active activations insight
+        if (activeActivations.length > 0) {
+            insightsList.appendChild(createInsightCard('warning', 'MONITOR', 'Active Privileges',
+                activeActivations.length + ' user' + (activeActivations.length !== 1 ? 's' : '') + ' currently have elevated privileges through PIM. Monitor for unusual activity.',
+                'Review active activations and ensure they align with current business needs.'));
+        }
+
+        // Missing justifications
+        var noJustification = requests.filter(function(e) { return e.action === 'selfActivate' && !e.justification; });
+        if (noJustification.length > 0) {
+            insightsList.appendChild(createInsightCard('info', 'INFO', 'Justification Gaps',
+                noJustification.length + ' activation' + (noJustification.length !== 1 ? 's' : '') + ' submitted without justification. Consider enforcing mandatory justifications.',
+                'Configure PIM settings to require justifications for all role activations.'));
+        }
+
+        // Expiring eligibilities
+        var thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        var expiringEligible = eligible.filter(function(e) {
+            return e.scheduleEndDateTime && new Date(e.scheduleEndDateTime) <= thirtyDaysFromNow;
+        });
+        if (expiringEligible.length > 0) {
+            insightsList.appendChild(createInsightCard('warning', 'ATTENTION', 'Expiring Eligibilities',
+                expiringEligible.length + ' eligible assignment' + (expiringEligible.length !== 1 ? 's' : '') + ' will expire within 30 days. Plan renewals to maintain access continuity.',
+                'Review expiring assignments and renew those still needed.'));
+        }
+
+        if (pendingCount === 0 && activeActivations.length === 0 && noJustification.length === 0 && expiringEligible.length === 0) {
+            insightsList.appendChild(createInsightCard('success', 'HEALTHY', 'PIM Status',
+                'No pending approvals or issues detected. PIM operations are running smoothly.', null));
+        }
+
+        container.appendChild(insightsList);
+
+        // Pending approvals table
         var pendingApprovals = requests.filter(function(e) { return e.status === 'PendingApproval' || e.status === 'PendingAdminDecision'; });
         if (pendingApprovals.length > 0) {
             var pendingSection = document.createElement('div');
@@ -479,8 +614,7 @@ const PagePIM = (function() {
             });
         }
 
-        // Active activations
-        var activeActivations = requests.filter(function(e) { return e.action === 'selfActivate' && e.status === 'Provisioned'; });
+        // Active activations table
         if (activeActivations.length > 0) {
             var activeSection = document.createElement('div');
             activeSection.className = 'analytics-section';
@@ -508,36 +642,75 @@ const PagePIM = (function() {
     }
 
     /**
-     * Creates an analytics card with title and stat-list container.
+     * Creates a platform-style analytics card with mini-bars.
      */
-    function createAnalyticsCard(title) {
+    function createPlatformCard(title, rows) {
         var card = document.createElement('div');
         card.className = 'analytics-card';
         var h4 = document.createElement('h4');
         h4.textContent = title;
         card.appendChild(h4);
-        var statList = document.createElement('div');
-        statList.className = 'stat-list';
-        card.appendChild(statList);
+        var list = document.createElement('div');
+        list.className = 'platform-list';
+        rows.forEach(function(row) {
+            var rowDiv = document.createElement('div');
+            rowDiv.className = 'platform-row';
+            var name = document.createElement('span');
+            name.className = 'platform-name';
+            name.textContent = row.name;
+            rowDiv.appendChild(name);
+            var policies = document.createElement('span');
+            policies.className = 'platform-policies';
+            policies.textContent = row.count;
+            rowDiv.appendChild(policies);
+            var miniBar = document.createElement('div');
+            miniBar.className = 'mini-bar';
+            var fill = document.createElement('div');
+            fill.className = 'mini-bar-fill ' + row.cls;
+            fill.style.width = row.pct + '%';
+            miniBar.appendChild(fill);
+            rowDiv.appendChild(miniBar);
+            var rate = document.createElement('span');
+            rate.className = 'platform-rate';
+            rate.textContent = row.showCount ? row.count : (row.pct + '%');
+            rowDiv.appendChild(rate);
+            list.appendChild(rowDiv);
+        });
+        card.appendChild(list);
         return card;
     }
 
     /**
-     * Adds a stat row to an analytics card.
+     * Creates an insight card with badge, description, and action.
      */
-    function addStatRow(card, label, value, valueClass) {
-        var statList = card.querySelector('.stat-list');
-        var row = document.createElement('div');
-        row.className = 'stat-row';
-        var labelSpan = document.createElement('span');
-        labelSpan.className = 'stat-label';
-        labelSpan.textContent = label;
-        var valueSpan = document.createElement('span');
-        valueSpan.className = 'stat-value' + (valueClass ? ' ' + valueClass : '');
-        valueSpan.textContent = String(value);
-        row.appendChild(labelSpan);
-        row.appendChild(valueSpan);
-        statList.appendChild(row);
+    function createInsightCard(type, badge, category, description, action) {
+        var card = document.createElement('div');
+        card.className = 'insight-card insight-' + type;
+        var header = document.createElement('div');
+        header.className = 'insight-header';
+        var badgeSpan = document.createElement('span');
+        badgeSpan.className = 'badge badge-' + type;
+        badgeSpan.textContent = badge;
+        header.appendChild(badgeSpan);
+        var catSpan = document.createElement('span');
+        catSpan.className = 'insight-category';
+        catSpan.textContent = category;
+        header.appendChild(catSpan);
+        card.appendChild(header);
+        var descP = document.createElement('p');
+        descP.className = 'insight-description';
+        descP.textContent = description;
+        card.appendChild(descP);
+        if (action) {
+            var actionP = document.createElement('p');
+            actionP.className = 'insight-action';
+            var strong = document.createElement('strong');
+            strong.textContent = 'Action: ';
+            actionP.appendChild(strong);
+            actionP.appendChild(document.createTextNode(action));
+            card.appendChild(actionP);
+        }
+        return card;
     }
 
     function renderRequestsTab(container) {

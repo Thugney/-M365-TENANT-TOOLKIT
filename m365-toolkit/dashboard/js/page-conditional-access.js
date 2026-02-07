@@ -612,107 +612,174 @@ const PageConditionalAccess = (function() {
     }
 
     function renderOverview(container) {
-        container.textContent = '';
-
-        // Security gaps alert
-        if (caState.gapsList.length > 0) {
-            var alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-critical';
-            alertDiv.style.cssText = 'margin-bottom: 1.5rem; padding: 1rem; background: var(--critical-bg); border-radius: 6px; border-left: 4px solid var(--critical);';
-            var alertTitle = document.createElement('h4');
-            alertTitle.style.cssText = 'margin: 0 0 0.5rem 0; color: var(--critical);';
-            alertTitle.textContent = 'Security Gaps Detected';
-            alertDiv.appendChild(alertTitle);
-            var alertList = document.createElement('ul');
-            alertList.style.cssText = 'margin: 0; padding-left: 1.25rem;';
-            caState.gapsList.forEach(function(g) {
-                var li = document.createElement('li');
-                li.textContent = g;
-                alertList.appendChild(li);
-            });
-            alertDiv.appendChild(alertList);
-            container.appendChild(alertDiv);
-        }
-
-        // Charts row
-        var chartsRow = document.createElement('div');
-        chartsRow.className = 'charts-row';
-        chartsRow.id = 'ca-charts';
-        container.appendChild(chartsRow);
-
-        // Analytics grid for additional breakdowns
-        var analyticsGrid = document.createElement('div');
-        analyticsGrid.className = 'analytics-grid';
-
         var policies = caState.policies;
+        var total = policies.length;
+        var enabledPct = total > 0 ? Math.round((caState.enabledCount / total) * 100) : 0;
+        var enabledClass = enabledPct >= 80 ? 'text-success' : enabledPct >= 50 ? 'text-warning' : 'text-critical';
 
-        // Policy state breakdown card
-        var stateCard = createAnalyticsCard('Policy State Summary');
-        addStatRow(stateCard, 'Enabled', caState.enabledCount, 'text-success');
-        addStatRow(stateCard, 'Report Only', caState.reportOnlyCount, caState.reportOnlyCount > 0 ? 'text-warning' : '');
-        addStatRow(stateCard, 'Disabled', caState.disabledCount, '');
-        analyticsGrid.appendChild(stateCard);
-
-        // Policy type breakdown card
         var mfaCount = policies.filter(function(p) { return p.policyType === 'mfa' && p.state === 'enabled'; }).length;
         var blockCount = policies.filter(function(p) { return p.policyType === 'block' && p.state === 'enabled'; }).length;
         var deviceCount = policies.filter(function(p) { return p.policyType === 'device-compliance' && p.state === 'enabled'; }).length;
-        var typeCard = createAnalyticsCard('Enabled Policy Types');
-        addStatRow(typeCard, 'MFA Policies', mfaCount, '');
-        addStatRow(typeCard, 'Block Policies', blockCount, '');
-        addStatRow(typeCard, 'Device Compliance', deviceCount, '');
-        analyticsGrid.appendChild(typeCard);
-
-        // Security controls card
         var legacyBlock = policies.filter(function(p) { return p.state === 'enabled' && p.blocksLegacyAuth; }).length;
         var riskBased = policies.filter(function(p) { return p.state === 'enabled' && p.hasRiskCondition; }).length;
         var locationBased = policies.filter(function(p) { return p.state === 'enabled' && p.hasLocationCondition; }).length;
-        var controlsCard = createAnalyticsCard('Security Controls');
-        addStatRow(controlsCard, 'Blocks Legacy Auth', legacyBlock, legacyBlock > 0 ? 'text-success' : 'text-warning');
-        addStatRow(controlsCard, 'Risk-Based', riskBased, riskBased > 0 ? 'text-success' : 'text-warning');
-        addStatRow(controlsCard, 'Location-Based', locationBased, '');
-        analyticsGrid.appendChild(controlsCard);
 
-        // Exclusions card
+        var html = '';
+
+        // Policy Overview Section
+        html += '<div class="analytics-section">';
+        html += '<h3>Conditional Access Overview</h3>';
+        html += '<div class="compliance-overview">';
+
+        // Donut chart for enabled policies
+        var radius = 40;
+        var circumference = 2 * Math.PI * radius;
+        var enabledOffset = circumference - (enabledPct / 100) * circumference;
+        var enabledColor = enabledPct >= 80 ? 'var(--color-success)' : enabledPct >= 50 ? 'var(--color-warning)' : 'var(--color-critical)';
+
+        html += '<div class="compliance-chart">';
+        html += '<div class="donut-chart">';
+        html += '<svg viewBox="0 0 100 100" class="donut">';
+        html += '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="var(--color-bg-tertiary)" stroke-width="10"/>';
+        html += '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="' + enabledColor + '" stroke-width="10" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + enabledOffset + '" stroke-linecap="round"/>';
+        html += '</svg>';
+        html += '<div class="donut-center"><span class="donut-value ' + enabledClass + '">' + enabledPct + '%</span><span class="donut-label">Enabled</span></div>';
+        html += '</div></div>';
+
+        // Legend
+        html += '<div class="compliance-legend">';
+        html += '<div class="legend-item"><span class="legend-dot bg-success"></span> Enabled: <strong>' + caState.enabledCount + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-warning"></span> Report Only: <strong>' + caState.reportOnlyCount + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-neutral"></span> Disabled: <strong>' + caState.disabledCount + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-info"></span> MFA Policies: <strong>' + caState.mfaPolicies + '</strong></div>';
+        html += '</div></div></div>';
+
+        // Analytics Grid with platform-list pattern
+        html += '<div class="analytics-grid">';
+
+        // Policy State with mini-bars
+        html += '<div class="analytics-card"><h4>Policy State</h4>';
+        html += '<div class="platform-list">';
+        var states = [
+            { label: 'Enabled', count: caState.enabledCount, color: 'bg-success' },
+            { label: 'Report Only', count: caState.reportOnlyCount, color: 'bg-warning' },
+            { label: 'Disabled', count: caState.disabledCount, color: 'bg-neutral' }
+        ];
+        states.forEach(function(s) {
+            var pct = total > 0 ? Math.round((s.count / total) * 100) : 0;
+            html += '<div class="platform-row">';
+            html += '<span class="platform-name">' + s.label + '</span>';
+            html += '<span class="platform-policies">' + s.count + ' policies</span>';
+            html += '<div class="mini-bar"><div class="mini-bar-fill ' + s.color + '" style="width:' + pct + '%"></div></div>';
+            html += '<span class="platform-rate">' + pct + '%</span>';
+            html += '</div>';
+        });
+        html += '</div></div>';
+
+        // Policy Types with mini-bars
+        html += '<div class="analytics-card"><h4>Enabled Policy Types</h4>';
+        html += '<div class="platform-list">';
+        var types = [
+            { label: 'MFA Policies', count: mfaCount, color: 'bg-success' },
+            { label: 'Block Policies', count: blockCount, color: 'bg-critical' },
+            { label: 'Device Compliance', count: deviceCount, color: 'bg-info' }
+        ];
+        var enabledTotal = caState.enabledCount || 1;
+        types.forEach(function(t) {
+            var pct = Math.round((t.count / enabledTotal) * 100);
+            html += '<div class="platform-row">';
+            html += '<span class="platform-name">' + t.label + '</span>';
+            html += '<span class="platform-policies">' + t.count + '</span>';
+            html += '<div class="mini-bar"><div class="mini-bar-fill ' + t.color + '" style="width:' + pct + '%"></div></div>';
+            html += '<span class="platform-rate">' + pct + '%</span>';
+            html += '</div>';
+        });
+        html += '</div></div>';
+
+        // Security Controls with mini-bars
+        html += '<div class="analytics-card"><h4>Security Controls</h4>';
+        html += '<div class="platform-list">';
+        var controls = [
+            { label: 'Legacy Auth Block', count: legacyBlock, color: legacyBlock > 0 ? 'bg-success' : 'bg-warning' },
+            { label: 'Risk-Based', count: riskBased, color: riskBased > 0 ? 'bg-success' : 'bg-warning' },
+            { label: 'Location-Based', count: locationBased, color: 'bg-info' }
+        ];
+        controls.forEach(function(c) {
+            var pct = Math.round((c.count / enabledTotal) * 100);
+            html += '<div class="platform-row">';
+            html += '<span class="platform-name">' + c.label + '</span>';
+            html += '<span class="platform-policies">' + c.count + '</span>';
+            html += '<div class="mini-bar"><div class="mini-bar-fill ' + c.color + '" style="width:' + pct + '%"></div></div>';
+            html += '<span class="platform-rate">' + pct + '%</span>';
+            html += '</div>';
+        });
+        html += '</div></div>';
+
+        // Policy Exclusions
         var totalExclUsers = 0;
         var totalExclGroups = 0;
         policies.forEach(function(p) {
             totalExclUsers += p.excludedUserCount || 0;
             totalExclGroups += p.excludedGroupCount || 0;
         });
-        var exclCard = createAnalyticsCard('Policy Exclusions');
-        addStatRow(exclCard, 'Policies With Exclusions', caState.policiesWithExclusions, caState.policiesWithExclusions > 0 ? 'text-warning' : 'text-success');
-        addStatRow(exclCard, 'Total Excluded Users', totalExclUsers, totalExclUsers > 0 ? 'text-warning' : '');
-        addStatRow(exclCard, 'Total Excluded Groups', totalExclGroups, totalExclGroups > 0 ? 'text-warning' : '');
-        analyticsGrid.appendChild(exclCard);
+        html += '<div class="analytics-card"><h4>Policy Exclusions</h4>';
+        html += '<div class="platform-list">';
+        html += '<div class="platform-row"><span class="platform-name">Policies With Exclusions</span><span class="platform-policies ' + (caState.policiesWithExclusions > 0 ? 'text-warning' : 'text-success') + '">' + caState.policiesWithExclusions + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">Total Excluded Users</span><span class="platform-policies ' + (totalExclUsers > 0 ? 'text-warning' : '') + '">' + totalExclUsers + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">Total Excluded Groups</span><span class="platform-policies ' + (totalExclGroups > 0 ? 'text-warning' : '') + '">' + totalExclGroups + '</span></div>';
+        html += '</div></div>';
 
-        container.appendChild(analyticsGrid);
+        html += '</div>'; // end analytics-grid
+
+        // Insight Cards for issues
+        var hasIssues = caState.gapsList.length > 0 || legacyBlock === 0 || caState.reportOnlyCount > caState.enabledCount;
+        if (hasIssues) {
+            html += '<div class="analytics-section"><h3>Issues Needing Attention</h3>';
+            html += '<div class="insights-list">';
+
+            if (caState.gapsList.length > 0) {
+                caState.gapsList.forEach(function(gap) {
+                    html += '<div class="insight-card insight-critical">';
+                    html += '<div class="insight-header"><span class="badge badge-critical">HIGH</span><span class="insight-category">Security Gap</span></div>';
+                    html += '<p class="insight-description">' + gap + '</p>';
+                    html += '<p class="insight-action"><strong>Action:</strong> Create or enable a Conditional Access policy to address this gap.</p>';
+                    html += '</div>';
+                });
+            }
+
+            if (legacyBlock === 0) {
+                html += '<div class="insight-card insight-warning">';
+                html += '<div class="insight-header"><span class="badge badge-warning">MEDIUM</span><span class="insight-category">Legacy Authentication</span></div>';
+                html += '<p class="insight-description">No policies blocking legacy authentication. Legacy auth bypasses MFA and is a common attack vector.</p>';
+                html += '<p class="insight-action"><strong>Action:</strong> Create a policy to block legacy authentication protocols.</p>';
+                html += '</div>';
+            }
+
+            if (caState.reportOnlyCount > caState.enabledCount) {
+                html += '<div class="insight-card insight-info">';
+                html += '<div class="insight-header"><span class="badge badge-info">INFO</span><span class="insight-category">Report Only Mode</span></div>';
+                html += '<p class="insight-description">' + caState.reportOnlyCount + ' policies in report-only mode. Review impact and promote to enabled when ready.</p>';
+                html += '<p class="insight-action"><strong>Action:</strong> Analyze report-only logs and transition tested policies to enforcement.</p>';
+                html += '</div>';
+            }
+
+            html += '</div></div>';
+        }
 
         // Policy Analysis section
-        var sectionHeader = document.createElement('div');
-        sectionHeader.className = 'section-header';
-        var h3 = document.createElement('h3');
-        h3.textContent = 'Policy Analysis';
-        sectionHeader.appendChild(h3);
-        var breakdownFilter = document.createElement('div');
-        breakdownFilter.id = 'ca-breakdown-filter';
-        sectionHeader.appendChild(breakdownFilter);
-        container.appendChild(sectionHeader);
+        html += '<div class="section-header"><h3>Policy Analysis</h3><div id="ca-breakdown-filter"></div></div>';
+        html += '<div class="focus-breakdown-row">';
+        html += '<div class="table-container" id="ca-focus-table"></div>';
+        html += '<div class="table-container" id="ca-breakdown-table"></div>';
+        html += '</div>';
 
-        var focusRow = document.createElement('div');
-        focusRow.className = 'focus-breakdown-row';
-        var focusTable = document.createElement('div');
-        focusTable.className = 'table-container';
-        focusTable.id = 'ca-focus-table';
-        focusRow.appendChild(focusTable);
-        var breakdownTable = document.createElement('div');
-        breakdownTable.className = 'table-container';
-        breakdownTable.id = 'ca-breakdown-table';
-        focusRow.appendChild(breakdownTable);
-        container.appendChild(focusRow);
+        html += '<div class="charts-row" id="ca-charts"></div>';
+
+        container.innerHTML = html;
 
         // Render charts
         if (typeof DashboardCharts !== 'undefined') {
+            var chartsRow = document.getElementById('ca-charts');
             var C = DashboardCharts.colors;
 
             var mfaAllUsers = policies.filter(function(p) {
@@ -743,39 +810,6 @@ const PageConditionalAccess = (function() {
         }
 
         renderFocusBreakdown(caState.policies);
-    }
-
-    /**
-     * Creates an analytics card with title and stat-list container.
-     */
-    function createAnalyticsCard(title) {
-        var card = document.createElement('div');
-        card.className = 'analytics-card';
-        var h4 = document.createElement('h4');
-        h4.textContent = title;
-        card.appendChild(h4);
-        var statList = document.createElement('div');
-        statList.className = 'stat-list';
-        card.appendChild(statList);
-        return card;
-    }
-
-    /**
-     * Adds a stat row to an analytics card.
-     */
-    function addStatRow(card, label, value, valueClass) {
-        var statList = card.querySelector('.stat-list');
-        var row = document.createElement('div');
-        row.className = 'stat-row';
-        var labelSpan = document.createElement('span');
-        labelSpan.className = 'stat-label';
-        labelSpan.textContent = label;
-        var valueSpan = document.createElement('span');
-        valueSpan.className = 'stat-value' + (valueClass ? ' ' + valueClass : '');
-        valueSpan.textContent = String(value);
-        row.appendChild(labelSpan);
-        row.appendChild(valueSpan);
-        statList.appendChild(row);
     }
 
     function renderPoliciesTab(container) {
