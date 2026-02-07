@@ -95,7 +95,6 @@ const PageBitLocker = (function() {
     function renderOverview(container, data) {
         var summary = data.summary;
         var devices = data.devices;
-        var insights = data.insights || [];
 
         var encrypted = summary.encryptedDevices || 0;
         var notEncrypted = summary.notEncryptedDevices || 0;
@@ -132,51 +131,27 @@ const PageBitLocker = (function() {
         // Analytics Grid
         html += '<div class="analytics-grid">';
 
-        // Manufacturer Breakdown with mini bars
+        // Manufacturer Breakdown - simple list
         html += '<div class="analytics-card">';
-        html += '<h4>Manufacturer Breakdown</h4>';
-        html += '<div class="platform-list">';
+        html += '<h4>By Manufacturer</h4>';
+        html += '<div class="stat-list">';
         var mfrKeys = Object.keys(summary.manufacturerBreakdown || {}).sort(function(a, b) {
             return (summary.manufacturerBreakdown[b] ? summary.manufacturerBreakdown[b].total : 0) -
                    (summary.manufacturerBreakdown[a] ? summary.manufacturerBreakdown[a].total : 0);
-        }).slice(0, 6);
+        }).slice(0, 5);
         mfrKeys.forEach(function(mfr) {
             var m = summary.manufacturerBreakdown[mfr];
             var mRate = m.total > 0 ? Math.round((m.encrypted / m.total) * 100) : 0;
-            html += '<div class="platform-row">';
-            html += '<span class="platform-name">' + mfr + '</span>';
-            html += '<span class="platform-policies">' + m.total + ' devices</span>';
-            html += '<div class="mini-bar"><div class="mini-bar-fill bg-success" style="width:' + mRate + '%"></div></div>';
-            html += '<span class="platform-rate">' + mRate + '%</span>';
-            html += '</div>';
+            var rateClass = mRate >= 90 ? 'text-success' : mRate >= 70 ? 'text-warning' : 'text-critical';
+            html += '<div class="stat-row"><span class="stat-label">' + mfr + '</span>';
+            html += '<span class="stat-value"><span class="' + rateClass + '">' + mRate + '%</span> (' + m.encrypted + '/' + m.total + ')</span></div>';
         });
         html += '</div></div>';
 
-        // Model Breakdown with mini bars
-        html += '<div class="analytics-card">';
-        html += '<h4>Model Breakdown</h4>';
-        html += '<div class="platform-list">';
-        var modelKeys = Object.keys(summary.modelBreakdown || {}).sort(function(a, b) {
-            return (summary.modelBreakdown[b] ? summary.modelBreakdown[b].total : 0) -
-                   (summary.modelBreakdown[a] ? summary.modelBreakdown[a].total : 0);
-        }).slice(0, 6);
-        modelKeys.forEach(function(model) {
-            var m = summary.modelBreakdown[model];
-            var mRate = m.total > 0 ? Math.round((m.encrypted / m.total) * 100) : 0;
-            html += '<div class="platform-row">';
-            html += '<span class="platform-name">' + model + '</span>';
-            html += '<span class="platform-policies">' + m.total + ' devices</span>';
-            html += '<div class="mini-bar"><div class="mini-bar-fill bg-success" style="width:' + mRate + '%"></div></div>';
-            html += '<span class="platform-rate">' + mRate + '%</span>';
-            html += '</div>';
-        });
-        html += '</div></div>';
-
-        // OS Version Breakdown
+        // OS Version Breakdown - simple list
         var osVersions = {};
         devices.forEach(function(d) {
             var os = d.osVersion || 'Unknown';
-            // Simplify OS version display
             var osDisplay = os.indexOf('10.0.22') === 0 ? 'Windows 11' :
                             os.indexOf('10.0.19') === 0 ? 'Windows 10' : os;
             if (!osVersions[osDisplay]) osVersions[osDisplay] = { total: 0, encrypted: 0 };
@@ -185,38 +160,31 @@ const PageBitLocker = (function() {
         });
 
         html += '<div class="analytics-card">';
-        html += '<h4>OS Version Breakdown</h4>';
-        html += '<div class="platform-list">';
+        html += '<h4>By OS Version</h4>';
+        html += '<div class="stat-list">';
         Object.keys(osVersions).sort(function(a, b) {
             return osVersions[b].total - osVersions[a].total;
         }).forEach(function(os) {
             var o = osVersions[os];
             var oRate = o.total > 0 ? Math.round((o.encrypted / o.total) * 100) : 0;
-            html += '<div class="platform-row">';
-            html += '<span class="platform-name">' + os + '</span>';
-            html += '<span class="platform-policies">' + o.total + ' devices</span>';
-            html += '<div class="mini-bar"><div class="mini-bar-fill bg-success" style="width:' + oRate + '%"></div></div>';
-            html += '<span class="platform-rate">' + oRate + '%</span>';
-            html += '</div>';
+            var rateClass = oRate >= 90 ? 'text-success' : oRate >= 70 ? 'text-warning' : 'text-critical';
+            html += '<div class="stat-row"><span class="stat-label">' + os + '</span>';
+            html += '<span class="stat-value"><span class="' + rateClass + '">' + oRate + '%</span> (' + o.encrypted + '/' + o.total + ')</span></div>';
         });
         html += '</div></div>';
 
-        html += '</div>'; // end analytics-grid
-
-        // Recovery Key Status Summary
-        var keyStatus = {
-            escrowed: devices.filter(function(d) { return d.recoveryKeyEscrowed === true; }).length,
-            missing: devices.filter(function(d) { return d.encryptionState === 'encrypted' && d.recoveryKeyEscrowed === false; }).length,
-            multipleKeys: devices.filter(function(d) { return d.recoveryKeyCount > 1; }).length
-        };
-
-        html += '<div class="analytics-section">';
-        html += '<h3>Recovery Key Status</h3>';
-        html += '<div class="summary-cards" style="margin-bottom:0">';
-        html += '<div class="summary-card card-success"><div class="summary-value">' + keyStatus.escrowed + '</div><div class="summary-label">Keys Escrowed</div></div>';
-        html += '<div class="summary-card card-warning"><div class="summary-value">' + keyStatus.missing + '</div><div class="summary-label">Keys Missing</div></div>';
-        html += '<div class="summary-card card-info"><div class="summary-value">' + keyStatus.multipleKeys + '</div><div class="summary-label">Multiple Keys</div></div>';
+        // Recovery Key Status - simple list
+        html += '<div class="analytics-card">';
+        html += '<h4>Recovery Key Status</h4>';
+        html += '<div class="stat-list">';
+        html += '<div class="stat-row"><span class="stat-label">Keys Escrowed</span><span class="stat-value text-success">' + withKeys + '</span></div>';
+        var keysMissing = devices.filter(function(d) { return d.encryptionState === 'encrypted' && d.recoveryKeyEscrowed === false; }).length;
+        html += '<div class="stat-row"><span class="stat-label">Keys Missing</span><span class="stat-value ' + (keysMissing > 0 ? 'text-warning' : 'text-muted') + '">' + keysMissing + '</span></div>';
+        var multipleKeys = devices.filter(function(d) { return d.recoveryKeyCount > 1; }).length;
+        html += '<div class="stat-row"><span class="stat-label">Multiple Keys</span><span class="stat-value text-info">' + multipleKeys + '</span></div>';
         html += '</div></div>';
+
+        html += '</div>'; // end analytics-grid
 
         // Devices Needing Attention
         var needsAttention = devices.filter(function(d) {
@@ -255,35 +223,6 @@ const PageBitLocker = (function() {
                 html += '<p class="text-muted">Showing 10 of ' + needsAttention.length + ' devices. View the Devices tab for all.</p>';
             }
             html += '</div>';
-        }
-
-        // Insights section
-        if (insights.length > 0) {
-            html += '<div class="analytics-section">';
-            html += '<h3>BitLocker Insights</h3>';
-            html += '<div class="insights-cards">';
-            insights.forEach(function(insight) {
-                var severityClass = insight.severity === 'critical' ? 'insight-critical' :
-                                    insight.severity === 'high' ? 'insight-warning' :
-                                    insight.severity === 'medium' ? 'insight-info' : 'insight-neutral';
-                var badgeClass = insight.severity === 'critical' ? 'badge-critical' :
-                                 insight.severity === 'high' ? 'badge-warning' :
-                                 insight.severity === 'medium' ? 'badge-info' : 'badge-neutral';
-                html += '<div class="insight-card ' + severityClass + '">';
-                html += '<div class="insight-header">';
-                html += '<span class="badge ' + badgeClass + '">' + (insight.severity || 'info').toUpperCase() + '</span>';
-                html += '<span class="insight-category">' + (insight.category || '') + '</span>';
-                html += '</div>';
-                html += '<p class="insight-description">' + insight.description + '</p>';
-                if (insight.recommendedAction) {
-                    html += '<p class="insight-action"><strong>Action:</strong> ' + insight.recommendedAction + '</p>';
-                }
-                if (insight.affectedCount !== undefined) {
-                    html += '<p class="insight-affected"><strong>Affected:</strong> ' + insight.affectedCount + ' devices</p>';
-                }
-                html += '</div>';
-            });
-            html += '</div></div>';
         }
 
         container.innerHTML = html;

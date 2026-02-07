@@ -19,117 +19,154 @@
 const PageAuditLogs = (function() {
     'use strict';
 
-    /**
-     * Renders the audit logs page content.
-     *
-     * @param {HTMLElement} container - The page container element
-     */
-    function render(container) {
-        const auditLogs = DataLoader.getData('auditLogs');
+    var currentTab = 'overview';
+    var auditState = null;
 
-        // Calculate stats
-        const totalEvents = auditLogs.length;
-        const successCount = auditLogs.filter(e => e.result === 'success').length;
-        const failureCount = auditLogs.filter(e => e.result === 'failure').length;
-
-        // Count categories
-        const categories = {};
-        auditLogs.forEach(e => {
-            const cat = e.category || 'Other';
-            categories[cat] = (categories[cat] || 0) + 1;
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
         });
-        const topCategory = Object.entries(categories).sort((a, b) => b[1] - a[1])[0];
+        renderContent();
+    }
 
-        // Build page structure using DOM
+    function renderContent() {
+        var container = document.getElementById('audit-content');
+        if (!container || !auditState) return;
+
+        switch (currentTab) {
+            case 'overview':
+                renderOverview(container, auditState);
+                break;
+            case 'events':
+                renderEventsTab(container, auditState);
+                break;
+        }
+    }
+
+    function renderOverview(container, state) {
         container.textContent = '';
-
-        // Page header
-        var header = document.createElement('div');
-        header.className = 'page-header';
-        var h2 = document.createElement('h2');
-        h2.className = 'page-title';
-        h2.textContent = 'Audit Logs';
-        var desc = document.createElement('p');
-        desc.className = 'page-description';
-        desc.textContent = 'Directory audit events from Microsoft Entra ID';
-        header.appendChild(h2);
-        header.appendChild(desc);
-        container.appendChild(header);
-
-        // Summary cards
-        var cardsGrid = document.createElement('div');
-        cardsGrid.className = 'cards-grid';
-
-        cardsGrid.appendChild(createCard('Total Events', String(totalEvents), ''));
-        cardsGrid.appendChild(createCard('Successful', String(successCount), 'card-success', 'success'));
-        cardsGrid.appendChild(createCard('Failed', String(failureCount),
-            failureCount > 0 ? 'card-critical' : '', failureCount > 0 ? 'critical' : 'success'));
-        cardsGrid.appendChild(createCard('Top Category',
-            topCategory ? topCategory[0] : '--', '',
-            '', topCategory ? topCategory[1] + ' events' : ''));
-
-        container.appendChild(cardsGrid);
 
         // Charts row
         var chartsRow = document.createElement('div');
         chartsRow.className = 'charts-row';
-
-        var C = DashboardCharts.colors;
-
-        // Result distribution donut
-        chartsRow.appendChild(DashboardCharts.createChartCard(
-            'Result Distribution',
-            [
-                { value: successCount, label: 'Success', color: C.green },
-                { value: failureCount, label: 'Failure', color: C.red }
-            ],
-            totalEvents > 0 ? Math.round((successCount / totalEvents) * 100) + '%' : '0%',
-            'success rate'
-        ));
-
-        // Category breakdown donut
-        var categorySegments = Object.entries(categories)
-            .sort(function(a, b) { return b[1] - a[1]; })
-            .slice(0, 6)
-            .map(function(entry, idx) {
-                var catColors = [C.blue, C.teal, C.purple, C.orange, C.indigo, C.gray];
-                return { value: entry[1], label: entry[0], color: catColors[idx] || C.gray };
-            });
-
-        chartsRow.appendChild(DashboardCharts.createChartCard(
-            'Events by Category',
-            categorySegments,
-            String(Object.keys(categories).length), 'categories'
-        ));
-
+        chartsRow.id = 'audit-charts';
         container.appendChild(chartsRow);
 
-        // Table section
-        var section = document.createElement('div');
-        section.className = 'section';
-        var sectionHeader = document.createElement('div');
-        sectionHeader.className = 'section-header';
-        var sectionInner = document.createElement('div');
-        var sectionTitle = document.createElement('h3');
-        sectionTitle.className = 'section-title';
-        sectionTitle.textContent = 'All Audit Events';
-        var sectionSub = document.createElement('p');
-        sectionSub.className = 'section-subtitle';
-        sectionSub.textContent = 'Administrative directory operations';
-        sectionInner.appendChild(sectionTitle);
-        sectionInner.appendChild(sectionSub);
-        sectionHeader.appendChild(sectionInner);
-        section.appendChild(sectionHeader);
+        if (typeof DashboardCharts !== 'undefined') {
+            var C = DashboardCharts.colors;
 
+            chartsRow.appendChild(DashboardCharts.createChartCard(
+                'Result Distribution',
+                [
+                    { value: state.successCount, label: 'Success', color: C.green },
+                    { value: state.failureCount, label: 'Failure', color: C.red }
+                ],
+                state.totalEvents > 0 ? Math.round((state.successCount / state.totalEvents) * 100) + '%' : '0%',
+                'success rate'
+            ));
+
+            var categorySegments = Object.entries(state.categories)
+                .sort(function(a, b) { return b[1] - a[1]; })
+                .slice(0, 6)
+                .map(function(entry, idx) {
+                    var catColors = [C.blue, C.teal, C.purple, C.orange, C.indigo, C.gray];
+                    return { value: entry[1], label: entry[0], color: catColors[idx] || C.gray };
+                });
+
+            chartsRow.appendChild(DashboardCharts.createChartCard(
+                'Events by Category',
+                categorySegments,
+                String(Object.keys(state.categories).length), 'categories'
+            ));
+        }
+
+        // Analytics grid
+        var analyticsGrid = document.createElement('div');
+        analyticsGrid.className = 'analytics-grid';
+
+        // Category breakdown card
+        var categoryCard = createAnalyticsCard('Top Categories');
+        var sortedCats = Object.entries(state.categories).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
+        sortedCats.forEach(function(cat) {
+            addStatRow(categoryCard, cat[0], cat[1], '');
+        });
+        analyticsGrid.appendChild(categoryCard);
+
+        // Operation type breakdown card
+        var opTypes = {};
+        state.auditLogs.forEach(function(e) {
+            var op = e.operationType || 'Other';
+            opTypes[op] = (opTypes[op] || 0) + 1;
+        });
+        var opCard = createAnalyticsCard('Operation Types');
+        var sortedOps = Object.entries(opTypes).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
+        sortedOps.forEach(function(op) {
+            addStatRow(opCard, op[0], op[1], '');
+        });
+        analyticsGrid.appendChild(opCard);
+
+        // Top initiators card
+        var initiators = {};
+        state.auditLogs.forEach(function(e) {
+            var init = e.initiatedBy || e.initiatedByApp || 'Unknown';
+            initiators[init] = (initiators[init] || 0) + 1;
+        });
+        var initCard = createAnalyticsCard('Top Initiators');
+        var sortedInit = Object.entries(initiators).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
+        sortedInit.forEach(function(init) {
+            addStatRow(initCard, init[0], init[1], '');
+        });
+        analyticsGrid.appendChild(initCard);
+
+        // Result breakdown card
+        var resultCard = createAnalyticsCard('Result Summary');
+        addStatRow(resultCard, 'Successful', state.successCount, 'text-success');
+        addStatRow(resultCard, 'Failed', state.failureCount, state.failureCount > 0 ? 'text-critical' : 'text-success');
+        var successRate = state.totalEvents > 0 ? Math.round((state.successCount / state.totalEvents) * 100) : 0;
+        addStatRow(resultCard, 'Success Rate', successRate + '%', successRate >= 95 ? 'text-success' : successRate >= 80 ? 'text-warning' : 'text-critical');
+        analyticsGrid.appendChild(resultCard);
+
+        container.appendChild(analyticsGrid);
+
+        // Failed events table
+        var failedEvents = state.auditLogs.filter(function(e) { return e.result === 'failure'; });
+        if (failedEvents.length > 0) {
+            var failSection = document.createElement('div');
+            failSection.className = 'analytics-section';
+            var failTitle = document.createElement('h3');
+            failTitle.textContent = 'Failed Events (' + failedEvents.length + ')';
+            failSection.appendChild(failTitle);
+            var failTableDiv = document.createElement('div');
+            failTableDiv.id = 'audit-failed-table';
+            failSection.appendChild(failTableDiv);
+            container.appendChild(failSection);
+
+            Tables.render({
+                containerId: 'audit-failed-table',
+                data: failedEvents.slice(0, 15),
+                columns: [
+                    { key: 'activityDateTime', label: 'Date', formatter: Tables.formatters.datetime },
+                    { key: 'initiatedBy', label: 'Initiated By', className: 'cell-truncate' },
+                    { key: 'activityDisplayName', label: 'Activity', className: 'cell-truncate' },
+                    { key: 'targetResource', label: 'Target', className: 'cell-truncate' },
+                    { key: 'resultReason', label: 'Reason', className: 'cell-truncate' }
+                ],
+                pageSize: 15,
+                onRowClick: showAuditLogDetails
+            });
+        }
+    }
+
+    function renderEventsTab(container, state) {
+        container.textContent = '';
         var tableDiv = document.createElement('div');
         tableDiv.id = 'audit-logs-table';
-        section.appendChild(tableDiv);
-        container.appendChild(section);
+        container.appendChild(tableDiv);
 
-        // Render the audit logs table with per-column filters
         Tables.render({
             containerId: 'audit-logs-table',
-            data: auditLogs,
+            data: state.auditLogs,
             columns: [
                 { key: 'activityDateTime', label: 'Date', formatter: Tables.formatters.datetime },
                 { key: 'initiatedBy', label: 'Initiated By', filterable: true, className: 'cell-truncate' },
@@ -146,19 +183,140 @@ const PageAuditLogs = (function() {
     }
 
     /**
+     * Creates an analytics card with title and stat-list container.
+     */
+    function createAnalyticsCard(title) {
+        var card = document.createElement('div');
+        card.className = 'analytics-card';
+        var h4 = document.createElement('h4');
+        h4.textContent = title;
+        card.appendChild(h4);
+        var statList = document.createElement('div');
+        statList.className = 'stat-list';
+        card.appendChild(statList);
+        return card;
+    }
+
+    /**
+     * Adds a stat row to an analytics card.
+     */
+    function addStatRow(card, label, value, valueClass) {
+        var statList = card.querySelector('.stat-list');
+        var row = document.createElement('div');
+        row.className = 'stat-row';
+        var labelSpan = document.createElement('span');
+        labelSpan.className = 'stat-label';
+        labelSpan.textContent = label;
+        var valueSpan = document.createElement('span');
+        valueSpan.className = 'stat-value' + (valueClass ? ' ' + valueClass : '');
+        valueSpan.textContent = String(value);
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        statList.appendChild(row);
+    }
+
+    /**
+     * Renders the audit logs page content.
+     *
+     * @param {HTMLElement} container - The page container element
+     */
+    function render(container) {
+        var auditLogs = DataLoader.getData('auditLogs') || [];
+
+        // Calculate stats
+        var totalEvents = auditLogs.length;
+        var successCount = auditLogs.filter(function(e) { return e.result === 'success'; }).length;
+        var failureCount = auditLogs.filter(function(e) { return e.result === 'failure'; }).length;
+
+        // Count categories
+        var categories = {};
+        auditLogs.forEach(function(e) {
+            var cat = e.category || 'Other';
+            categories[cat] = (categories[cat] || 0) + 1;
+        });
+        var topCategory = Object.entries(categories).sort(function(a, b) { return b[1] - a[1]; })[0];
+
+        auditState = {
+            auditLogs: auditLogs,
+            totalEvents: totalEvents,
+            successCount: successCount,
+            failureCount: failureCount,
+            categories: categories,
+            topCategory: topCategory
+        };
+
+        // Build page structure
+        container.textContent = '';
+
+        // Page header
+        var header = document.createElement('div');
+        header.className = 'page-header';
+        var h2 = document.createElement('h2');
+        h2.textContent = 'Audit Logs';
+        var desc = document.createElement('p');
+        desc.className = 'page-description';
+        desc.textContent = 'Directory audit events from Microsoft Entra ID';
+        header.appendChild(h2);
+        header.appendChild(desc);
+        container.appendChild(header);
+
+        // Summary cards
+        var cardsGrid = document.createElement('div');
+        cardsGrid.className = 'summary-cards';
+
+        cardsGrid.appendChild(createSummaryCard('Total Events', String(totalEvents), '', ''));
+        cardsGrid.appendChild(createSummaryCard('Successful', String(successCount), 'card-success', 'text-success'));
+        cardsGrid.appendChild(createSummaryCard('Failed', String(failureCount),
+            failureCount > 0 ? 'card-danger' : 'card-success', failureCount > 0 ? 'text-critical' : 'text-success'));
+        cardsGrid.appendChild(createSummaryCard('Top Category',
+            topCategory ? topCategory[0] : '--', '', '', topCategory ? topCategory[1] + ' events' : ''));
+
+        container.appendChild(cardsGrid);
+
+        // Tab bar
+        var tabBar = document.createElement('div');
+        tabBar.className = 'tab-bar';
+        var overviewBtn = document.createElement('button');
+        overviewBtn.className = 'tab-btn active';
+        overviewBtn.dataset.tab = 'overview';
+        overviewBtn.textContent = 'Overview';
+        var eventsBtn = document.createElement('button');
+        eventsBtn.className = 'tab-btn';
+        eventsBtn.dataset.tab = 'events';
+        eventsBtn.textContent = 'All Events (' + totalEvents + ')';
+        tabBar.appendChild(overviewBtn);
+        tabBar.appendChild(eventsBtn);
+        container.appendChild(tabBar);
+
+        // Content area
+        var contentArea = document.createElement('div');
+        contentArea.className = 'content-area';
+        contentArea.id = 'audit-content';
+        container.appendChild(contentArea);
+
+        // Tab click handlers
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+        });
+
+        currentTab = 'overview';
+        renderContent();
+    }
+
+    /**
      * Helper: creates a summary card element.
      */
-    function createCard(label, value, cardClass, valueClass, changeText) {
+    function createSummaryCard(label, value, cardClass, valueClass, changeText) {
         var card = document.createElement('div');
-        card.className = 'card' + (cardClass ? ' ' + cardClass : '');
+        card.className = 'summary-card' + (cardClass ? ' ' + cardClass : '');
 
         var lbl = document.createElement('div');
-        lbl.className = 'card-label';
+        lbl.className = 'summary-label';
         lbl.textContent = label;
         card.appendChild(lbl);
 
         var val = document.createElement('div');
-        val.className = 'card-value' + (valueClass ? ' ' + valueClass : '');
+        val.className = 'summary-value' + (valueClass ? ' ' + valueClass : '');
         val.textContent = value;
         card.appendChild(val);
 

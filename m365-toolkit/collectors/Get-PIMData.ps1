@@ -115,6 +115,26 @@ try {
                 }
             }
 
+            # Get ticket info if available
+            $ticketNumber = $null
+            $ticketSystem = $null
+            if ($request.TicketInfo) {
+                $ticketNumber = $request.TicketInfo.TicketNumber
+                $ticketSystem = $request.TicketInfo.TicketSystem
+            }
+
+            # Get approval ID if available
+            $approvalId = $request.ApprovalId
+
+            # Check if this is a validation-only request
+            $isValidationOnly = $request.IsValidationOnly
+
+            # Get completed datetime if available
+            $completedDateTime = $null
+            if ($request.CompletedDateTime) {
+                $completedDateTime = $request.CompletedDateTime.ToString("o")
+            }
+
             $processedEntry = [PSCustomObject]@{
                 id                     = $request.Id
                 action                 = $request.Action
@@ -124,9 +144,14 @@ try {
                 roleDefinitionId       = $request.RoleDefinitionId
                 status                 = $request.Status
                 createdDateTime        = if ($request.CreatedDateTime) { $request.CreatedDateTime.ToString("o") } else { $null }
+                completedDateTime      = $completedDateTime
                 justification          = $request.Justification
                 scheduleStartDateTime  = $startDateTime
                 scheduleEndDateTime    = $endDateTime
+                ticketNumber           = $ticketNumber
+                ticketSystem           = $ticketSystem
+                approvalId             = $approvalId
+                isValidationOnly       = $isValidationOnly
                 isEligible             = $false
                 entryType              = "request"
             }

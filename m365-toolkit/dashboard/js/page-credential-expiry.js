@@ -92,7 +92,104 @@ const PageCredentialExpiry = (function() {
     }
 
     function renderOverview(container, state) {
-        container.innerHTML = '<div class="charts-row" id="creds-charts"></div>';
+        var creds = state.creds;
+
+        // Calculate type breakdown
+        var secrets = creds.filter(function(c) { return c.credentialType === 'secret'; });
+        var certificates = creds.filter(function(c) { return c.credentialType === 'certificate'; });
+
+        // Calculate app breakdown (top 5 apps with most credentials needing attention)
+        var appStats = {};
+        creds.forEach(function(c) {
+            var app = c.appDisplayName || 'Unknown';
+            if (!appStats[app]) {
+                appStats[app] = { total: 0, expired: 0, critical: 0 };
+            }
+            appStats[app].total++;
+            if (c.status === 'expired') appStats[app].expired++;
+            if (c.status === 'critical') appStats[app].critical++;
+        });
+
+        var html = '<div class="charts-row" id="creds-charts"></div>';
+
+        // Analytics grid with breakdowns
+        html += '<div class="analytics-grid">';
+
+        // Status Breakdown card
+        html += '<div class="analytics-card">';
+        html += '<h4>Credential Status</h4>';
+        html += '<div class="stat-list">';
+        var expiredClass = state.expired > 0 ? 'text-critical' : 'text-success';
+        var criticalClass = state.critical > 0 ? 'text-critical' : 'text-success';
+        var warningClass = state.warning > 0 ? 'text-warning' : 'text-success';
+        html += '<div class="stat-row"><span class="stat-label">Expired</span><span class="stat-value ' + expiredClass + '">' + state.expired + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Critical (< 30 days)</span><span class="stat-value ' + criticalClass + '">' + state.critical + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Warning (< 60 days)</span><span class="stat-value ' + warningClass + '">' + state.warning + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Healthy</span><span class="stat-value text-success">' + state.healthy + '</span></div>';
+        html += '</div></div>';
+
+        // Type Breakdown card
+        html += '<div class="analytics-card">';
+        html += '<h4>By Credential Type</h4>';
+        html += '<div class="stat-list">';
+        var secretsExpired = secrets.filter(function(s) { return s.status === 'expired' || s.status === 'critical'; }).length;
+        var certsExpired = certificates.filter(function(c) { return c.status === 'expired' || c.status === 'critical'; }).length;
+        var secretClass = secretsExpired > 0 ? 'text-warning' : 'text-success';
+        var certClass = certsExpired > 0 ? 'text-warning' : 'text-success';
+        html += '<div class="stat-row"><span class="stat-label">Secrets</span><span class="stat-value">' + secrets.length + ' <span class="' + secretClass + '">(' + secretsExpired + ' need attention)</span></span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Certificates</span><span class="stat-value">' + certificates.length + ' <span class="' + certClass + '">(' + certsExpired + ' need attention)</span></span></div>';
+        html += '</div></div>';
+
+        // Apps Needing Attention card
+        var appsNeedingAttention = Object.keys(appStats).filter(function(app) {
+            return appStats[app].expired > 0 || appStats[app].critical > 0;
+        }).sort(function(a, b) {
+            return (appStats[b].expired + appStats[b].critical) - (appStats[a].expired + appStats[a].critical);
+        }).slice(0, 5);
+
+        html += '<div class="analytics-card">';
+        html += '<h4>Apps Needing Attention</h4>';
+        html += '<div class="stat-list">';
+        if (appsNeedingAttention.length > 0) {
+            appsNeedingAttention.forEach(function(app) {
+                var stats = appStats[app];
+                var count = stats.expired + stats.critical;
+                html += '<div class="stat-row"><span class="stat-label">' + app + '</span><span class="stat-value text-critical">' + count + ' credential' + (count !== 1 ? 's' : '') + '</span></div>';
+            });
+        } else {
+            html += '<div class="stat-row"><span class="stat-label text-success">All apps healthy</span></div>';
+        }
+        html += '</div></div>';
+
+        html += '</div>'; // End analytics-grid
+
+        // Credentials Requiring Action table
+        var actionRequired = creds.filter(function(c) { return c.status === 'expired' || c.status === 'critical'; });
+        if (actionRequired.length > 0) {
+            html += '<div class="analytics-section">';
+            html += '<h3>Credentials Requiring Action (' + actionRequired.length + ')</h3>';
+            html += '<table class="data-table"><thead><tr>';
+            html += '<th>Application</th><th>Type</th><th>Status</th><th>Days Left</th><th>Expiry Date</th>';
+            html += '</tr></thead><tbody>';
+            actionRequired.slice(0, 10).forEach(function(c) {
+                var statusClass = c.status === 'expired' ? 'badge-critical' : 'badge-warning';
+                var daysClass = c.daysUntilExpiry < 0 ? 'text-critical font-bold' : 'text-critical';
+                html += '<tr>';
+                html += '<td>' + (c.appDisplayName || 'Unknown') + '</td>';
+                html += '<td><span class="badge ' + (c.credentialType === 'secret' ? 'badge-warning' : 'badge-info') + '">' + c.credentialType + '</span></td>';
+                html += '<td><span class="badge ' + statusClass + '">' + c.status + '</span></td>';
+                html += '<td class="' + daysClass + '">' + (c.daysUntilExpiry !== null ? c.daysUntilExpiry : '--') + '</td>';
+                html += '<td>' + (c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : '--') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            if (actionRequired.length > 10) {
+                html += '<p class="text-muted" style="margin-top: 0.5rem;">Showing 10 of ' + actionRequired.length + ' credentials. View all in the Credentials tab.</p>';
+            }
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
         renderCredCharts(state);
     }
 

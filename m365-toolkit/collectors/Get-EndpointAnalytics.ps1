@@ -86,14 +86,21 @@ try {
         deviceScores = @()
         devicePerformance = @()
         startupHistory = @()
+        startupProcesses = @()
         appReliability = @()
+        deviceAppHealth = @()
+        batteryHealth = @()
+        workFromAnywhere = @()
         modelInsights = @()
         insights = @()
+        osDistribution = @{}
         summary = @{
             totalDevices = 0
             averageEndpointScore = 0
             averageStartupScore = 0
             averageAppReliabilityScore = 0
+            averageWorkFromAnywhereScore = 0
+            averageBatteryHealthScore = 0
             devicesNeedingAttention = 0
             excellentDevices = 0
             goodDevices = 0
@@ -103,6 +110,10 @@ try {
             problematicApps = 0
             topPerformingModel = ""
             worstPerformingModel = ""
+            devicesWithBatteryIssues = 0
+            devicesWithSlowLogin = 0
+            gpBootOverheadAvgMs = 0
+            gpLoginOverheadAvgMs = 0
         }
     }
 
@@ -172,6 +183,8 @@ try {
                 startupPerformanceScore   = [int]$score.startupPerformanceScore
                 appReliabilityScore       = [int]$score.appReliabilityScore
                 workFromAnywhereScore     = [int]$score.workFromAnywhereScore
+                batteryHealthScore        = if ($score.batteryHealthScore) { [int]$score.batteryHealthScore } else { $null }
+                cloudManagementScore      = if ($score.cloudManagementScore) { [int]$score.cloudManagementScore } else { $null }
                 healthStatus              = $healthStatus
                 needsAttention            = ($endpointScore -lt 50)
             }
@@ -228,6 +241,11 @@ try {
             $allPerf += $performance.value
         }
 
+        $totalGpBootOverhead = 0
+        $totalGpLoginOverhead = 0
+        $slowLoginCount = 0
+        $perfCount = 0
+
         foreach ($perf in $allPerf) {
             $analyticsData.devicePerformance += [PSCustomObject]@{
                 id                       = $perf.id
@@ -238,10 +256,12 @@ try {
                 startupPerformanceScore  = $perf.startupPerformanceScore
                 coreBootTimeInMs         = $perf.coreBootTimeInMs
                 groupPolicyBootTimeInMs  = $perf.groupPolicyBootTimeInMs
+                totalBootTimeInMs        = ($perf.coreBootTimeInMs + $perf.groupPolicyBootTimeInMs)
                 healthStatus             = $perf.healthStatus
                 loginTimeInMs            = $perf.loginTimeInMs
                 coreLoginTimeInMs        = $perf.coreLoginTimeInMs
                 groupPolicyLoginTimeInMs = $perf.groupPolicyLoginTimeInMs
+                totalLoginTimeInMs       = ($perf.coreLoginTimeInMs + $perf.groupPolicyLoginTimeInMs)
                 bootScore                = $perf.bootScore
                 loginScore               = $perf.loginScore
                 restartCount             = $perf.restartCount
@@ -249,6 +269,37 @@ try {
                 averageBlueScreens       = $perf.averageBlueScreens
                 averageRestarts          = $perf.averageRestarts
             }
+
+            # Track OS distribution
+            $osVersion = $perf.operatingSystemVersion
+            if ($osVersion) {
+                if (-not $analyticsData.osDistribution[$osVersion]) {
+                    $analyticsData.osDistribution[$osVersion] = 0
+                }
+                $analyticsData.osDistribution[$osVersion]++
+            }
+
+            # Calculate GP overhead
+            if ($perf.groupPolicyBootTimeInMs) {
+                $totalGpBootOverhead += [int]$perf.groupPolicyBootTimeInMs
+            }
+            if ($perf.groupPolicyLoginTimeInMs) {
+                $totalGpLoginOverhead += [int]$perf.groupPolicyLoginTimeInMs
+            }
+
+            # Track slow login devices (login > 60 seconds)
+            $totalLoginMs = [int]$perf.coreLoginTimeInMs + [int]$perf.groupPolicyLoginTimeInMs
+            if ($totalLoginMs -gt 60000) {
+                $slowLoginCount++
+            }
+            $perfCount++
+        }
+
+        # Calculate average GP overhead
+        if ($perfCount -gt 0) {
+            $analyticsData.summary.gpBootOverheadAvgMs = [Math]::Round($totalGpBootOverhead / $perfCount)
+            $analyticsData.summary.gpLoginOverheadAvgMs = [Math]::Round($totalGpLoginOverhead / $perfCount)
+            $analyticsData.summary.devicesWithSlowLogin = $slowLoginCount
         }
 
         Write-Host "      Retrieved performance data for $($analyticsData.devicePerformance.Count) devices" -ForegroundColor Gray
@@ -258,16 +309,26 @@ try {
     }
 
     # ========================================
-    # Get App Reliability Data
+    # Get App Reliability Data (with pagination)
     # ========================================
     try {
         $appReliability = Invoke-GraphWithRetry -ScriptBlock {
             Invoke-MgGraphRequest -Method GET `
-                -Uri "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsAppHealthApplicationPerformance?`$top=100" `
+                -Uri "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsAppHealthApplicationPerformance?`$top=500" `
                 -OutputType PSObject
         } -OperationName "App reliability retrieval"
 
-        foreach ($app in $appReliability.value) {
+        $allApps = @($appReliability.value)
+
+        # Handle pagination for app reliability
+        while ($appReliability.'@odata.nextLink') {
+            $appReliability = Invoke-GraphWithRetry -ScriptBlock {
+                Invoke-MgGraphRequest -Method GET -Uri $appReliability.'@odata.nextLink' -OutputType PSObject
+            } -OperationName "App reliability pagination"
+            $allApps += $appReliability.value
+        }
+
+        foreach ($app in $allApps) {
             # Calculate trend based on health score and MTTF
             $healthScore = [int]$app.appHealthScore
             $mttf = [int]$app.meanTimeToFailureInMinutes
@@ -301,6 +362,212 @@ try {
     }
     catch {
         $errors += "App reliability: $($_.Exception.Message)"
+    }
+
+    # ========================================
+    # Get Battery Health Data
+    # ========================================
+    try {
+        $batteryHealth = Invoke-GraphWithRetry -ScriptBlock {
+            Invoke-MgGraphRequest -Method GET `
+                -Uri "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsBatteryHealthDevicePerformance?`$top=500" `
+                -OutputType PSObject
+        } -OperationName "Battery health retrieval"
+
+        $allBattery = @($batteryHealth.value)
+
+        while ($batteryHealth.'@odata.nextLink') {
+            $batteryHealth = Invoke-GraphWithRetry -ScriptBlock {
+                Invoke-MgGraphRequest -Method GET -Uri $batteryHealth.'@odata.nextLink' -OutputType PSObject
+            } -OperationName "Battery health pagination"
+            $allBattery += $batteryHealth.value
+        }
+
+        $batteryIssueCount = 0
+        foreach ($battery in $allBattery) {
+            $healthPct = if ($battery.batteryHealthPercentage) { [int]$battery.batteryHealthPercentage } else { 100 }
+
+            $analyticsData.batteryHealth += [PSCustomObject]@{
+                id                       = $battery.id
+                deviceName               = $battery.deviceName
+                manufacturer             = $battery.manufacturer
+                model                    = $battery.model
+                batteryHealthPercentage  = $healthPct
+                estimatedBatteryCapacity = $battery.estimatedBatteryCapacity
+                fullBatteryDrainCount    = $battery.fullBatteryDrainCount
+                maxCapacityPercentage    = $battery.maxCapacityPercentage
+                batteryAgeInDays         = $battery.batteryAgeInDays
+            }
+
+            # Track devices with battery issues (below 60% health)
+            if ($healthPct -lt 60) {
+                $batteryIssueCount++
+            }
+        }
+
+        $analyticsData.summary.devicesWithBatteryIssues = $batteryIssueCount
+
+        # Calculate average battery health
+        if ($allBattery.Count -gt 0) {
+            $avgBatteryHealth = [Math]::Round(
+                ($analyticsData.batteryHealth | Where-Object { $_.batteryHealthPercentage } |
+                 Measure-Object -Property batteryHealthPercentage -Average).Average, 1
+            )
+            $analyticsData.summary.averageBatteryHealthScore = $avgBatteryHealth
+        }
+
+        Write-Host "      Retrieved battery health for $($analyticsData.batteryHealth.Count) devices" -ForegroundColor Gray
+    }
+    catch {
+        # Battery health is optional - don't fail collection
+        Write-Host "      Battery health data not available (requires Intune licensing)" -ForegroundColor DarkGray
+    }
+
+    # ========================================
+    # Get Work From Anywhere Metrics
+    # ========================================
+    try {
+        $wfaMetrics = Invoke-GraphWithRetry -ScriptBlock {
+            Invoke-MgGraphRequest -Method GET `
+                -Uri "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsWorkFromAnywhereMetrics?`$top=500" `
+                -OutputType PSObject
+        } -OperationName "Work from anywhere retrieval"
+
+        $allWfa = @($wfaMetrics.value)
+
+        while ($wfaMetrics.'@odata.nextLink') {
+            $wfaMetrics = Invoke-GraphWithRetry -ScriptBlock {
+                Invoke-MgGraphRequest -Method GET -Uri $wfaMetrics.'@odata.nextLink' -OutputType PSObject
+            } -OperationName "Work from anywhere pagination"
+            $allWfa += $wfaMetrics.value
+        }
+
+        foreach ($wfa in $allWfa) {
+            $analyticsData.workFromAnywhere += [PSCustomObject]@{
+                id                        = $wfa.id
+                deviceName                = $wfa.deviceName
+                cloudManagementScore      = $wfa.cloudManagementScore
+                cloudIdentityScore        = $wfa.cloudIdentityScore
+                cloudProvisioningScore    = $wfa.cloudProvisioningScore
+                windowsScore              = $wfa.windowsScore
+                windowsDevices            = $wfa.windowsDevices
+                healthStatus              = $wfa.healthStatus
+                autopilotProfileAssigned  = $wfa.autopilotProfileAssigned
+                azureAdJoined             = $wfa.azureAdJoined
+                osCheckFailed             = $wfa.osCheckFailed
+                tenantAttached            = $wfa.tenantAttached
+            }
+        }
+
+        # Calculate average WFA score
+        if ($allWfa.Count -gt 0) {
+            $avgWfaScore = [Math]::Round(
+                ($analyticsData.workFromAnywhere | Where-Object { $_.cloudManagementScore } |
+                 Measure-Object -Property cloudManagementScore -Average).Average, 1
+            )
+            $analyticsData.summary.averageWorkFromAnywhereScore = $avgWfaScore
+        }
+
+        Write-Host "      Retrieved work from anywhere metrics for $($analyticsData.workFromAnywhere.Count) items" -ForegroundColor Gray
+    }
+    catch {
+        # WFA metrics is optional - don't fail collection
+        Write-Host "      Work from anywhere data not available (requires Intune licensing)" -ForegroundColor DarkGray
+    }
+
+    # ========================================
+    # Get Startup Process Impact
+    # ========================================
+    try {
+        $startupProcs = Invoke-GraphWithRetry -ScriptBlock {
+            Invoke-MgGraphRequest -Method GET `
+                -Uri "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsDeviceStartupProcesses?`$top=500" `
+                -OutputType PSObject
+        } -OperationName "Startup processes retrieval"
+
+        $allProcs = @($startupProcs.value)
+
+        while ($startupProcs.'@odata.nextLink') {
+            $startupProcs = Invoke-GraphWithRetry -ScriptBlock {
+                Invoke-MgGraphRequest -Method GET -Uri $startupProcs.'@odata.nextLink' -OutputType PSObject
+            } -OperationName "Startup processes pagination"
+            $allProcs += $startupProcs.value
+        }
+
+        # Aggregate processes by name for summary
+        $procSummary = @{}
+        foreach ($proc in $allProcs) {
+            $procName = $proc.processName
+            if (-not $procSummary[$procName]) {
+                $procSummary[$procName] = @{
+                    totalStartupImpactMs = 0
+                    deviceCount = 0
+                    publisher = $proc.publisher
+                }
+            }
+            $procSummary[$procName].totalStartupImpactMs += [int]$proc.startupImpactInMs
+            $procSummary[$procName].deviceCount++
+        }
+
+        foreach ($procName in $procSummary.Keys) {
+            $data = $procSummary[$procName]
+            $analyticsData.startupProcesses += [PSCustomObject]@{
+                processName          = $procName
+                publisher            = $data.publisher
+                deviceCount          = $data.deviceCount
+                totalStartupImpactMs = $data.totalStartupImpactMs
+                avgStartupImpactMs   = [Math]::Round($data.totalStartupImpactMs / $data.deviceCount)
+            }
+        }
+
+        # Sort by impact (highest first)
+        $analyticsData.startupProcesses = $analyticsData.startupProcesses | Sort-Object -Property avgStartupImpactMs -Descending
+
+        Write-Host "      Retrieved startup impact for $($analyticsData.startupProcesses.Count) processes" -ForegroundColor Gray
+    }
+    catch {
+        # Startup processes is optional - don't fail collection
+        Write-Host "      Startup process data not available" -ForegroundColor DarkGray
+    }
+
+    # ========================================
+    # Get Device-Level App Health
+    # ========================================
+    try {
+        $deviceAppHealth = Invoke-GraphWithRetry -ScriptBlock {
+            Invoke-MgGraphRequest -Method GET `
+                -Uri "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsAppHealthDevicePerformance?`$top=500" `
+                -OutputType PSObject
+        } -OperationName "Device app health retrieval"
+
+        $allDeviceApp = @($deviceAppHealth.value)
+
+        while ($deviceAppHealth.'@odata.nextLink') {
+            $deviceAppHealth = Invoke-GraphWithRetry -ScriptBlock {
+                Invoke-MgGraphRequest -Method GET -Uri $deviceAppHealth.'@odata.nextLink' -OutputType PSObject
+            } -OperationName "Device app health pagination"
+            $allDeviceApp += $deviceAppHealth.value
+        }
+
+        foreach ($dah in $allDeviceApp) {
+            $analyticsData.deviceAppHealth += [PSCustomObject]@{
+                id                    = $dah.id
+                deviceName            = $dah.deviceName
+                deviceDisplayName     = $dah.deviceDisplayName
+                appCrashCount         = [int]$dah.appCrashCount
+                appHangCount          = [int]$dah.appHangCount
+                crashedAppCount       = [int]$dah.crashedAppCount
+                meanTimeToFailure     = [int]$dah.meanTimeToFailureInMinutes
+                deviceAppHealthScore  = if ($dah.deviceAppHealthScore) { [int]$dah.deviceAppHealthScore } else { $null }
+                healthStatus          = $dah.healthStatus
+            }
+        }
+
+        Write-Host "      Retrieved device app health for $($analyticsData.deviceAppHealth.Count) devices" -ForegroundColor Gray
+    }
+    catch {
+        # Device app health is optional - don't fail collection
+        Write-Host "      Device app health data not available" -ForegroundColor DarkGray
     }
 
     # ========================================
@@ -369,12 +636,6 @@ try {
     # Extract Actionable Insights
     # ========================================
     try {
-        # Get insights from various analytics endpoints
-        $insightSources = @(
-            "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsWorkFromAnywhereMetrics",
-            "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsBatteryHealthDevicePerformance"
-        )
-
         # Generate insights from collected data
         $poorDevices = ($analyticsData.deviceScores | Where-Object { $_.healthStatus -eq "Poor" -or $_.healthStatus -eq "Critical" })
         if ($poorDevices.Count -gt 0) {
@@ -427,6 +688,61 @@ try {
                 impactedDevices = $blueScreenDevices.Count
                 recommendedAction = "Investigate driver issues and hardware health for affected devices"
                 category = "System Stability"
+            }
+        }
+
+        # Battery health insights
+        if ($analyticsData.summary.devicesWithBatteryIssues -gt 0) {
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "battery-health"
+                title = "Devices with battery health issues"
+                severity = "high"
+                description = "$($analyticsData.summary.devicesWithBatteryIssues) devices have battery health below 60%"
+                impactedDevices = $analyticsData.summary.devicesWithBatteryIssues
+                recommendedAction = "Consider battery replacement for affected devices to maintain productivity"
+                category = "Hardware Health"
+            }
+        }
+
+        # Slow login insights
+        if ($analyticsData.summary.devicesWithSlowLogin -gt 0) {
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "slow-login"
+                title = "Devices with slow login times"
+                severity = "high"
+                description = "$($analyticsData.summary.devicesWithSlowLogin) devices take over 60 seconds to complete login"
+                impactedDevices = $analyticsData.summary.devicesWithSlowLogin
+                recommendedAction = "Review Group Policy processing, startup applications, and profile sizes"
+                category = "Login Performance"
+            }
+        }
+
+        # Group Policy overhead insights
+        if ($analyticsData.summary.gpLoginOverheadAvgMs -gt 15000) {
+            $gpSeconds = [Math]::Round($analyticsData.summary.gpLoginOverheadAvgMs / 1000)
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "gp-overhead"
+                title = "High Group Policy overhead"
+                severity = "medium"
+                description = "Group Policy adds an average of $gpSeconds seconds to login time"
+                impactedDevices = $analyticsData.summary.totalDevices
+                recommendedAction = "Review GPO efficiency, consider GPO consolidation or Intune migration"
+                category = "Login Performance"
+            }
+        }
+
+        # Top startup process impact
+        $highImpactProcs = $analyticsData.startupProcesses | Where-Object { $_.avgStartupImpactMs -gt 5000 }
+        if ($highImpactProcs.Count -gt 0) {
+            $topProcs = ($highImpactProcs | Select-Object -First 3 | ForEach-Object { $_.processName }) -join ", "
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "startup-processes"
+                title = "High-impact startup processes"
+                severity = "medium"
+                description = "$($highImpactProcs.Count) processes add more than 5 seconds to startup. Top: $topProcs"
+                impactedDevices = ($highImpactProcs | Measure-Object -Property deviceCount -Sum).Sum
+                recommendedAction = "Review startup application necessity, defer non-essential applications"
+                category = "Startup Performance"
             }
         }
 

@@ -85,31 +85,59 @@ try {
         $scorePct = [Math]::Round(($currentScore / $maxScore) * 100)
     }
 
-    # Extract top 5 improvement actions by potential score impact
+    # Extract ALL improvement actions, sorted by potential impact
     $controlScores = @()
-    if ($score.controlScores) {
-        $sorted = $score.controlScores |
-            Where-Object { $_.scoreInPercentage -lt 100 } |
-            Sort-Object -Property { $_.maxScore - ($_.maxScore * $_.scoreInPercentage / 100) } -Descending |
-            Select-Object -First 5
+    $incompleteControls = @()
+    $completeControls = @()
 
-        foreach ($ctrl in $sorted) {
+    if ($score.controlScores) {
+        # Separate complete and incomplete controls
+        $incomplete = $score.controlScores | Where-Object { $_.scoreInPercentage -lt 100 }
+        $complete = $score.controlScores | Where-Object { $_.scoreInPercentage -ge 100 }
+
+        # Sort incomplete by potential impact (descending)
+        $sortedIncomplete = $incomplete |
+            Sort-Object -Property { $_.maxScore - ($_.maxScore * $_.scoreInPercentage / 100) } -Descending
+
+        foreach ($ctrl in $sortedIncomplete) {
+            $potentialPoints = [Math]::Round($ctrl.maxScore - ($ctrl.maxScore * $ctrl.scoreInPercentage / 100), 1)
             $controlScores += [PSCustomObject]@{
                 name              = $ctrl.controlName
                 description       = $ctrl.description
                 scoreInPercentage = [Math]::Round($ctrl.scoreInPercentage, 0)
                 maxScore          = [Math]::Round($ctrl.maxScore, 1)
+                potentialPoints   = $potentialPoints
+                controlCategory   = $ctrl.controlCategory
+                isComplete        = $false
             }
+            $incompleteControls += $ctrl.controlName
+        }
+
+        # Add complete controls as well (for reference)
+        foreach ($ctrl in $complete) {
+            $controlScores += [PSCustomObject]@{
+                name              = $ctrl.controlName
+                description       = $ctrl.description
+                scoreInPercentage = 100
+                maxScore          = [Math]::Round($ctrl.maxScore, 1)
+                potentialPoints   = 0
+                controlCategory   = $ctrl.controlCategory
+                isComplete        = $true
+            }
+            $completeControls += $ctrl.controlName
         }
     }
 
-    # Build output object
+    # Build output object with enhanced data
     $result = [PSCustomObject]@{
-        currentScore  = $currentScore
-        maxScore      = $maxScore
-        scorePct      = $scorePct
-        controlScores = $controlScores
-        collectedAt   = (Get-Date).ToString("o")
+        currentScore       = $currentScore
+        maxScore           = $maxScore
+        scorePct           = $scorePct
+        controlScores      = $controlScores
+        totalControls      = $controlScores.Count
+        completeControls   = $completeControls.Count
+        incompleteControls = $incompleteControls.Count
+        collectedAt        = (Get-Date).ToString("o")
     }
 
     # Save data using shared utility

@@ -106,14 +106,45 @@ try {
             }
         }
 
-        # Extract target resource info
+        # Extract target resource info - now with full details
         $targetResource = ""
         $targetResourceType = ""
+        $targetResourceId = ""
+        $modifiedProperties = @()
+        $allTargetResources = @()
 
         if ($entry.TargetResources -and $entry.TargetResources.Count -gt 0) {
             $firstTarget = $entry.TargetResources[0]
             $targetResource = $firstTarget.DisplayName
             $targetResourceType = $firstTarget.Type
+            $targetResourceId = $firstTarget.Id
+
+            # Extract modified properties from all targets
+            foreach ($target in $entry.TargetResources) {
+                $targetInfo = @{
+                    displayName = $target.DisplayName
+                    type = $target.Type
+                    id = $target.Id
+                    userPrincipalName = $target.UserPrincipalName
+                }
+
+                # Extract modified properties if present
+                if ($target.ModifiedProperties -and $target.ModifiedProperties.Count -gt 0) {
+                    $targetModProps = @()
+                    foreach ($prop in $target.ModifiedProperties) {
+                        $modProp = @{
+                            displayName = $prop.DisplayName
+                            oldValue = $prop.OldValue
+                            newValue = $prop.NewValue
+                        }
+                        $targetModProps += $modProp
+                        $modifiedProperties += $modProp
+                    }
+                    $targetInfo.modifiedProperties = $targetModProps
+                }
+
+                $allTargetResources += $targetInfo
+            }
         }
 
         $processedEntry = [PSCustomObject]@{
@@ -125,6 +156,9 @@ try {
             initiatedByApp      = $initiatedByApp
             targetResource      = $targetResource
             targetResourceType  = $targetResourceType
+            targetResourceId    = $targetResourceId
+            targetResources     = $allTargetResources
+            modifiedProperties  = $modifiedProperties
             category            = $entry.Category
             result              = $entry.Result
             resultReason        = $entry.ResultReason

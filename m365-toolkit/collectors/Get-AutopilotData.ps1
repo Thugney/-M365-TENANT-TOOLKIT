@@ -190,17 +190,40 @@ try {
         $lastContactedDt = if ($device.LastContactedDateTime) { $device.LastContactedDateTime } else { $device.lastContactedDateTime }
         $purchaseOrderId = if ($device.PurchaseOrderIdentifier) { $device.PurchaseOrderIdentifier } else { $device.purchaseOrderIdentifier }
 
+        # Additional properties from Graph API
+        $displayName = if ($device.DisplayName) { $device.DisplayName } else { $device.displayName }
+        $userPrincipalName = if ($device.UserPrincipalName) { $device.UserPrincipalName } else { $device.userPrincipalName }
+        $azureAdDeviceId = if ($device.AzureActiveDirectoryDeviceId) { $device.AzureActiveDirectoryDeviceId } else { $device.azureActiveDirectoryDeviceId }
+        $managedDeviceId = if ($device.ManagedDeviceId) { $device.ManagedDeviceId } else { $device.managedDeviceId }
+        $productKey = if ($device.ProductKey) { $device.ProductKey } else { $device.productKey }
+        $skuNumber = if ($device.SkuNumber) { $device.SkuNumber } else { $device.skuNumber }
+        $systemFamily = if ($device.SystemFamily) { $device.SystemFamily } else { $device.systemFamily }
+        $addressableUserName = if ($device.AddressableUserName) { $device.AddressableUserName } else { $device.addressableUserName }
+        $resourceName = if ($device.ResourceName) { $device.ResourceName } else { $device.resourceName }
+        $deploymentProfileAssignedDt = if ($device.DeploymentProfileAssignedDateTime) { $device.DeploymentProfileAssignedDateTime } else { $device.deploymentProfileAssignedDateTime }
+
         $processedDevice = [PSCustomObject]@{
-            id                      = $deviceId
-            serialNumber            = $serial
-            model                   = $model
-            manufacturer            = $manufacturer
-            groupTag                = $groupTag
-            enrollmentState         = $enrollmentState
-            lastContacted           = if ($lastContactedDt) { ([DateTime]$lastContactedDt).ToString("o") } else { $null }
-            profileAssigned         = $profileAssigned
-            profileAssignmentStatus = $profileAssignmentStatus
-            purchaseOrder           = $purchaseOrderId
+            id                          = $deviceId
+            serialNumber                = $serial
+            model                       = $model
+            manufacturer                = $manufacturer
+            groupTag                    = $groupTag
+            enrollmentState             = $enrollmentState
+            lastContacted               = if ($lastContactedDt) { ([DateTime]$lastContactedDt).ToString("o") } else { $null }
+            profileAssigned             = $profileAssigned
+            profileAssignmentStatus     = $profileAssignmentStatus
+            purchaseOrder               = $purchaseOrderId
+            # Additional properties
+            displayName                 = $displayName
+            userPrincipalName           = $userPrincipalName
+            azureActiveDirectoryDeviceId = $azureAdDeviceId
+            managedDeviceId             = $managedDeviceId
+            productKey                  = $productKey
+            skuNumber                   = $skuNumber
+            systemFamily                = $systemFamily
+            addressableUserName         = $addressableUserName
+            resourceName                = $resourceName
+            profileAssignedDateTime     = if ($deploymentProfileAssignedDt) { ([DateTime]$deploymentProfileAssignedDt).ToString("o") } else { $null }
         }
 
         $processedDevices += $processedDevice

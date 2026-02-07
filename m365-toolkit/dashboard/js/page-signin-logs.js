@@ -129,7 +129,84 @@ const PageSignInLogs = (function() {
     }
 
     function renderOverview(container, state) {
-        container.innerHTML = '<div class="charts-row" id="signin-charts"></div>';
+        var logs = state.logs;
+        var total = state.total;
+
+        // Calculate breakdowns
+        var interrupted = logs.filter(function(l) { return l.status === 'interrupted'; }).length;
+        var high = logs.filter(function(l) { return l.riskLevel === 'high'; }).length;
+        var medium = logs.filter(function(l) { return l.riskLevel === 'medium'; }).length;
+        var low = logs.filter(function(l) { return l.riskLevel === 'low'; }).length;
+
+        // App breakdown
+        var appBreakdown = {};
+        logs.forEach(function(l) {
+            var app = l.appDisplayName || 'Unknown';
+            if (!appBreakdown[app]) appBreakdown[app] = { total: 0, failed: 0 };
+            appBreakdown[app].total++;
+            if (l.status === 'failure') appBreakdown[app].failed++;
+        });
+
+        var html = '<div class="charts-row" id="signin-charts"></div>';
+
+        // Analytics Grid
+        html += '<div class="analytics-grid">';
+
+        // Sign-In Status Breakdown
+        html += '<div class="analytics-card"><h4>Sign-In Status</h4><div class="stat-list">';
+        html += '<div class="stat-row"><span class="stat-label">Successful</span><span class="stat-value text-success">' + state.success + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Failed</span><span class="stat-value text-critical">' + state.failure + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Interrupted</span><span class="stat-value text-warning">' + interrupted + '</span></div>';
+        var mfaPct = total > 0 ? Math.round((state.mfaCount / total) * 100) : 0;
+        html += '<div class="stat-row"><span class="stat-label">MFA Satisfied</span><span class="stat-value">' + state.mfaCount + ' <span class="text-muted">(' + mfaPct + '%)</span></span></div>';
+        html += '</div></div>';
+
+        // Risk Distribution
+        html += '<div class="analytics-card"><h4>Risk Levels</h4><div class="stat-list">';
+        html += '<div class="stat-row"><span class="stat-label">High Risk</span><span class="stat-value ' + (high > 0 ? 'text-critical' : 'text-muted') + '">' + high + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Medium Risk</span><span class="stat-value ' + (medium > 0 ? 'text-warning' : 'text-muted') + '">' + medium + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">Low Risk</span><span class="stat-value text-info">' + low + '</span></div>';
+        html += '<div class="stat-row"><span class="stat-label">No Risk</span><span class="stat-value text-success">' + (total - high - medium - low) + '</span></div>';
+        html += '</div></div>';
+
+        // Top Applications
+        html += '<div class="analytics-card"><h4>Top Applications</h4><div class="stat-list">';
+        var appKeys = Object.keys(appBreakdown).sort(function(a, b) {
+            return appBreakdown[b].total - appBreakdown[a].total;
+        }).slice(0, 5);
+        appKeys.forEach(function(app) {
+            var a = appBreakdown[app];
+            var pct = total > 0 ? Math.round((a.total / total) * 100) : 0;
+            html += '<div class="stat-row"><span class="stat-label">' + app + '</span>';
+            html += '<span class="stat-value">' + a.total + ' <span class="text-muted">(' + pct + '%)</span></span></div>';
+        });
+        html += '</div></div>';
+
+        html += '</div>'; // end analytics-grid
+
+        // Risky Sign-Ins Needing Attention
+        var riskySignins = logs.filter(function(l) { return l.riskLevel === 'high' || l.riskLevel === 'medium'; });
+        if (riskySignins.length > 0) {
+            html += '<div class="analytics-section"><h3>Risky Sign-Ins (' + riskySignins.length + ')</h3>';
+            html += '<table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Application</th><th>Risk</th><th>Location</th></tr></thead><tbody>';
+            riskySignins.slice(0, 10).forEach(function(l) {
+                var riskClass = l.riskLevel === 'high' ? 'badge-critical' : 'badge-warning';
+                html += '<tr>';
+                html += '<td>' + (l.createdDateTime ? new Date(l.createdDateTime).toLocaleString() : '--') + '</td>';
+                html += '<td class="cell-truncate">' + (l.userPrincipalName || '--') + '</td>';
+                html += '<td>' + (l.appDisplayName || '--') + '</td>';
+                html += '<td><span class="badge ' + riskClass + '">' + l.riskLevel + '</span></td>';
+                html += '<td>' + (l.location || '--') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            if (riskySignins.length > 10) {
+                html += '<p class="text-muted">Showing 10 of ' + riskySignins.length + ' risky sign-ins.</p>';
+            }
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
         renderSigninCharts(state);
     }
 

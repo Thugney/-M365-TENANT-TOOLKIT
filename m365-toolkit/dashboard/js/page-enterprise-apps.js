@@ -9,131 +9,187 @@
  * PAGE: ENTERPRISE APPS
  *
  * Renders the enterprise applications page showing service principals
- * with credential expiry tracking, status, and publisher information.
+ * with credential expiry tracking, status, owners, and publisher information.
+ * Follows consistent patterns from Devices and Endpoint Analytics pages.
  *
- * Note: innerHTML usage follows existing dashboard patterns. All interpolated
- * values are computed integers or pre-validated data from the collection
- * pipeline - no raw user input is rendered.
+ * SECURITY NOTE: All innerHTML assignments use data from trusted PowerShell
+ * collector scripts. Values are either computed integers, pre-validated strings
+ * from Microsoft Graph API, or sanitized through formatters. No raw user input
+ * is rendered directly.
  */
 
 const PageEnterpriseApps = (function() {
     'use strict';
 
-    /**
-     * Applies current filters and re-renders the table.
-     */
-    function applyFilters() {
-        const apps = DataLoader.getData('enterpriseApps');
+    var currentTab = 'overview';
 
-        // Build filter configuration
-        const filterConfig = {
-            search: Filters.getValue('apps-search'),
-            searchFields: ['displayName', 'publisher', 'appId'],
-            exact: {}
+    // ========================================================================
+    // DATA EXTRACTION FUNCTIONS
+    // ========================================================================
+
+    /**
+     * Extracts apps from raw data, handling both array and object formats.
+     */
+    function extractApps(rawData) {
+        if (Array.isArray(rawData)) {
+            return {
+                apps: rawData,
+                summary: computeSummary(rawData),
+                insights: []
+            };
+        }
+        return {
+            apps: rawData.apps || [],
+            summary: rawData.summary || computeSummary(rawData.apps || []),
+            insights: rawData.insights || []
+        };
+    }
+
+    /**
+     * Computes summary statistics from apps array.
+     */
+    function computeSummary(apps) {
+        var summary = {
+            totalApps: apps.length,
+            microsoftApps: 0,
+            thirdPartyApps: 0,
+            enabledApps: 0,
+            disabledApps: 0,
+            appsWithSecrets: 0,
+            appsWithCertificates: 0,
+            appsWithNoCredentials: 0,
+            expiredCredentials: 0,
+            criticalIn7Days: 0,
+            warningIn30Days: 0,
+            attentionIn90Days: 0,
+            healthyCredentials: 0,
+            appsWithOwners: 0,
+            orphanedApps: 0,
+            appsByType: {}
         };
 
-        // Publisher filter
-        const publisherFilter = Filters.getValue('apps-publisher');
-        if (publisherFilter === 'microsoft') {
-            filterConfig.exact.isMicrosoft = true;
-        } else if (publisherFilter === 'third-party') {
-            filterConfig.exact.isMicrosoft = false;
-        }
+        apps.forEach(function(app) {
+            // Publisher
+            if (app.isMicrosoft) {
+                summary.microsoftApps++;
+            } else {
+                summary.thirdPartyApps++;
+            }
 
-        // Apply filters
-        let filteredData = Filters.apply(apps, filterConfig);
+            // Status
+            if (app.accountEnabled) {
+                summary.enabledApps++;
+            } else {
+                summary.disabledApps++;
+            }
 
-        // Status filter (enabled/disabled)
-        const statusFilter = Filters.getValue('apps-status');
-        if (statusFilter === 'enabled') {
-            filteredData = filteredData.filter(a => a.accountEnabled);
-        } else if (statusFilter === 'disabled') {
-            filteredData = filteredData.filter(a => !a.accountEnabled);
-        }
+            // Credentials
+            if (app.secretCount > 0) summary.appsWithSecrets++;
+            if (app.certificateCount > 0) summary.appsWithCertificates++;
+            if (!app.hasCredentials) summary.appsWithNoCredentials++;
 
-        // Credential status filter
-        const credFilter = Filters.getValue('apps-cred');
-        if (credFilter && credFilter !== 'all') {
-            filteredData = filteredData.filter(a => a.credentialStatus === credFilter);
-        }
+            // Owners
+            if (app.ownerCount > 0) {
+                summary.appsWithOwners++;
+            } else {
+                summary.orphanedApps++;
+            }
 
-        // Has credentials filter
-        const credsOnly = Filters.getValue('apps-has-creds');
-        if (credsOnly) {
-            filteredData = filteredData.filter(a => a.hasCredentials);
-        }
+            // Credential status (third-party only)
+            if (!app.isMicrosoft) {
+                switch (app.credentialStatus) {
+                    case 'expired': summary.expiredCredentials++; break;
+                    case 'critical': summary.criticalIn7Days++; break;
+                    case 'warning': summary.warningIn30Days++; break;
+                    case 'attention': summary.attentionIn90Days++; break;
+                    case 'healthy': summary.healthyCredentials++; break;
+                }
+            }
 
-        // Render table
-        renderTable(filteredData);
-    }
-
-    /**
-     * Renders the enterprise apps table.
-     *
-     * @param {Array} data - Filtered app data
-     */
-    function renderTable(data) {
-        Tables.render({
-            containerId: 'apps-table',
-            data: data,
-            columns: [
-                { key: 'displayName', label: 'Application', className: 'cell-truncate' },
-                { key: 'publisher', label: 'Publisher' },
-                { key: 'accountEnabled', label: 'Status', formatter: formatStatus },
-                { key: 'credentialStatus', label: 'Credential Status', formatter: formatCredStatus },
-                { key: 'nearestExpiryDays', label: 'Expiry Days', formatter: formatExpiryDays },
-                { key: 'secretCount', label: 'Secrets' },
-                { key: 'certificateCount', label: 'Certs' },
-                { key: 'appType', label: 'Type', formatter: formatAppType }
-            ],
-            pageSize: 50,
-            onRowClick: showAppDetails
+            // App type
+            var appType = app.appType || 'other';
+            if (!summary.appsByType[appType]) summary.appsByType[appType] = 0;
+            summary.appsByType[appType]++;
         });
+
+        return summary;
     }
 
-    /**
-     * Formats enabled/disabled status.
-     */
+    // ========================================================================
+    // TAB MANAGEMENT
+    // ========================================================================
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        renderContent();
+    }
+
+    function renderContent() {
+        var rawData = DataLoader.getData('enterpriseApps') || [];
+        var data = extractApps(rawData);
+        var container = document.getElementById('apps-content');
+        if (!container) return;
+
+        switch (currentTab) {
+            case 'overview':
+                renderOverview(container, data);
+                break;
+            case 'apps':
+                renderAppsTab(container, data.apps);
+                break;
+            case 'credentials':
+                renderCredentialsTab(container, data.apps);
+                break;
+            case 'thirdparty':
+                renderThirdPartyTab(container, data.apps);
+                break;
+        }
+    }
+
+    // ========================================================================
+    // FORMATTERS
+    // ========================================================================
+
     function formatStatus(value) {
+        // Safe: boolean to fixed string mapping
         return value
             ? '<span class="badge badge-success">Active</span>'
             : '<span class="badge badge-critical">Disabled</span>';
     }
 
-    /**
-     * Formats credential status with color-coded badge.
-     */
     function formatCredStatus(value) {
-        const map = {
+        // Safe: enum to fixed string mapping
+        var map = {
             'expired':        { cls: 'badge-critical', label: 'Expired' },
-            'critical':       { cls: 'badge-critical', label: 'Critical' },
-            'warning':        { cls: 'badge-warning',  label: 'Warning' },
+            'critical':       { cls: 'badge-critical', label: 'Critical (7d)' },
+            'warning':        { cls: 'badge-warning',  label: 'Warning (30d)' },
+            'attention':      { cls: 'badge-attention', label: 'Attention (90d)' },
             'healthy':        { cls: 'badge-success',  label: 'Healthy' },
             'no-credentials': { cls: 'badge-neutral',  label: 'No Creds' }
         };
-        const info = map[value] || { cls: 'badge-neutral', label: value || 'Unknown' };
+        var info = map[value] || { cls: 'badge-neutral', label: value || 'Unknown' };
         return '<span class="badge ' + info.cls + '">' + info.label + '</span>';
     }
 
-    /**
-     * Formats days until expiry with color coding.
-     */
     function formatExpiryDays(value) {
+        // Safe: numeric value formatting
         if (value === null || value === undefined) {
             return '<span class="text-muted">--</span>';
         }
         var colorClass = '';
         if (value < 0) colorClass = 'text-critical font-bold';
-        else if (value <= 30) colorClass = 'text-critical';
-        else if (value <= 90) colorClass = 'text-warning';
-        return '<span class="' + colorClass + '">' + value + '</span>';
+        else if (value <= 7) colorClass = 'text-critical';
+        else if (value <= 30) colorClass = 'text-warning';
+        else if (value <= 90) colorClass = 'text-attention';
+        return '<span class="' + colorClass + '">' + value + 'd</span>';
     }
 
-    /**
-     * Formats app type.
-     */
     function formatAppType(value) {
-        const labels = {
+        // Safe: enum to fixed string mapping
+        var labels = {
             'application':      'App',
             'managed-identity': 'Managed ID',
             'legacy':           'Legacy',
@@ -143,182 +199,149 @@ const PageEnterpriseApps = (function() {
         return '<span class="badge badge-neutral">' + (labels[value] || value) + '</span>';
     }
 
-    /**
-     * Builds credential detail rows for the modal.
-     */
-    function buildCredentialRows(credentials, type) {
-        if (!credentials || credentials.length === 0) {
-            return '<span class="text-muted">None</span>';
+    // ========================================================================
+    // OVERVIEW TAB
+    // ========================================================================
+
+    function renderOverview(container, data) {
+        var summary = data.summary;
+        var apps = data.apps;
+        var insights = data.insights || [];
+
+        // Calculate rates for third-party apps with credentials
+        var thirdPartyWithCreds = apps.filter(function(a) { return !a.isMicrosoft && a.hasCredentials; }).length;
+        var healthyRate = thirdPartyWithCreds > 0
+            ? Math.round((summary.healthyCredentials / thirdPartyWithCreds) * 100)
+            : 0;
+        var rateClass = healthyRate >= 80 ? 'text-success' : healthyRate >= 50 ? 'text-warning' : 'text-critical';
+
+        // Safe: all values are computed integers from trusted collector data
+        var html = '<div class="analytics-section">';
+        html += '<h3>Credential Health Overview</h3>';
+        html += '<div class="compliance-overview">';
+
+        // Donut chart - matching Devices page pattern
+        html += '<div class="compliance-chart">';
+        var radius = 40;
+        var circumference = 2 * Math.PI * radius;
+        var healthyOffset = circumference - (healthyRate / 100) * circumference;
+        html += '<div class="donut-chart">';
+        html += '<svg viewBox="0 0 100 100" class="donut">';
+        html += '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="var(--color-bg-tertiary)" stroke-width="10"/>';
+        html += '<circle cx="50" cy="50" r="' + radius + '" fill="none" stroke="var(--color-success)" stroke-width="10" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + healthyOffset + '" stroke-linecap="round"/>';
+        html += '</svg>';
+        html += '<div class="donut-center"><span class="donut-value ' + rateClass + '">' + healthyRate + '%</span><span class="donut-label">Healthy</span></div>';
+        html += '</div></div>';
+
+        // Legend
+        html += '<div class="compliance-legend">';
+        html += '<div class="legend-item"><span class="legend-dot bg-critical"></span> Expired: <strong>' + summary.expiredCredentials + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-warning"></span> Warning (30d): <strong>' + summary.warningIn30Days + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-success"></span> Healthy: <strong>' + summary.healthyCredentials + '</strong></div>';
+        html += '<div class="legend-item"><span class="legend-dot bg-neutral"></span> No Creds: <strong>' + summary.appsWithNoCredentials + '</strong></div>';
+        html += '</div></div></div>';
+
+        // Analytics Grid - matching Devices page pattern
+        html += '<div class="analytics-grid">';
+
+        // Publisher Breakdown
+        html += '<div class="analytics-card">';
+        html += '<h4>Publisher Breakdown</h4>';
+        html += '<div class="platform-list">';
+        var pubTotal = summary.totalApps || 1;
+        var msPct = Math.round((summary.microsoftApps / pubTotal) * 100);
+        var tpPct = Math.round((summary.thirdPartyApps / pubTotal) * 100);
+        html += '<div class="platform-row"><span class="platform-name">Microsoft</span><span class="platform-policies">' + summary.microsoftApps + ' apps</span>';
+        html += '<div class="mini-bar"><div class="mini-bar-fill bg-info" style="width:' + msPct + '%"></div></div><span class="platform-rate">' + msPct + '%</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">Third-party</span><span class="platform-policies">' + summary.thirdPartyApps + ' apps</span>';
+        html += '<div class="mini-bar"><div class="mini-bar-fill bg-purple" style="width:' + tpPct + '%"></div></div><span class="platform-rate">' + tpPct + '%</span></div>';
+        html += '</div></div>';
+
+        // App Type Breakdown
+        html += '<div class="analytics-card">';
+        html += '<h4>App Types</h4>';
+        html += '<div class="platform-list">';
+        var typeLabels = { 'application': 'Applications', 'managed-identity': 'Managed ID', 'legacy': 'Legacy', 'social-idp': 'Social IdP', 'other': 'Other' };
+        Object.keys(summary.appsByType || {}).forEach(function(type) {
+            var count = summary.appsByType[type];
+            var pct = Math.round((count / pubTotal) * 100);
+            html += '<div class="platform-row"><span class="platform-name">' + (typeLabels[type] || type) + '</span><span class="platform-policies">' + count + '</span>';
+            html += '<div class="mini-bar"><div class="mini-bar-fill bg-info" style="width:' + pct + '%"></div></div><span class="platform-rate">' + pct + '%</span></div>';
+        });
+        html += '</div></div>';
+
+        // Quick Stats
+        html += '<div class="analytics-card">';
+        html += '<h4>Quick Stats</h4>';
+        html += '<div class="platform-list">';
+        html += '<div class="platform-row"><span class="platform-name">Total Apps</span><span class="platform-policies">' + summary.totalApps + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">With Secrets</span><span class="platform-policies">' + summary.appsWithSecrets + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">With Certificates</span><span class="platform-policies">' + summary.appsWithCertificates + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">Active</span><span class="platform-policies">' + summary.enabledApps + '</span></div>';
+        html += '<div class="platform-row"><span class="platform-name">Disabled</span><span class="platform-policies text-warning">' + summary.disabledApps + '</span></div>';
+        html += '</div></div>';
+
+        html += '</div>'; // end analytics-grid
+
+        // Insights Section - only if there are insights
+        if (insights.length > 0) {
+            html += '<div class="analytics-section">';
+            html += '<h3>Insights</h3>';
+            html += '<div class="insights-list">';
+            insights.forEach(function(insight) {
+                var severityClass = insight.severity === 'critical' ? 'insight-critical' :
+                                    insight.severity === 'warning' ? 'insight-warning' : 'insight-info';
+                html += '<div class="insight-card ' + severityClass + '">';
+                html += '<div class="insight-header"><span class="insight-title">' + (insight.title || '') + '</span>';
+                html += '<span class="insight-count">' + (insight.count || 0) + '</span></div>';
+                html += '<p class="insight-description">' + (insight.description || '') + '</p>';
+                html += '</div>';
+            });
+            html += '</div></div>';
         }
 
-        return credentials.map(function(cred) {
-            var statusClass = '';
-            if (cred.daysUntilExpiry !== null) {
-                if (cred.daysUntilExpiry < 0) statusClass = 'text-critical';
-                else if (cred.daysUntilExpiry <= 30) statusClass = 'text-critical';
-                else if (cred.daysUntilExpiry <= 90) statusClass = 'text-warning';
-            }
-            var name = cred.displayName || type;
-            var expiry = cred.endDateTime ? DataLoader.formatDate(cred.endDateTime) : '--';
-            var days = cred.daysUntilExpiry !== null ? cred.daysUntilExpiry + 'd' : '--';
-            return '<div style="margin-bottom: 0.3rem;">' +
-                name + ' - ' + expiry +
-                ' (<span class="' + statusClass + '">' + days + '</span>)' +
-                '</div>';
-        }).join('');
-    }
+        // Needing Attention Section
+        var needsAttention = apps.filter(function(a) {
+            return !a.isMicrosoft && (a.credentialStatus === 'expired' || a.credentialStatus === 'critical');
+        }).slice(0, 10);
 
-    /**
-     * Shows detailed modal for an app.
-     *
-     * @param {object} app - Enterprise app data object
-     */
-    function showAppDetails(app) {
-        var modal = document.getElementById('modal-overlay');
-        var title = document.getElementById('modal-title');
-        var body = document.getElementById('modal-body');
-
-        title.textContent = app.displayName;
-
-        body.innerHTML = [
-            '<div class="detail-list">',
-            '    <span class="detail-label">Application Name:</span>',
-            '    <span class="detail-value">' + app.displayName + '</span>',
-            '',
-            '    <span class="detail-label">App ID:</span>',
-            '    <span class="detail-value" style="font-size: 0.8em;">' + app.appId + '</span>',
-            '',
-            '    <span class="detail-label">Status:</span>',
-            '    <span class="detail-value">' + (app.accountEnabled ? 'Active' : 'Disabled') + '</span>',
-            '',
-            '    <span class="detail-label">Publisher:</span>',
-            '    <span class="detail-value">' + app.publisher + '</span>',
-            '',
-            '    <span class="detail-label">Type:</span>',
-            '    <span class="detail-value">' + app.appType + '</span>',
-            '',
-            '    <span class="detail-label">Created:</span>',
-            '    <span class="detail-value">' + DataLoader.formatDate(app.createdDateTime) + '</span>',
-            '',
-            '    <span class="detail-label">Credential Status:</span>',
-            '    <span class="detail-value">' + formatCredStatus(app.credentialStatus) + '</span>',
-            '',
-            '    <span class="detail-label">Nearest Expiry:</span>',
-            '    <span class="detail-value">' + (app.nearestExpiryDays !== null ? app.nearestExpiryDays + ' days' : '--') + '</span>',
-            '',
-            '    <span class="detail-label">Client Secrets (' + app.secretCount + '):</span>',
-            '    <span class="detail-value">' + buildCredentialRows(app.secrets, 'Secret') + '</span>',
-            '',
-            '    <span class="detail-label">Certificates (' + app.certificateCount + '):</span>',
-            '    <span class="detail-value">' + buildCredentialRows(app.certificates, 'Certificate') + '</span>',
-            '',
-            '    <span class="detail-label">Service Principal ID:</span>',
-            '    <span class="detail-value" style="font-size: 0.8em;">' + app.id + '</span>',
-            '</div>'
-        ].join('\n');
-
-        modal.classList.add('visible');
-    }
-
-    /**
-     * Renders the enterprise apps page content.
-     *
-     * @param {HTMLElement} container - The page container element
-     */
-    function render(container) {
-        var apps = DataLoader.getData('enterpriseApps');
-
-        // Calculate stats
-        var totalApps = apps.length;
-        var thirdPartyApps = apps.filter(function(a) { return !a.isMicrosoft; });
-        var enabledCount = apps.filter(function(a) { return a.accountEnabled; }).length;
-        var disabledCount = apps.filter(function(a) { return !a.accountEnabled; }).length;
-
-        // Credential stats (third-party only, Microsoft apps rarely have custom creds)
-        var expiredCount = thirdPartyApps.filter(function(a) { return a.credentialStatus === 'expired'; }).length;
-        var criticalCount = thirdPartyApps.filter(function(a) { return a.credentialStatus === 'critical'; }).length;
-        var warningCount = thirdPartyApps.filter(function(a) { return a.credentialStatus === 'warning'; }).length;
-        var healthyCount = thirdPartyApps.filter(function(a) { return a.credentialStatus === 'healthy'; }).length;
-
-        // All values below are computed integers from trusted collection data
-        container.innerHTML = [
-            '<div class="page-header">',
-            '    <h2 class="page-title">Enterprise Applications</h2>',
-            '    <p class="page-description">Service principals, credential expiry, and application status</p>',
-            '</div>',
-            '',
-            '<div class="cards-grid">',
-            '    <div class="card">',
-            '        <div class="card-label">Total Apps</div>',
-            '        <div class="card-value">' + totalApps + '</div>',
-            '        <div class="card-change">' + thirdPartyApps.length + ' third-party</div>',
-            '    </div>',
-            '    <div class="card ' + (expiredCount > 0 ? 'card-critical' : '') + '">',
-            '        <div class="card-label">Expired Creds</div>',
-            '        <div class="card-value ' + (expiredCount > 0 ? 'critical' : '') + '">' + expiredCount + '</div>',
-            '    </div>',
-            '    <div class="card ' + (criticalCount > 0 ? 'card-critical' : '') + '">',
-            '        <div class="card-label">Expiring 30d</div>',
-            '        <div class="card-value ' + (criticalCount > 0 ? 'critical' : '') + '">' + criticalCount + '</div>',
-            '    </div>',
-            '    <div class="card ' + (warningCount > 0 ? 'card-warning' : '') + '">',
-            '        <div class="card-label">Expiring 90d</div>',
-            '        <div class="card-value ' + (warningCount > 0 ? 'warning' : '') + '">' + warningCount + '</div>',
-            '    </div>',
-            '</div>',
-            '',
-            '<div class="cards-grid" style="margin-top: 0.75rem;">',
-            '    <div class="card card-success">',
-            '        <div class="card-label">Healthy Creds</div>',
-            '        <div class="card-value success">' + healthyCount + '</div>',
-            '    </div>',
-            '    <div class="card">',
-            '        <div class="card-label">Active</div>',
-            '        <div class="card-value">' + enabledCount + '</div>',
-            '    </div>',
-            '    <div class="card ' + (disabledCount > 0 ? 'card-warning' : '') + '">',
-            '        <div class="card-label">Disabled</div>',
-            '        <div class="card-value ' + (disabledCount > 0 ? 'warning' : '') + '">' + disabledCount + '</div>',
-            '    </div>',
-            '    <div class="card">',
-            '        <div class="card-label">Microsoft</div>',
-            '        <div class="card-value">' + (totalApps - thirdPartyApps.length) + '</div>',
-            '    </div>',
-            '</div>',
-            '',
-            '<div class="charts-row" id="apps-charts"></div>',
-            '<div id="apps-filter"></div>',
-            '<div id="apps-table"></div>'
-        ].join('\n');
-
-        // Render charts
-        var chartsRow = document.getElementById('apps-charts');
-        if (chartsRow) {
-            var C = DashboardCharts.colors;
-
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'Credential Status',
-                [
-                    { value: expiredCount, label: 'Expired', color: C.red },
-                    { value: criticalCount, label: 'Critical (30d)', color: C.orange },
-                    { value: warningCount, label: 'Warning (90d)', color: C.yellow },
-                    { value: healthyCount, label: 'Healthy', color: C.green }
-                ],
-                thirdPartyApps.length > 0
-                    ? Math.round((healthyCount / thirdPartyApps.length) * 100) + '%'
-                    : '0%',
-                'healthy'
-            ));
-
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'App Distribution',
-                [
-                    { value: totalApps - thirdPartyApps.length, label: 'Microsoft', color: C.blue },
-                    { value: thirdPartyApps.length, label: 'Third-party', color: C.purple }
-                ],
-                String(totalApps), 'total apps'
-            ));
+        if (needsAttention.length > 0) {
+            html += '<div class="analytics-section">';
+            html += '<h3>Credentials Needing Attention</h3>';
+            html += '<table class="data-table"><thead><tr>';
+            html += '<th>Application</th><th>Publisher</th><th>Status</th><th>Expiry</th><th>Secrets</th><th>Certs</th>';
+            html += '</tr></thead><tbody>';
+            needsAttention.forEach(function(app) {
+                html += '<tr class="clickable-row" data-app-id="' + (app.id || '') + '">';
+                html += '<td class="cell-truncate">' + (app.displayName || '--') + '</td>';
+                html += '<td>' + (app.publisher || '--') + '</td>';
+                html += '<td>' + formatCredStatus(app.credentialStatus) + '</td>';
+                html += '<td>' + formatExpiryDays(app.nearestExpiryDays) + '</td>';
+                html += '<td>' + (app.secretCount || 0) + '</td>';
+                html += '<td>' + (app.certificateCount || 0) + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
         }
+
+        container.innerHTML = html;
+
+        // Bind click events for attention table
+        container.querySelectorAll('.clickable-row').forEach(function(row) {
+            row.addEventListener('click', function() {
+                var appId = this.dataset.appId;
+                var app = apps.find(function(a) { return a.id === appId; });
+                if (app) showAppDetails(app);
+            });
+        });
+    }
+
+    // ========================================================================
+    // ALL APPS TAB
+    // ========================================================================
+
+    function renderAppsTab(container, apps) {
+        container.innerHTML = '<div id="apps-filter"></div><div id="apps-table"></div>';
 
         // Create filter bar
         Filters.createFilterBar({
@@ -357,35 +380,360 @@ const PageEnterpriseApps = (function() {
                     options: [
                         { value: 'all', label: 'All' },
                         { value: 'expired', label: 'Expired' },
-                        { value: 'critical', label: 'Critical (30d)' },
-                        { value: 'warning', label: 'Warning (90d)' },
+                        { value: 'critical', label: 'Critical' },
+                        { value: 'warning', label: 'Warning' },
                         { value: 'healthy', label: 'Healthy' },
                         { value: 'no-credentials', label: 'No Credentials' }
                     ]
-                },
-                {
-                    type: 'checkbox-group',
-                    id: 'apps-creds-filter',
-                    label: 'Credentials',
-                    options: [
-                        { value: 'has-creds', label: 'With credentials only' }
-                    ]
                 }
             ],
-            onFilter: applyFilters
+            onFilter: function() { renderAppsTable(apps); }
         });
 
-        // Fix checkbox ID
-        var credsCheckbox = document.querySelector('#apps-creds-filter input');
-        if (credsCheckbox) {
-            credsCheckbox.id = 'apps-has-creds';
-        }
-
-        // Bind export button
+        // Bind export
         Export.bindExportButton('apps-table', 'enterprise-apps');
 
         // Initial render
-        applyFilters();
+        renderAppsTable(apps);
+    }
+
+    function renderAppsTable(apps) {
+        var search = Filters.getValue('apps-search') || '';
+        var publisherFilter = Filters.getValue('apps-publisher');
+        var statusFilter = Filters.getValue('apps-status');
+        var credFilter = Filters.getValue('apps-cred');
+
+        var filteredData = apps.filter(function(a) {
+            // Search filter
+            if (search) {
+                var searchLower = search.toLowerCase();
+                var match = (a.displayName && a.displayName.toLowerCase().indexOf(searchLower) !== -1) ||
+                           (a.publisher && a.publisher.toLowerCase().indexOf(searchLower) !== -1) ||
+                           (a.appId && a.appId.toLowerCase().indexOf(searchLower) !== -1);
+                if (!match) return false;
+            }
+            // Publisher filter
+            if (publisherFilter === 'microsoft' && !a.isMicrosoft) return false;
+            if (publisherFilter === 'third-party' && a.isMicrosoft) return false;
+            // Status filter
+            if (statusFilter === 'enabled' && !a.accountEnabled) return false;
+            if (statusFilter === 'disabled' && a.accountEnabled) return false;
+            // Credential status filter
+            if (credFilter && credFilter !== 'all' && a.credentialStatus !== credFilter) return false;
+            return true;
+        });
+
+        Tables.render({
+            containerId: 'apps-table',
+            data: filteredData,
+            columns: [
+                { key: 'displayName', label: 'Application', className: 'cell-truncate' },
+                { key: 'publisher', label: 'Publisher' },
+                { key: 'accountEnabled', label: 'Status', formatter: formatStatus },
+                { key: 'credentialStatus', label: 'Credentials', formatter: formatCredStatus },
+                { key: 'nearestExpiryDays', label: 'Expiry', formatter: formatExpiryDays },
+                { key: 'secretCount', label: 'Secrets' },
+                { key: 'certificateCount', label: 'Certs' },
+                { key: 'appType', label: 'Type', formatter: formatAppType }
+            ],
+            pageSize: 50,
+            onRowClick: showAppDetails
+        });
+    }
+
+    // ========================================================================
+    // CREDENTIALS TAB
+    // ========================================================================
+
+    function renderCredentialsTab(container, apps) {
+        // Filter to third-party apps with credentials
+        var appsWithCreds = apps.filter(function(a) { return a.hasCredentials && !a.isMicrosoft; });
+
+        container.innerHTML = '<div id="creds-filter"></div><div id="creds-table"></div>';
+
+        Filters.createFilterBar({
+            containerId: 'creds-filter',
+            controls: [
+                {
+                    type: 'search',
+                    id: 'creds-search',
+                    label: 'Search',
+                    placeholder: 'Search apps...'
+                },
+                {
+                    type: 'select',
+                    id: 'creds-status',
+                    label: 'Credential Status',
+                    options: [
+                        { value: 'all', label: 'All' },
+                        { value: 'expired', label: 'Expired' },
+                        { value: 'critical', label: 'Critical' },
+                        { value: 'warning', label: 'Warning' },
+                        { value: 'healthy', label: 'Healthy' }
+                    ]
+                }
+            ],
+            onFilter: function() { renderCredsTable(appsWithCreds); }
+        });
+
+        // Initial render
+        renderCredsTable(appsWithCreds);
+    }
+
+    function renderCredsTable(appsWithCreds) {
+        var search = Filters.getValue('creds-search') || '';
+        var status = Filters.getValue('creds-status');
+
+        var filtered = appsWithCreds.filter(function(a) {
+            if (search && a.displayName.toLowerCase().indexOf(search.toLowerCase()) === -1) return false;
+            if (status && status !== 'all' && a.credentialStatus !== status) return false;
+            return true;
+        });
+
+        Tables.render({
+            containerId: 'creds-table',
+            data: filtered,
+            columns: [
+                { key: 'displayName', label: 'Application', className: 'cell-truncate' },
+                { key: 'publisher', label: 'Publisher' },
+                { key: 'credentialStatus', label: 'Status', formatter: formatCredStatus },
+                { key: 'nearestExpiryDays', label: 'Expiry', formatter: formatExpiryDays },
+                { key: 'secretCount', label: 'Secrets' },
+                { key: 'certificateCount', label: 'Certs' }
+            ],
+            pageSize: 50,
+            onRowClick: showAppDetails
+        });
+    }
+
+    // ========================================================================
+    // THIRD-PARTY TAB
+    // ========================================================================
+
+    function renderThirdPartyTab(container, apps) {
+        var thirdPartyApps = apps.filter(function(a) { return !a.isMicrosoft; });
+
+        container.innerHTML = '<div id="tp-filter"></div><div id="tp-table"></div>';
+
+        Filters.createFilterBar({
+            containerId: 'tp-filter',
+            controls: [
+                {
+                    type: 'search',
+                    id: 'tp-search',
+                    label: 'Search',
+                    placeholder: 'Search apps...'
+                },
+                {
+                    type: 'select',
+                    id: 'tp-status',
+                    label: 'Status',
+                    options: [
+                        { value: 'all', label: 'All' },
+                        { value: 'enabled', label: 'Active' },
+                        { value: 'disabled', label: 'Disabled' }
+                    ]
+                },
+                {
+                    type: 'select',
+                    id: 'tp-creds',
+                    label: 'Credentials',
+                    options: [
+                        { value: 'all', label: 'All' },
+                        { value: 'with-creds', label: 'With Credentials' },
+                        { value: 'no-creds', label: 'No Credentials' }
+                    ]
+                }
+            ],
+            onFilter: function() { renderTpTable(thirdPartyApps); }
+        });
+
+        // Initial render
+        renderTpTable(thirdPartyApps);
+    }
+
+    function renderTpTable(thirdPartyApps) {
+        var search = Filters.getValue('tp-search') || '';
+        var status = Filters.getValue('tp-status');
+        var creds = Filters.getValue('tp-creds');
+
+        var filtered = thirdPartyApps.filter(function(a) {
+            if (search && a.displayName.toLowerCase().indexOf(search.toLowerCase()) === -1) return false;
+            if (status === 'enabled' && !a.accountEnabled) return false;
+            if (status === 'disabled' && a.accountEnabled) return false;
+            if (creds === 'with-creds' && !a.hasCredentials) return false;
+            if (creds === 'no-creds' && a.hasCredentials) return false;
+            return true;
+        });
+
+        Tables.render({
+            containerId: 'tp-table',
+            data: filtered,
+            columns: [
+                { key: 'displayName', label: 'Application', className: 'cell-truncate' },
+                { key: 'publisher', label: 'Publisher' },
+                { key: 'accountEnabled', label: 'Status', formatter: formatStatus },
+                { key: 'appType', label: 'Type', formatter: formatAppType },
+                { key: 'credentialStatus', label: 'Credentials', formatter: formatCredStatus },
+                { key: 'nearestExpiryDays', label: 'Expiry', formatter: formatExpiryDays }
+            ],
+            pageSize: 50,
+            onRowClick: showAppDetails
+        });
+    }
+
+    // ========================================================================
+    // DETAIL MODAL
+    // ========================================================================
+
+    function showAppDetails(app) {
+        var modal = document.getElementById('modal-overlay');
+        var title = document.getElementById('modal-title');
+        var body = document.getElementById('modal-body');
+
+        title.textContent = app.displayName || 'Application Details';
+
+        // Safe: data is from trusted collector scripts
+        var html = '<div class="detail-grid">';
+
+        // App Information Section
+        html += '<div class="detail-section">';
+        html += '<h4>Application Information</h4>';
+        html += '<div class="detail-list">';
+        html += '<span class="detail-label">Display Name:</span><span class="detail-value">' + (app.displayName || '--') + '</span>';
+        html += '<span class="detail-label">App ID:</span><span class="detail-value" style="font-size: 0.8em;">' + (app.appId || '--') + '</span>';
+        html += '<span class="detail-label">Service Principal ID:</span><span class="detail-value" style="font-size: 0.8em;">' + (app.id || '--') + '</span>';
+        html += '<span class="detail-label">Created:</span><span class="detail-value">' + DataLoader.formatDate(app.createdDateTime) + '</span>';
+        html += '<span class="detail-label">Type:</span><span class="detail-value">' + formatAppType(app.appType) + '</span>';
+        html += '</div></div>';
+
+        // Publisher & Status Section
+        html += '<div class="detail-section">';
+        html += '<h4>Publisher &amp; Status</h4>';
+        html += '<div class="detail-list">';
+        html += '<span class="detail-label">Publisher:</span><span class="detail-value">' + (app.publisher || '--') + '</span>';
+        html += '<span class="detail-label">Microsoft App:</span><span class="detail-value">' + (app.isMicrosoft ? 'Yes' : 'No') + '</span>';
+        html += '<span class="detail-label">Verified Publisher:</span><span class="detail-value">' + (app.verifiedPublisher || '<span class="text-muted">Not verified</span>') + '</span>';
+        html += '<span class="detail-label">Account Status:</span><span class="detail-value">' + formatStatus(app.accountEnabled) + '</span>';
+        html += '<span class="detail-label">Assignment Required:</span><span class="detail-value">' + (app.appRoleAssignmentRequired ? 'Yes' : 'No') + '</span>';
+        html += '</div></div>';
+
+        // Owners Section (only if data is available)
+        if (app.owners && app.owners.length > 0) {
+            html += '<div class="detail-section">';
+            html += '<h4>Owners (' + app.owners.length + ')</h4>';
+            html += '<div class="detail-list">';
+            app.owners.forEach(function(owner) {
+                html += '<span class="detail-label">' + (owner.displayName || 'Unknown') + '</span>';
+                html += '<span class="detail-value">' + (owner.userPrincipalName || owner.mail || '--') + '</span>';
+            });
+            html += '</div></div>';
+        }
+
+        // Credential Summary Section
+        html += '<div class="detail-section">';
+        html += '<h4>Credential Summary</h4>';
+        html += '<div class="detail-list">';
+        html += '<span class="detail-label">Status:</span><span class="detail-value">' + formatCredStatus(app.credentialStatus) + '</span>';
+        html += '<span class="detail-label">Nearest Expiry:</span><span class="detail-value">' + formatExpiryDays(app.nearestExpiryDays) + '</span>';
+        html += '<span class="detail-label">Total Secrets:</span><span class="detail-value">' + (app.secretCount || 0) + '</span>';
+        html += '<span class="detail-label">Total Certificates:</span><span class="detail-value">' + (app.certificateCount || 0) + '</span>';
+        html += '</div></div>';
+
+        // Client Secrets Section
+        html += '<div class="detail-section">';
+        html += '<h4>Client Secrets (' + (app.secretCount || 0) + ')</h4>';
+        if (app.secrets && app.secrets.length > 0) {
+            html += '<table class="detail-table"><thead><tr><th>Name</th><th>Hint</th><th>Expires</th><th>Days</th></tr></thead><tbody>';
+            app.secrets.forEach(function(secret) {
+                var statusClass = '';
+                if (secret.daysUntilExpiry !== null) {
+                    if (secret.daysUntilExpiry < 0) statusClass = 'text-critical';
+                    else if (secret.daysUntilExpiry <= 7) statusClass = 'text-critical';
+                    else if (secret.daysUntilExpiry <= 30) statusClass = 'text-warning';
+                    else if (secret.daysUntilExpiry <= 90) statusClass = 'text-attention';
+                }
+                html += '<tr>';
+                html += '<td>' + (secret.displayName || 'Unnamed') + '</td>';
+                html += '<td>' + (secret.hint ? '***' + secret.hint : '--') + '</td>';
+                html += '<td>' + DataLoader.formatDate(secret.endDateTime) + '</td>';
+                html += '<td class="' + statusClass + '">' + (secret.daysUntilExpiry !== null ? secret.daysUntilExpiry + 'd' : '--') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+        } else {
+            html += '<p class="text-muted">No client secrets configured</p>';
+        }
+        html += '</div>';
+
+        // Certificates Section
+        html += '<div class="detail-section">';
+        html += '<h4>Certificates (' + (app.certificateCount || 0) + ')</h4>';
+        if (app.certificates && app.certificates.length > 0) {
+            html += '<table class="detail-table"><thead><tr><th>Name</th><th>Usage</th><th>Expires</th><th>Days</th></tr></thead><tbody>';
+            app.certificates.forEach(function(cert) {
+                var statusClass = '';
+                if (cert.daysUntilExpiry !== null) {
+                    if (cert.daysUntilExpiry < 0) statusClass = 'text-critical';
+                    else if (cert.daysUntilExpiry <= 7) statusClass = 'text-critical';
+                    else if (cert.daysUntilExpiry <= 30) statusClass = 'text-warning';
+                    else if (cert.daysUntilExpiry <= 90) statusClass = 'text-attention';
+                }
+                html += '<tr>';
+                html += '<td>' + (cert.displayName || 'Unnamed') + '</td>';
+                html += '<td>' + (cert.usage || cert.type || '--') + '</td>';
+                html += '<td>' + DataLoader.formatDate(cert.endDateTime) + '</td>';
+                html += '<td class="' + statusClass + '">' + (cert.daysUntilExpiry !== null ? cert.daysUntilExpiry + 'd' : '--') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+        } else {
+            html += '<p class="text-muted">No certificates configured</p>';
+        }
+        html += '</div>';
+
+        // Notes Section (if present)
+        if (app.notes) {
+            html += '<div class="detail-section">';
+            html += '<h4>Notes</h4>';
+            html += '<p>' + app.notes + '</p>';
+            html += '</div>';
+        }
+
+        html += '</div>';
+
+        body.innerHTML = html;
+        modal.classList.add('visible');
+    }
+
+    // ========================================================================
+    // MAIN RENDER
+    // ========================================================================
+
+    function render(container) {
+        // Safe: static HTML structure only
+        container.innerHTML = [
+            '<div class="page-header">',
+            '    <h2 class="page-title">Enterprise Applications</h2>',
+            '    <p class="page-description">Service principals, credential expiry, ownership, and application governance</p>',
+            '</div>',
+            '<div class="tab-bar">',
+            '    <button class="tab-btn active" data-tab="overview">Overview</button>',
+            '    <button class="tab-btn" data-tab="apps">All Apps</button>',
+            '    <button class="tab-btn" data-tab="credentials">Credentials</button>',
+            '    <button class="tab-btn" data-tab="thirdparty">Third-Party</button>',
+            '</div>',
+            '<div id="apps-content"></div>'
+        ].join('\n');
+
+        // Bind tab events
+        container.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+        });
+
+        // Initial render
+        currentTab = 'overview';
+        renderContent();
     }
 
     // Public API

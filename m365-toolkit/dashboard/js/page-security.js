@@ -106,20 +106,131 @@ const PageSecurity = (function() {
     }
 
     function renderOverview(container, data) {
-        var html = '<div class="charts-row" id="security-charts"></div>';
+        // Build overview content using DOM methods for security
+        container.textContent = '';
 
-        if (data.hasSecureScore && data.secureScore.controlScores && data.secureScore.controlScores.length > 0) {
-            html += '<div class="analytics-section">';
-            html += '<h3>Secure Score Improvements</h3>';
-            html += '<p class="section-description">Top improvement actions to increase your security posture</p>';
-            html += '<div class="table-container" id="secure-score-actions-table"></div>';
-            html += '</div>';
+        // Charts row
+        var chartsRow = document.createElement('div');
+        chartsRow.className = 'charts-row';
+        chartsRow.id = 'security-charts';
+        container.appendChild(chartsRow);
+
+        // Analytics grid
+        var analyticsGrid = document.createElement('div');
+        analyticsGrid.className = 'analytics-grid';
+
+        // Risk Level Breakdown card
+        var riskCard = createAnalyticsCard('Risky Sign-ins by Level');
+        var lowRiskCount = data.riskySignins.filter(function(r) { return r.riskLevel === 'low'; }).length;
+        addStatRow(riskCard, 'High Risk', data.highRiskCount, data.highRiskCount > 0 ? 'text-critical' : 'text-success');
+        addStatRow(riskCard, 'Medium Risk', data.mediumRiskCount, data.mediumRiskCount > 0 ? 'text-warning' : 'text-success');
+        addStatRow(riskCard, 'Low Risk', lowRiskCount, '');
+        analyticsGrid.appendChild(riskCard);
+
+        // MFA Status Breakdown card
+        var mfaRegistered = data.users.filter(function(u) { return u.mfaRegistered && u.accountEnabled; }).length;
+        var enabledUsers = data.users.filter(function(u) { return u.accountEnabled; }).length;
+        var mfaPct = enabledUsers > 0 ? Math.round((mfaRegistered / enabledUsers) * 100) : 0;
+        var mfaClass = mfaPct >= 90 ? 'text-success' : mfaPct >= 70 ? 'text-warning' : 'text-critical';
+        var mfaCard = createAnalyticsCard('MFA Enrollment Status');
+        addStatRow(mfaCard, 'Enrolled', mfaRegistered, 'text-success');
+        addStatRow(mfaCard, 'Not Enrolled', data.noMfaUsers.length, data.noMfaUsers.length > 0 ? 'text-critical' : 'text-success');
+        addStatRow(mfaCard, 'Coverage Rate', mfaPct + '%', mfaClass);
+        analyticsGrid.appendChild(mfaCard);
+
+        // Alert Status Breakdown card
+        var newAlerts = data.defenderAlerts.filter(function(a) { return a.status === 'new'; }).length;
+        var inProgressAlerts = data.defenderAlerts.filter(function(a) { return a.status === 'inProgress'; }).length;
+        var resolvedAlerts = data.defenderAlerts.filter(function(a) { return a.status === 'resolved'; }).length;
+        var alertCard = createAnalyticsCard('Defender Alert Status');
+        addStatRow(alertCard, 'New', newAlerts, newAlerts > 0 ? 'text-critical' : 'text-success');
+        addStatRow(alertCard, 'In Progress', inProgressAlerts, inProgressAlerts > 0 ? 'text-warning' : '');
+        addStatRow(alertCard, 'Resolved', resolvedAlerts, 'text-success');
+        addStatRow(alertCard, 'High Severity Active', data.highAlerts.length, data.highAlerts.length > 0 ? 'text-critical' : 'text-success');
+        analyticsGrid.appendChild(alertCard);
+
+        // Admin Roles card
+        var highPrivRoles = data.adminRoles.filter(function(r) { return r.isHighPrivilege; });
+        var highPrivMembers = 0;
+        highPrivRoles.forEach(function(r) { highPrivMembers += r.memberCount || 0; });
+        var adminCard = createAnalyticsCard('Admin Role Summary');
+        addStatRow(adminCard, 'Total Admin Roles', data.adminRoles.length, '');
+        addStatRow(adminCard, 'High Privilege Roles', highPrivRoles.length, 'text-warning');
+        addStatRow(adminCard, 'High Priv Members', highPrivMembers, 'text-warning');
+        addStatRow(adminCard, 'Total Admin Accounts', data.adminCount, '');
+        analyticsGrid.appendChild(adminCard);
+
+        container.appendChild(analyticsGrid);
+
+        // High Risk Sign-ins table
+        var highRiskSignins = data.riskySignins.filter(function(r) { return r.riskLevel === 'high' || r.riskLevel === 'medium'; });
+        if (highRiskSignins.length > 0) {
+            var riskSection = document.createElement('div');
+            riskSection.className = 'analytics-section';
+            var riskTitle = document.createElement('h3');
+            riskTitle.textContent = 'Risky Sign-ins Requiring Attention (' + highRiskSignins.length + ')';
+            riskSection.appendChild(riskTitle);
+            var riskTableDiv = document.createElement('div');
+            riskTableDiv.id = 'risky-signins-overview-table';
+            riskSection.appendChild(riskTableDiv);
+            container.appendChild(riskSection);
+
+            Tables.render({
+                containerId: 'risky-signins-overview-table',
+                data: highRiskSignins.slice(0, 10),
+                columns: [
+                    { key: 'userPrincipalName', label: 'User', className: 'cell-truncate' },
+                    { key: 'riskLevel', label: 'Risk Level', formatter: Tables.formatters.severity },
+                    { key: 'riskState', label: 'State', formatter: formatRiskState },
+                    { key: 'location.countryOrRegion', label: 'Location' },
+                    { key: 'detectedDateTime', label: 'Detected', formatter: Tables.formatters.date }
+                ],
+                pageSize: 10
+            });
         }
 
-        container.innerHTML = html;
+        // Users without MFA table
+        if (data.noMfaUsers.length > 0) {
+            var mfaSection = document.createElement('div');
+            mfaSection.className = 'analytics-section';
+            var mfaTitle = document.createElement('h3');
+            mfaTitle.textContent = 'Users Without MFA (' + data.noMfaUsers.length + ')';
+            mfaSection.appendChild(mfaTitle);
+            var mfaTableDiv = document.createElement('div');
+            mfaTableDiv.id = 'mfa-gaps-overview-table';
+            mfaSection.appendChild(mfaTableDiv);
+            container.appendChild(mfaSection);
 
-        // Render Secure Score actions table
+            Tables.render({
+                containerId: 'mfa-gaps-overview-table',
+                data: data.noMfaUsers.slice(0, 10),
+                columns: [
+                    { key: 'displayName', label: 'Name' },
+                    { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
+                    { key: 'department', label: 'Department' },
+                    { key: 'lastSignIn', label: 'Last Sign-in', formatter: Tables.formatters.date }
+                ],
+                pageSize: 10
+            });
+        }
+
+        // Secure Score Improvements section
         if (data.hasSecureScore && data.secureScore.controlScores && data.secureScore.controlScores.length > 0) {
+            var scoreSection = document.createElement('div');
+            scoreSection.className = 'analytics-section';
+            var scoreTitle = document.createElement('h3');
+            scoreTitle.textContent = 'Secure Score Improvements';
+            scoreSection.appendChild(scoreTitle);
+            var scoreDesc = document.createElement('p');
+            scoreDesc.className = 'section-description';
+            scoreDesc.textContent = 'Top improvement actions to increase your security posture';
+            scoreSection.appendChild(scoreDesc);
+            var scoreTableDiv = document.createElement('div');
+            scoreTableDiv.className = 'table-container';
+            scoreTableDiv.id = 'secure-score-actions-table';
+            scoreSection.appendChild(scoreTableDiv);
+            container.appendChild(scoreSection);
+
             Tables.render({
                 containerId: 'secure-score-actions-table',
                 data: data.secureScore.controlScores,
@@ -127,7 +238,7 @@ const PageSecurity = (function() {
                     { key: 'name', label: 'Control Name' },
                     { key: 'description', label: 'Description' },
                     { key: 'scoreInPercentage', label: 'Progress', formatter: function(v) {
-                        const cls = v >= 80 ? 'text-success' : (v >= 50 ? 'text-warning' : 'text-critical');
+                        var cls = v >= 80 ? 'text-success' : (v >= 50 ? 'text-warning' : 'text-critical');
                         return '<span class="' + cls + '">' + v + '%</span>';
                     }},
                     { key: 'maxScore', label: 'Max Points', formatter: function(v) {
@@ -139,6 +250,39 @@ const PageSecurity = (function() {
         }
 
         renderSecurityCharts(data);
+    }
+
+    /**
+     * Creates an analytics card with title and stat-list container.
+     */
+    function createAnalyticsCard(title) {
+        var card = document.createElement('div');
+        card.className = 'analytics-card';
+        var h4 = document.createElement('h4');
+        h4.textContent = title;
+        card.appendChild(h4);
+        var statList = document.createElement('div');
+        statList.className = 'stat-list';
+        card.appendChild(statList);
+        return card;
+    }
+
+    /**
+     * Adds a stat row to an analytics card.
+     */
+    function addStatRow(card, label, value, valueClass) {
+        var statList = card.querySelector('.stat-list');
+        var row = document.createElement('div');
+        row.className = 'stat-row';
+        var labelSpan = document.createElement('span');
+        labelSpan.className = 'stat-label';
+        labelSpan.textContent = label;
+        var valueSpan = document.createElement('span');
+        valueSpan.className = 'stat-value' + (valueClass ? ' ' + valueClass : '');
+        valueSpan.textContent = String(value);
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        statList.appendChild(row);
     }
 
     function renderSecurityCharts(data) {

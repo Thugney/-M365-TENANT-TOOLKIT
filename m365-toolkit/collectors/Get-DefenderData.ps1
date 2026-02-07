@@ -222,6 +222,61 @@ try {
             }
         }
 
+        # Extract MITRE ATT&CK techniques if available
+        $mitreTechniques = @()
+        if ($alert.MitreTechniques -and $alert.MitreTechniques.Count -gt 0) {
+            $mitreTechniques = $alert.MitreTechniques
+        }
+        elseif ($alert.AdditionalProperties.mitreTechniques) {
+            $mitreTechniques = $alert.AdditionalProperties.mitreTechniques
+        }
+
+        # Extract evidence/indicators
+        $evidence = @()
+        if ($alert.Evidence -and $alert.Evidence.Count -gt 0) {
+            foreach ($ev in $alert.Evidence) {
+                $evidence += @{
+                    type = $ev.'@odata.type'
+                    createdDateTime = if ($ev.CreatedDateTime) { $ev.CreatedDateTime.ToString("o") } else { $null }
+                    remediationStatus = $ev.RemediationStatus
+                    verdict = $ev.Verdict
+                }
+            }
+        }
+
+        # Get detection source
+        $detectionSource = $null
+        if ($alert.DetectionSource) {
+            $detectionSource = $alert.DetectionSource.ToString()
+        }
+        elseif ($alert.AdditionalProperties.detectionSource) {
+            $detectionSource = $alert.AdditionalProperties.detectionSource
+        }
+
+        # Get service source
+        $serviceSource = $null
+        if ($alert.ServiceSource) {
+            $serviceSource = $alert.ServiceSource.ToString()
+        }
+        elseif ($alert.AdditionalProperties.serviceSource) {
+            $serviceSource = $alert.AdditionalProperties.serviceSource
+        }
+
+        # Get threat name/family if available
+        $threatName = $null
+        if ($alert.ThreatFamilyName) {
+            $threatName = $alert.ThreatFamilyName
+        }
+        elseif ($alert.AdditionalProperties.threatFamilyName) {
+            $threatName = $alert.AdditionalProperties.threatFamilyName
+        }
+
+        # Get classification
+        $classification = $null
+        if ($alert.Classification) {
+            $classification = $alert.Classification.ToString()
+        }
+
         # Build output object matching our schema
         $processedAlert = [PSCustomObject]@{
             id                  = $alert.Id
@@ -235,6 +290,13 @@ try {
             affectedDevice      = $affectedDevice
             description         = $alert.Description
             recommendedActions  = $recommendedActions
+            mitreTechniques     = $mitreTechniques
+            evidence            = $evidence
+            detectionSource     = $detectionSource
+            serviceSource       = $serviceSource
+            threatName          = $threatName
+            classification      = $classification
+            incidentId          = $alert.IncidentId
         }
 
         $processedAlerts += $processedAlert

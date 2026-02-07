@@ -612,71 +612,170 @@ const PageConditionalAccess = (function() {
     }
 
     function renderOverview(container) {
-        var html = '';
+        container.textContent = '';
 
+        // Security gaps alert
         if (caState.gapsList.length > 0) {
-            html += '<div class="alert alert-critical" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--critical-bg); border-radius: 6px; border-left: 4px solid var(--critical);">';
-            html += '<h4 style="margin: 0 0 0.5rem 0; color: var(--critical);">Security Gaps Detected</h4>';
-            html += '<ul style="margin: 0; padding-left: 1.25rem;">';
+            var alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-critical';
+            alertDiv.style.cssText = 'margin-bottom: 1.5rem; padding: 1rem; background: var(--critical-bg); border-radius: 6px; border-left: 4px solid var(--critical);';
+            var alertTitle = document.createElement('h4');
+            alertTitle.style.cssText = 'margin: 0 0 0.5rem 0; color: var(--critical);';
+            alertTitle.textContent = 'Security Gaps Detected';
+            alertDiv.appendChild(alertTitle);
+            var alertList = document.createElement('ul');
+            alertList.style.cssText = 'margin: 0; padding-left: 1.25rem;';
             caState.gapsList.forEach(function(g) {
-                html += '<li>' + g + '</li>';
+                var li = document.createElement('li');
+                li.textContent = g;
+                alertList.appendChild(li);
             });
-            html += '</ul></div>';
+            alertDiv.appendChild(alertList);
+            container.appendChild(alertDiv);
         }
 
-        html += '<div class="charts-row" id="ca-charts"></div>';
+        // Charts row
+        var chartsRow = document.createElement('div');
+        chartsRow.className = 'charts-row';
+        chartsRow.id = 'ca-charts';
+        container.appendChild(chartsRow);
 
-        html += '<div class="section-header">';
-        html += '<h3>Policy Analysis</h3>';
-        html += '<div id="ca-breakdown-filter"></div>';
-        html += '</div>';
+        // Analytics grid for additional breakdowns
+        var analyticsGrid = document.createElement('div');
+        analyticsGrid.className = 'analytics-grid';
 
-        html += '<div class="focus-breakdown-row">';
-        html += '<div class="table-container" id="ca-focus-table"></div>';
-        html += '<div class="table-container" id="ca-breakdown-table"></div>';
-        html += '</div>';
+        var policies = caState.policies;
 
-        container.innerHTML = html;
+        // Policy state breakdown card
+        var stateCard = createAnalyticsCard('Policy State Summary');
+        addStatRow(stateCard, 'Enabled', caState.enabledCount, 'text-success');
+        addStatRow(stateCard, 'Report Only', caState.reportOnlyCount, caState.reportOnlyCount > 0 ? 'text-warning' : '');
+        addStatRow(stateCard, 'Disabled', caState.disabledCount, '');
+        analyticsGrid.appendChild(stateCard);
 
+        // Policy type breakdown card
+        var mfaCount = policies.filter(function(p) { return p.policyType === 'mfa' && p.state === 'enabled'; }).length;
+        var blockCount = policies.filter(function(p) { return p.policyType === 'block' && p.state === 'enabled'; }).length;
+        var deviceCount = policies.filter(function(p) { return p.policyType === 'device-compliance' && p.state === 'enabled'; }).length;
+        var typeCard = createAnalyticsCard('Enabled Policy Types');
+        addStatRow(typeCard, 'MFA Policies', mfaCount, '');
+        addStatRow(typeCard, 'Block Policies', blockCount, '');
+        addStatRow(typeCard, 'Device Compliance', deviceCount, '');
+        analyticsGrid.appendChild(typeCard);
+
+        // Security controls card
+        var legacyBlock = policies.filter(function(p) { return p.state === 'enabled' && p.blocksLegacyAuth; }).length;
+        var riskBased = policies.filter(function(p) { return p.state === 'enabled' && p.hasRiskCondition; }).length;
+        var locationBased = policies.filter(function(p) { return p.state === 'enabled' && p.hasLocationCondition; }).length;
+        var controlsCard = createAnalyticsCard('Security Controls');
+        addStatRow(controlsCard, 'Blocks Legacy Auth', legacyBlock, legacyBlock > 0 ? 'text-success' : 'text-warning');
+        addStatRow(controlsCard, 'Risk-Based', riskBased, riskBased > 0 ? 'text-success' : 'text-warning');
+        addStatRow(controlsCard, 'Location-Based', locationBased, '');
+        analyticsGrid.appendChild(controlsCard);
+
+        // Exclusions card
+        var totalExclUsers = 0;
+        var totalExclGroups = 0;
+        policies.forEach(function(p) {
+            totalExclUsers += p.excludedUserCount || 0;
+            totalExclGroups += p.excludedGroupCount || 0;
+        });
+        var exclCard = createAnalyticsCard('Policy Exclusions');
+        addStatRow(exclCard, 'Policies With Exclusions', caState.policiesWithExclusions, caState.policiesWithExclusions > 0 ? 'text-warning' : 'text-success');
+        addStatRow(exclCard, 'Total Excluded Users', totalExclUsers, totalExclUsers > 0 ? 'text-warning' : '');
+        addStatRow(exclCard, 'Total Excluded Groups', totalExclGroups, totalExclGroups > 0 ? 'text-warning' : '');
+        analyticsGrid.appendChild(exclCard);
+
+        container.appendChild(analyticsGrid);
+
+        // Policy Analysis section
+        var sectionHeader = document.createElement('div');
+        sectionHeader.className = 'section-header';
+        var h3 = document.createElement('h3');
+        h3.textContent = 'Policy Analysis';
+        sectionHeader.appendChild(h3);
+        var breakdownFilter = document.createElement('div');
+        breakdownFilter.id = 'ca-breakdown-filter';
+        sectionHeader.appendChild(breakdownFilter);
+        container.appendChild(sectionHeader);
+
+        var focusRow = document.createElement('div');
+        focusRow.className = 'focus-breakdown-row';
+        var focusTable = document.createElement('div');
+        focusTable.className = 'table-container';
+        focusTable.id = 'ca-focus-table';
+        focusRow.appendChild(focusTable);
+        var breakdownTable = document.createElement('div');
+        breakdownTable.className = 'table-container';
+        breakdownTable.id = 'ca-breakdown-table';
+        focusRow.appendChild(breakdownTable);
+        container.appendChild(focusRow);
+
+        // Render charts
         if (typeof DashboardCharts !== 'undefined') {
             var C = DashboardCharts.colors;
-            var policies = caState.policies;
-
-            var enabledCount = caState.enabledCount;
-            var reportOnlyCount = caState.reportOnlyCount;
-            var disabledCount = caState.disabledCount;
 
             var mfaAllUsers = policies.filter(function(p) {
                 return p.state === 'enabled' && p.requiresMfa && p.includesAllUsers;
             }).length;
             var mfaPartial = caState.mfaPolicies - mfaAllUsers;
-            var noMfa = enabledCount - caState.mfaPolicies;
+            var noMfa = caState.enabledCount - caState.mfaPolicies;
 
-            var chartsRow = document.getElementById('ca-charts');
-            if (chartsRow) {
-                chartsRow.appendChild(DashboardCharts.createChartCard(
-                    'Policy State',
-                    [
-                        { value: enabledCount, label: 'Enabled', color: C.green },
-                        { value: reportOnlyCount, label: 'Report Only', color: C.yellow },
-                        { value: disabledCount, label: 'Disabled', color: C.gray }
-                    ],
-                    String(enabledCount), 'enforcing'
-                ));
+            chartsRow.appendChild(DashboardCharts.createChartCard(
+                'Policy State',
+                [
+                    { value: caState.enabledCount, label: 'Enabled', color: C.green },
+                    { value: caState.reportOnlyCount, label: 'Report Only', color: C.yellow },
+                    { value: caState.disabledCount, label: 'Disabled', color: C.gray }
+                ],
+                String(caState.enabledCount), 'enforcing'
+            ));
 
-                chartsRow.appendChild(DashboardCharts.createChartCard(
-                    'MFA Coverage',
-                    [
-                        { value: mfaAllUsers, label: 'All Users', color: C.green },
-                        { value: mfaPartial, label: 'Partial', color: C.blue },
-                        { value: noMfa, label: 'No MFA', color: C.red }
-                    ],
-                    caState.mfaPolicies > 0 ? String(caState.mfaPolicies) : '0', 'MFA policies'
-                ));
-            }
+            chartsRow.appendChild(DashboardCharts.createChartCard(
+                'MFA Coverage',
+                [
+                    { value: mfaAllUsers, label: 'All Users', color: C.green },
+                    { value: mfaPartial, label: 'Partial', color: C.blue },
+                    { value: noMfa, label: 'No MFA', color: C.red }
+                ],
+                caState.mfaPolicies > 0 ? String(caState.mfaPolicies) : '0', 'MFA policies'
+            ));
         }
 
         renderFocusBreakdown(caState.policies);
+    }
+
+    /**
+     * Creates an analytics card with title and stat-list container.
+     */
+    function createAnalyticsCard(title) {
+        var card = document.createElement('div');
+        card.className = 'analytics-card';
+        var h4 = document.createElement('h4');
+        h4.textContent = title;
+        card.appendChild(h4);
+        var statList = document.createElement('div');
+        statList.className = 'stat-list';
+        card.appendChild(statList);
+        return card;
+    }
+
+    /**
+     * Adds a stat row to an analytics card.
+     */
+    function addStatRow(card, label, value, valueClass) {
+        var statList = card.querySelector('.stat-list');
+        var row = document.createElement('div');
+        row.className = 'stat-row';
+        var labelSpan = document.createElement('span');
+        labelSpan.className = 'stat-label';
+        labelSpan.textContent = label;
+        var valueSpan = document.createElement('span');
+        valueSpan.className = 'stat-value' + (valueClass ? ' ' + valueClass : '');
+        valueSpan.textContent = String(value);
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        statList.appendChild(row);
     }
 
     function renderPoliciesTab(container) {
