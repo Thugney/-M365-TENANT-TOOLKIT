@@ -5,6 +5,57 @@ All notable changes to TenantScope will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-02-07
+
+### Added
+- **Dashboard UI Overhaul - Unified Analytics Pattern**:
+  - All major pages now follow consistent tab-based navigation with Overview and Data tabs
+  - Overview tabs feature donut charts, analytics grids with mini-bars, and actionable insights
+  - Data tabs have unified filterable tables with column selectors and CSV export
+
+- **Identity Pages Redesign** (Users, Guests, Organization, Lifecycle):
+  - Tab navigation: Overview, Analysis, All Data
+  - Donut charts showing account status, risk levels, activity
+  - Analytics grids with platform cards for quick insights
+  - Insights section with recommendations and action items
+
+- **Security Pages Redesign** (Audit Logs, Credential Expiry, PIM, Conditional Access):
+  - Tab navigation: Overview, All Data
+  - Donut charts for security status visualization
+  - Analytics grids showing risk breakdowns and policy coverage
+  - Insights for security issues and recommendations
+
+- **Lifecycle Issues Tab Redesign**:
+  - Replaced 6+ scrollable sections with single unified filterable table
+  - Combines: Offboarding, Onboarding, Role Hygiene, Guest Cleanup, Teams, SharePoint issues
+  - Filter bar: search, category, severity, entity type
+  - Column selector for customizable table view
+  - Colored badges for category, severity, and entity type
+
+- **Licenses Page Redesign**:
+  - Tab navigation: Overview, All Licenses
+  - Donut chart showing Active Use, Wasted, Available licenses
+  - Analytics grid: Cost Analysis, Waste Breakdown, SKU Status, Top Wasted SKUs
+  - Insights for waste detection, overlaps, and low utilization
+
+- **License Overlap Analysis Page Redesign**:
+  - Tab navigation: Overview, All Overlaps
+  - Donut chart showing Clean Users vs Users with Overlaps
+  - Analytics grid: Overlaps by Rule, Top Departments, Cost Impact, Rules Analysis
+  - Insights for cost optimization opportunities
+  - Filter by overlap rule and department
+
+- **Devices Page Enhancements**:
+  - Added comprehensive Intune properties display
+  - Enhanced device detail modal with full property listing
+
+### Fixed
+- Fixed CSS variable names (`var(--success)` → `var(--color-success)`) for donut chart colors
+- Fixed "devices.filter is not a function" error with Array.isArray checks in getSummary
+- Added missing bg-orange, bg-purple, bg-primary CSS classes for legend colors
+
+---
+
 ## [2.0.4] - 2026-02-06
 
 ### Added
@@ -262,5 +313,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Collectors | Major Features |
 |---------|------|------------|----------------|
+| 2.0.5 | 2026-02-07 | 26 | Dashboard UI overhaul with unified analytics pattern |
+| 2.0.4 | 2026-02-06 | 26 | Compliance and Configuration profile enhancements |
+| 2.0.3 | 2026-02-06 | 26 | Windows Update and Endpoint Analytics enhancements |
+| 2.0.2 | 2026-02-06 | 26 | Sample data rewrite, dashboard field mapping |
+| 2.0.1 | 2026-02-06 | 26 | Bug fixes, Secure Score display |
 | 2.0.0 | 2026-02-06 | 26 | Endpoint management, app deployments, analytics |
 | 1.0.0 | 2026-02-05 | 17 | Initial release with core M365 data collection |

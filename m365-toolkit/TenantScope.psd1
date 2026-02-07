@@ -7,7 +7,7 @@
     RootModule = 'TenantScope.psm1'
 
     # Version number of this module.
-    ModuleVersion = '2.0.1'
+    ModuleVersion = '2.0.5'
 
     # Supported PSEditions
     CompatiblePSEditions = @('Core')
