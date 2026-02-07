@@ -5,6 +5,24 @@ All notable changes to TenantScope will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-02-07
+
+### Added
+- Shared collector helpers for Graph property normalization, assignment target parsing, report CSV retrieval, and credential status.
+- Collection metadata now includes thresholds and license overlap rules for UI alignment.
+- Internal per-collector review documentation under `reviews/`.
+
+### Fixed
+- Devices summary schema alignment and breakdown map support; preserve unknown encryption state.
+- ASR rules summary now counts settings catalog policies.
+- Windows Update summary now includes drivers needing review and uses device compliance counts.
+- SharePoint UI thresholds now respect configured metadata values.
+- License Analysis now uses config-driven overlap rules via metadata.
+- App sign-ins failure status reason no longer shows "Success" when error code is non-zero.
+- Sign-in logs UI no longer over-normalizes collector outputs.
+
+---
+
 ## [2.0.5] - 2026-02-07
 
 ### Added
