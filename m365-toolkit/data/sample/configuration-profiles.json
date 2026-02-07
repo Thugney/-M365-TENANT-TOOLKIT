@@ -1,74 +1,527 @@
-[
-  {
-    "displayName": "Windows Security Baseline",
-    "profileType": "Endpoint Protection",
-    "platform": "Windows",
-    "assignedCount": 150,
-    "successCount": 145,
-    "errorCount": 3,
-    "lastModified": "2026-01-10T09:30:00Z"
+{
+  "profiles": [
+    {
+      "id": "profile-001-baseline",
+      "displayName": "Windows Security Baseline",
+      "description": "Security baseline configuration for Windows 10/11 devices",
+      "profileType": "Endpoint Protection",
+      "platform": "Windows",
+      "category": "Security",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-05-01T09:00:00Z",
+      "lastModifiedDateTime": "2026-01-10T09:30:00Z",
+      "version": 4,
+      "assignments": [
+        { "type": "Group", "groupId": "group-001", "name": "Windows Devices" },
+        { "type": "Group", "groupId": "group-002", "name": "Corporate Devices" }
+      ],
+      "assignmentCount": 2,
+      "successDevices": 145,
+      "errorDevices": 3,
+      "conflictDevices": 1,
+      "pendingDevices": 1,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 96.7,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-ABC123", "userName": "john.doe@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T14:30:00Z" },
+        { "deviceName": "LAPTOP-DEF456", "userName": "jane.smith@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T10:15:00Z" },
+        { "deviceName": "DESKTOP-GHI789", "userName": "bob.wilson@contoso.com", "status": "conflict", "lastReportedDateTime": "2026-02-04T16:45:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "Firewall/EnableDomainProfile", "errorCount": 2, "conflictCount": 0 },
+        { "settingName": "DefenderAntivirus/RealTimeScan", "errorCount": 1, "conflictCount": 1 }
+      ],
+      "hasErrors": true,
+      "hasConflicts": true,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-002-edge",
+      "displayName": "Edge Browser Settings",
+      "description": "Microsoft Edge browser configuration for enterprise",
+      "profileType": "Settings Catalog",
+      "platform": "Windows",
+      "category": "General",
+      "source": "configurationPolicies",
+      "createdDateTime": "2025-06-15T14:00:00Z",
+      "lastModifiedDateTime": "2026-01-08T14:20:00Z",
+      "version": 2,
+      "assignments": [
+        { "type": "AllUsers", "name": "All Users" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 148,
+      "errorDevices": 1,
+      "conflictDevices": 0,
+      "pendingDevices": 1,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 98.7,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-JKL012", "userName": "alice.brown@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T09:00:00Z" }
+      ],
+      "settingStatuses": [],
+      "hasErrors": true,
+      "hasConflicts": false,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-003-firewall",
+      "displayName": "Windows Firewall Rules",
+      "description": "Firewall configuration for corporate network access",
+      "profileType": "Endpoint Protection",
+      "platform": "Windows",
+      "category": "Security",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-03-20T11:00:00Z",
+      "lastModifiedDateTime": "2025-12-15T11:00:00Z",
+      "version": 6,
+      "assignments": [
+        { "type": "Group", "groupId": "group-001", "name": "Windows Devices" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 140,
+      "errorDevices": 8,
+      "conflictDevices": 2,
+      "pendingDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 93.3,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-ABC123", "userName": "john.doe@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T14:30:00Z" },
+        { "deviceName": "LAPTOP-MNO345", "userName": "charlie.davis@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T11:20:00Z" },
+        { "deviceName": "DESKTOP-PQR678", "userName": "diana.evans@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-04T15:00:00Z" },
+        { "deviceName": "LAPTOP-STU901", "userName": "edward.foster@contoso.com", "status": "conflict", "lastReportedDateTime": "2026-02-04T09:30:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "Firewall/AllowInboundRDP", "errorCount": 5, "conflictCount": 1 },
+        { "settingName": "Firewall/BlockOutboundICMP", "errorCount": 3, "conflictCount": 1 }
+      ],
+      "hasErrors": true,
+      "hasConflicts": true,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-004-wifi",
+      "displayName": "Corporate WiFi Profile",
+      "description": "WiFi configuration for corporate network access",
+      "profileType": "Wi-Fi",
+      "platform": "Windows",
+      "category": "Network",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-04-10T16:00:00Z",
+      "lastModifiedDateTime": "2025-11-20T16:45:00Z",
+      "version": 3,
+      "assignments": [
+        { "type": "Group", "groupId": "group-003", "name": "Mobile Workers" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 130,
+      "errorDevices": 5,
+      "conflictDevices": 0,
+      "pendingDevices": 15,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 86.7,
+      "deviceStatuses": [
+        { "deviceName": "LAPTOP-VWX234", "userName": "frank.garcia@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T08:45:00Z" },
+        { "deviceName": "LAPTOP-YZA567", "userName": "grace.harris@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-04T17:30:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "WiFi/NetworkSSID", "errorCount": 3, "conflictCount": 0 },
+        { "settingName": "WiFi/AuthenticationType", "errorCount": 2, "conflictCount": 0 }
+      ],
+      "hasErrors": true,
+      "hasConflicts": false,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-005-ios-email",
+      "displayName": "iOS Email Configuration",
+      "description": "Corporate email configuration for iOS devices",
+      "profileType": "Device Features",
+      "platform": "iOS/iPadOS",
+      "category": "General",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-07-01T08:00:00Z",
+      "lastModifiedDateTime": "2026-01-05T08:15:00Z",
+      "version": 2,
+      "assignments": [
+        { "type": "Group", "groupId": "group-004", "name": "iOS Devices" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 72,
+      "errorDevices": 2,
+      "conflictDevices": 0,
+      "pendingDevices": 1,
+      "notApplicableDevices": 0,
+      "totalDevices": 75,
+      "successRate": 96.0,
+      "deviceStatuses": [
+        { "deviceName": "iPhone-Henry", "userName": "henry.irwin@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T12:00:00Z" }
+      ],
+      "settingStatuses": [],
+      "hasErrors": true,
+      "hasConflicts": false,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-006-macos",
+      "displayName": "macOS Security Settings",
+      "description": "Security configuration for macOS devices",
+      "profileType": "Device Restrictions",
+      "platform": "macOS",
+      "category": "Security",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-08-15T10:00:00Z",
+      "lastModifiedDateTime": "2025-12-28T10:30:00Z",
+      "version": 2,
+      "assignments": [
+        { "type": "Group", "groupId": "group-005", "name": "macOS Devices" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 28,
+      "errorDevices": 1,
+      "conflictDevices": 0,
+      "pendingDevices": 1,
+      "notApplicableDevices": 0,
+      "totalDevices": 30,
+      "successRate": 93.3,
+      "deviceStatuses": [
+        { "deviceName": "MacBook-Ivy", "userName": "ivy.jones@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-04T14:00:00Z" }
+      ],
+      "settingStatuses": [],
+      "hasErrors": true,
+      "hasConflicts": false,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-007-android",
+      "displayName": "Android Work Profile",
+      "description": "Work profile configuration for Android Enterprise devices",
+      "profileType": "Android Work Profile",
+      "platform": "Android",
+      "category": "General",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-06-01T13:00:00Z",
+      "lastModifiedDateTime": "2026-01-02T13:00:00Z",
+      "version": 3,
+      "assignments": [
+        { "type": "Group", "groupId": "group-006", "name": "Android Devices" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 40,
+      "errorDevices": 3,
+      "conflictDevices": 1,
+      "pendingDevices": 1,
+      "notApplicableDevices": 0,
+      "totalDevices": 45,
+      "successRate": 88.9,
+      "deviceStatuses": [
+        { "deviceName": "Pixel-Jack", "userName": "jack.king@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T13:30:00Z" },
+        { "deviceName": "Samsung-Kate", "userName": "kate.lee@contoso.com", "status": "conflict", "lastReportedDateTime": "2026-02-04T10:00:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "WorkProfile/PasswordComplexity", "errorCount": 2, "conflictCount": 1 }
+      ],
+      "hasErrors": true,
+      "hasConflicts": true,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-008-vpn",
+      "displayName": "VPN Configuration",
+      "description": "Always-on VPN configuration for remote access",
+      "profileType": "VPN",
+      "platform": "Windows",
+      "category": "Network",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-02-15T09:00:00Z",
+      "lastModifiedDateTime": "2025-10-15T09:00:00Z",
+      "version": 5,
+      "assignments": [
+        { "type": "Group", "groupId": "group-003", "name": "Mobile Workers" },
+        { "type": "Group", "groupId": "group-007", "name": "Remote Workers" }
+      ],
+      "assignmentCount": 2,
+      "successDevices": 120,
+      "errorDevices": 15,
+      "conflictDevices": 5,
+      "pendingDevices": 10,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 80.0,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-ABC123", "userName": "john.doe@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T14:30:00Z" },
+        { "deviceName": "LAPTOP-MNO345", "userName": "charlie.davis@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T11:20:00Z" },
+        { "deviceName": "DESKTOP-BCD890", "userName": "lisa.martin@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-05T09:15:00Z" },
+        { "deviceName": "LAPTOP-EFG123", "userName": "mike.nelson@contoso.com", "status": "conflict", "lastReportedDateTime": "2026-02-04T16:00:00Z" },
+        { "deviceName": "DESKTOP-HIJ456", "userName": "nancy.ortiz@contoso.com", "status": "conflict", "lastReportedDateTime": "2026-02-04T11:30:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "VPN/ConnectionType", "errorCount": 8, "conflictCount": 2 },
+        { "settingName": "VPN/SplitTunneling", "errorCount": 4, "conflictCount": 3 },
+        { "settingName": "VPN/AlwaysOn", "errorCount": 3, "conflictCount": 0 }
+      ],
+      "hasErrors": true,
+      "hasConflicts": true,
+      "needsAttention": true
+    },
+    {
+      "id": "profile-009-certificate",
+      "displayName": "Root Certificate Authority",
+      "description": "Trusted root certificate for corporate PKI",
+      "profileType": "Trusted Root",
+      "platform": "Windows",
+      "category": "Network",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-01-10T10:00:00Z",
+      "lastModifiedDateTime": "2025-08-20T10:00:00Z",
+      "version": 2,
+      "assignments": [
+        { "type": "AllDevices", "name": "All Devices" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 148,
+      "errorDevices": 0,
+      "conflictDevices": 0,
+      "pendingDevices": 2,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 98.7,
+      "deviceStatuses": [],
+      "settingStatuses": [],
+      "hasErrors": false,
+      "hasConflicts": false,
+      "needsAttention": false
+    },
+    {
+      "id": "profile-010-kiosk",
+      "displayName": "Kiosk Mode Configuration",
+      "description": "Kiosk configuration for lobby display devices",
+      "profileType": "Kiosk",
+      "platform": "Windows",
+      "category": "Kiosk",
+      "source": "deviceConfigurations",
+      "createdDateTime": "2025-09-01T14:00:00Z",
+      "lastModifiedDateTime": "2026-01-15T14:00:00Z",
+      "version": 3,
+      "assignments": [
+        { "type": "Group", "groupId": "group-008", "name": "Kiosk Devices" }
+      ],
+      "assignmentCount": 1,
+      "successDevices": 12,
+      "errorDevices": 0,
+      "conflictDevices": 0,
+      "pendingDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 12,
+      "successRate": 100.0,
+      "deviceStatuses": [],
+      "settingStatuses": [],
+      "hasErrors": false,
+      "hasConflicts": false,
+      "needsAttention": false
+    }
+  ],
+  "failedDevices": [
+    {
+      "deviceName": "DESKTOP-ABC123",
+      "userName": "john.doe@contoso.com",
+      "failedProfiles": ["Windows Security Baseline", "Windows Firewall Rules", "VPN Configuration"],
+      "failedProfileCount": 3,
+      "errorCount": 3,
+      "conflictCount": 0
+    },
+    {
+      "deviceName": "LAPTOP-MNO345",
+      "userName": "charlie.davis@contoso.com",
+      "failedProfiles": ["Windows Firewall Rules", "VPN Configuration"],
+      "failedProfileCount": 2,
+      "errorCount": 2,
+      "conflictCount": 0
+    },
+    {
+      "deviceName": "LAPTOP-STU901",
+      "userName": "edward.foster@contoso.com",
+      "failedProfiles": ["Windows Firewall Rules"],
+      "failedProfileCount": 1,
+      "errorCount": 0,
+      "conflictCount": 1
+    },
+    {
+      "deviceName": "LAPTOP-EFG123",
+      "userName": "mike.nelson@contoso.com",
+      "failedProfiles": ["VPN Configuration"],
+      "failedProfileCount": 1,
+      "errorCount": 0,
+      "conflictCount": 1
+    },
+    {
+      "deviceName": "DESKTOP-HIJ456",
+      "userName": "nancy.ortiz@contoso.com",
+      "failedProfiles": ["VPN Configuration"],
+      "failedProfileCount": 1,
+      "errorCount": 0,
+      "conflictCount": 1
+    }
+  ],
+  "settingFailures": [
+    {
+      "profileId": "profile-008-vpn",
+      "profileName": "VPN Configuration",
+      "platform": "Windows",
+      "settingName": "VPN/ConnectionType",
+      "errorCount": 8,
+      "conflictCount": 2
+    },
+    {
+      "profileId": "profile-003-firewall",
+      "profileName": "Windows Firewall Rules",
+      "platform": "Windows",
+      "settingName": "Firewall/AllowInboundRDP",
+      "errorCount": 5,
+      "conflictCount": 1
+    },
+    {
+      "profileId": "profile-008-vpn",
+      "profileName": "VPN Configuration",
+      "platform": "Windows",
+      "settingName": "VPN/SplitTunneling",
+      "errorCount": 4,
+      "conflictCount": 3
+    },
+    {
+      "profileId": "profile-003-firewall",
+      "profileName": "Windows Firewall Rules",
+      "platform": "Windows",
+      "settingName": "Firewall/BlockOutboundICMP",
+      "errorCount": 3,
+      "conflictCount": 1
+    },
+    {
+      "profileId": "profile-008-vpn",
+      "profileName": "VPN Configuration",
+      "platform": "Windows",
+      "settingName": "VPN/AlwaysOn",
+      "errorCount": 3,
+      "conflictCount": 0
+    },
+    {
+      "profileId": "profile-004-wifi",
+      "profileName": "Corporate WiFi Profile",
+      "platform": "Windows",
+      "settingName": "WiFi/NetworkSSID",
+      "errorCount": 3,
+      "conflictCount": 0
+    },
+    {
+      "profileId": "profile-001-baseline",
+      "profileName": "Windows Security Baseline",
+      "platform": "Windows",
+      "settingName": "Firewall/EnableDomainProfile",
+      "errorCount": 2,
+      "conflictCount": 0
+    },
+    {
+      "profileId": "profile-007-android",
+      "profileName": "Android Work Profile",
+      "platform": "Android",
+      "settingName": "WorkProfile/PasswordComplexity",
+      "errorCount": 2,
+      "conflictCount": 1
+    },
+    {
+      "profileId": "profile-004-wifi",
+      "profileName": "Corporate WiFi Profile",
+      "platform": "Windows",
+      "settingName": "WiFi/AuthenticationType",
+      "errorCount": 2,
+      "conflictCount": 0
+    },
+    {
+      "profileId": "profile-001-baseline",
+      "profileName": "Windows Security Baseline",
+      "platform": "Windows",
+      "settingName": "DefenderAntivirus/RealTimeScan",
+      "errorCount": 1,
+      "conflictCount": 1
+    }
+  ],
+  "insights": [
+    {
+      "id": "low-success-profiles",
+      "severity": "high",
+      "description": "2 profiles have success rate below 80%",
+      "impactedProfiles": 2,
+      "affectedDevices": 20,
+      "recommendedAction": "Review failed devices and remediate configuration issues",
+      "category": "Deployment"
+    },
+    {
+      "id": "profile-conflicts",
+      "severity": "high",
+      "description": "4 profiles have configuration conflicts",
+      "impactedProfiles": 4,
+      "affectedDevices": 9,
+      "recommendedAction": "Review conflicting profiles and consolidate settings",
+      "category": "Conflicts"
+    },
+    {
+      "id": "multi-profile-failures",
+      "severity": "high",
+      "description": "1 device is failing 3 or more configuration profiles",
+      "impactedDevices": 1,
+      "recommendedAction": "Investigate these devices for systemic issues",
+      "category": "Device Health"
+    },
+    {
+      "id": "security-profile-errors",
+      "severity": "critical",
+      "description": "3 security profiles have deployment errors",
+      "impactedProfiles": 3,
+      "affectedDevices": 12,
+      "recommendedAction": "Prioritize fixing security profile deployment issues",
+      "category": "Security"
+    },
+    {
+      "id": "pending-deployments",
+      "severity": "medium",
+      "description": "32 devices have pending profile deployments",
+      "impactedProfiles": 5,
+      "affectedDevices": 32,
+      "recommendedAction": "Check device connectivity and sync status",
+      "category": "Pending"
+    }
+  ],
+  "summary": {
+    "totalProfiles": 10,
+    "totalDevices": 1012,
+    "successDevices": 983,
+    "errorDevices": 38,
+    "conflictDevices": 9,
+    "pendingDevices": 32,
+    "overallSuccessRate": 93.4,
+    "profilesWithErrors": 8,
+    "profilesWithConflicts": 4,
+    "platformBreakdown": {
+      "Windows": { "profiles": 7, "success": 843, "errors": 32 },
+      "iOS/iPadOS": { "profiles": 1, "success": 72, "errors": 2 },
+      "macOS": { "profiles": 1, "success": 28, "errors": 1 },
+      "Android": { "profiles": 1, "success": 40, "errors": 3 }
+    },
+    "typeBreakdown": {
+      "Endpoint Protection": { "profiles": 2, "success": 285, "errors": 11 },
+      "Settings Catalog": { "profiles": 1, "success": 148, "errors": 1 },
+      "Wi-Fi": { "profiles": 1, "success": 130, "errors": 5 },
+      "Device Features": { "profiles": 1, "success": 72, "errors": 2 },
+      "Device Restrictions": { "profiles": 1, "success": 28, "errors": 1 },
+      "Android Work Profile": { "profiles": 1, "success": 40, "errors": 3 },
+      "VPN": { "profiles": 1, "success": 120, "errors": 15 },
+      "Trusted Root": { "profiles": 1, "success": 148, "errors": 0 },
+      "Kiosk": { "profiles": 1, "success": 12, "errors": 0 }
+    }
   },
-  {
-    "displayName": "Edge Browser Settings",
-    "profileType": "Settings Catalog",
-    "platform": "Windows",
-    "assignedCount": 150,
-    "successCount": 148,
-    "errorCount": 1,
-    "lastModified": "2026-01-08T14:20:00Z"
-  },
-  {
-    "displayName": "Windows Firewall Rules",
-    "profileType": "Endpoint Protection",
-    "platform": "Windows",
-    "assignedCount": 150,
-    "successCount": 140,
-    "errorCount": 8,
-    "lastModified": "2025-12-15T11:00:00Z"
-  },
-  {
-    "displayName": "Corporate WiFi Profile",
-    "profileType": "Wi-Fi",
-    "platform": "Windows",
-    "assignedCount": 150,
-    "successCount": 130,
-    "errorCount": 5,
-    "lastModified": "2025-11-20T16:45:00Z"
-  },
-  {
-    "displayName": "iOS Email Configuration",
-    "profileType": "Device Features",
-    "platform": "iOS/iPadOS",
-    "assignedCount": 75,
-    "successCount": 72,
-    "errorCount": 2,
-    "lastModified": "2026-01-05T08:15:00Z"
-  },
-  {
-    "displayName": "macOS Security Settings",
-    "profileType": "Device Restrictions",
-    "platform": "macOS",
-    "assignedCount": 30,
-    "successCount": 28,
-    "errorCount": 1,
-    "lastModified": "2025-12-28T10:30:00Z"
-  },
-  {
-    "displayName": "Android Work Profile",
-    "profileType": "Android Work Profile",
-    "platform": "Android",
-    "assignedCount": 45,
-    "successCount": 40,
-    "errorCount": 3,
-    "lastModified": "2026-01-02T13:00:00Z"
-  },
-  {
-    "displayName": "VPN Configuration",
-    "profileType": "VPN",
-    "platform": "Windows",
-    "assignedCount": 150,
-    "successCount": 120,
-    "errorCount": 15,
-    "lastModified": "2025-10-15T09:00:00Z"
-  }
-]
+  "collectionDate": "2026-02-06T10:00:00Z"
+}

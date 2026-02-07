@@ -1,102 +1,836 @@
-[
-  {
-    "displayName": "Microsoft 365 Apps for Enterprise",
-    "appType": "Microsoft 365 Apps",
-    "publisher": "Microsoft",
-    "assignedCount": 150,
-    "installedCount": 145,
-    "failedCount": 3,
-    "pendingCount": 2,
-    "installRate": 97
+{
+  "apps": [
+    {
+      "id": "app-001-m365",
+      "displayName": "Microsoft 365 Apps for Enterprise",
+      "description": "Microsoft Office suite including Word, Excel, PowerPoint, Outlook",
+      "publisher": "Microsoft Corporation",
+      "appType": "Microsoft 365 Apps",
+      "platform": "Windows",
+      "version": "16.0.17328.20162",
+      "createdDateTime": "2025-03-01T09:00:00Z",
+      "lastModifiedDateTime": "2026-01-15T10:00:00Z",
+      "isFeatured": true,
+      "privacyInformationUrl": "https://privacy.microsoft.com",
+      "informationUrl": "https://www.microsoft.com/microsoft-365",
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 145,
+      "failedDevices": 3,
+      "pendingDevices": 2,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 96.7,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-ABC123", "userName": "john.doe@contoso.com", "deviceId": "dev-001", "osVersion": "10.0.22631.2506", "installState": "failed", "installStateDetail": "Access Denied", "errorCode": "0x80070005", "lastSyncDateTime": "2026-02-05T14:30:00Z" },
+        { "deviceName": "LAPTOP-DEF456", "userName": "jane.smith@contoso.com", "deviceId": "dev-002", "osVersion": "10.0.22631.2506", "installState": "failed", "installStateDetail": "Invalid Parameter", "errorCode": "0x80070057", "lastSyncDateTime": "2026-02-05T10:15:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-002-chrome",
+      "displayName": "Google Chrome",
+      "description": "Fast, secure web browser",
+      "publisher": "Google LLC",
+      "appType": "Win32",
+      "platform": "Windows",
+      "version": "121.0.6167.139",
+      "createdDateTime": "2025-04-15T14:00:00Z",
+      "lastModifiedDateTime": "2026-01-10T09:00:00Z",
+      "isFeatured": false,
+      "privacyInformationUrl": "https://policies.google.com/privacy",
+      "informationUrl": "https://www.google.com/chrome/",
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 148,
+      "failedDevices": 1,
+      "pendingDevices": 1,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 98.7,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-GHI789", "userName": "bob.wilson@contoso.com", "deviceId": "dev-003", "osVersion": "10.0.22631.2506", "installState": "failed", "installStateDetail": "Download Failed", "errorCode": "0x87D00324", "lastSyncDateTime": "2026-02-04T16:45:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-003-adobe",
+      "displayName": "Adobe Acrobat Reader DC",
+      "description": "PDF viewer and editor",
+      "publisher": "Adobe Inc.",
+      "appType": "Win32",
+      "platform": "Windows",
+      "version": "24.001.20604",
+      "createdDateTime": "2025-05-01T11:00:00Z",
+      "lastModifiedDateTime": "2025-12-20T08:00:00Z",
+      "isFeatured": false,
+      "privacyInformationUrl": "https://www.adobe.com/privacy.html",
+      "informationUrl": "https://www.adobe.com/acrobat/pdf-reader.html",
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 140,
+      "failedDevices": 5,
+      "pendingDevices": 5,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 93.3,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-ABC123", "userName": "john.doe@contoso.com", "deviceId": "dev-001", "osVersion": "10.0.22631.2506", "installState": "failed", "installStateDetail": "Access Denied", "errorCode": "0x80070005", "lastSyncDateTime": "2026-02-05T14:30:00Z" },
+        { "deviceName": "LAPTOP-JKL012", "userName": "alice.brown@contoso.com", "installState": "failed", "errorCode": "0x87D00324", "lastSyncDateTime": "2026-02-05T09:00:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-004-zoom",
+      "displayName": "Zoom Workplace",
+      "description": "Video conferencing and collaboration",
+      "publisher": "Zoom Video Communications, Inc.",
+      "appType": "Win32",
+      "platform": "Windows",
+      "version": "5.17.5.31515",
+      "createdDateTime": "2025-06-01T16:00:00Z",
+      "lastModifiedDateTime": "2026-01-05T14:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.groupAssignmentTarget", "targetName": "Remote Workers", "groupId": "grp-remote-workers" }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 95,
+      "failedDevices": 2,
+      "pendingDevices": 3,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 100,
+      "successRate": 95.0,
+      "deviceStatuses": [],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-005-7zip",
+      "displayName": "7-Zip",
+      "description": "File archiver with high compression ratio",
+      "publisher": "Igor Pavlov",
+      "appType": "Win32",
+      "platform": "Windows",
+      "version": "23.01",
+      "createdDateTime": "2025-03-15T10:00:00Z",
+      "lastModifiedDateTime": "2025-11-01T09:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 150,
+      "failedDevices": 0,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 100.0,
+      "deviceStatuses": [],
+      "hasFailures": false,
+      "needsAttention": false
+    },
+    {
+      "id": "app-006-teams",
+      "displayName": "Microsoft Teams",
+      "description": "Collaboration and communication platform",
+      "publisher": "Microsoft Corporation",
+      "appType": "Store for Business",
+      "platform": "Windows",
+      "version": "1.6.00.32254",
+      "createdDateTime": "2025-02-01T08:00:00Z",
+      "lastModifiedDateTime": "2026-01-12T11:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Available", "targetType": "#microsoft.graph.allLicensedUsersAssignmentTarget", "targetName": "All Users", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": false,
+      "installedDevices": 72,
+      "failedDevices": 1,
+      "pendingDevices": 2,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 75,
+      "successRate": 96.0,
+      "deviceStatuses": [],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-007-vscode",
+      "displayName": "Visual Studio Code",
+      "description": "Lightweight source code editor",
+      "publisher": "Microsoft Corporation",
+      "appType": "Win32",
+      "platform": "Windows",
+      "version": "1.85.2",
+      "createdDateTime": "2025-07-01T13:00:00Z",
+      "lastModifiedDateTime": "2025-12-15T10:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Available", "targetType": "#microsoft.graph.groupAssignmentTarget", "targetName": "Developers", "groupId": "grp-developers" }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": false,
+      "installedDevices": 45,
+      "failedDevices": 3,
+      "pendingDevices": 2,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 50,
+      "successRate": 90.0,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-ABC123", "userName": "john.doe@contoso.com", "deviceId": "dev-001", "osVersion": "10.0.22631.2506", "installState": "failed", "installStateDetail": "Access Denied", "errorCode": "0x80070005", "lastSyncDateTime": "2026-02-05T14:30:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": true
+    },
+    {
+      "id": "app-008-slack",
+      "displayName": "Slack",
+      "description": "Business communication platform",
+      "publisher": "Slack Technologies, LLC",
+      "appType": "Win32",
+      "platform": "Windows",
+      "version": "4.36.138",
+      "createdDateTime": "2025-08-01T09:00:00Z",
+      "lastModifiedDateTime": "2025-11-20T14:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Available", "targetType": "#microsoft.graph.groupAssignmentTarget", "targetName": "Marketing", "groupId": "grp-marketing" }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": false,
+      "installedDevices": 65,
+      "failedDevices": 10,
+      "pendingDevices": 5,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 80,
+      "successRate": 81.3,
+      "deviceStatuses": [
+        { "deviceName": "LAPTOP-MNO345", "userName": "charlie.davis@contoso.com", "deviceId": "dev-005", "osVersion": "10.0.22631.2506", "installState": "failed", "installStateDetail": "Dependency Failed", "errorCode": "0x87D00607", "lastSyncDateTime": "2026-02-05T11:20:00Z" },
+        { "deviceName": "DESKTOP-PQR678", "userName": "diana.evans@contoso.com", "installState": "failed", "errorCode": "0x87D00607", "lastSyncDateTime": "2026-02-04T15:00:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": true
+    },
+    {
+      "id": "app-009-vpn",
+      "displayName": "Corporate VPN Client",
+      "description": "Secure remote access VPN client",
+      "publisher": "Contoso IT",
+      "appType": "Win32",
+      "platform": "Windows",
+      "version": "3.5.2",
+      "createdDateTime": "2025-04-01T11:00:00Z",
+      "lastModifiedDateTime": "2025-10-15T16:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 120,
+      "failedDevices": 20,
+      "pendingDevices": 10,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 80.0,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-ABC123", "userName": "john.doe@contoso.com", "deviceId": "dev-001", "osVersion": "10.0.22631.2506", "installState": "failed", "installStateDetail": "Access Denied", "errorCode": "0x80070005", "lastSyncDateTime": "2026-02-05T14:30:00Z" },
+        { "deviceName": "LAPTOP-MNO345", "userName": "charlie.davis@contoso.com", "installState": "failed", "errorCode": "0x87D00324", "lastSyncDateTime": "2026-02-05T11:20:00Z" },
+        { "deviceName": "DESKTOP-STU901", "userName": "edward.foster@contoso.com", "installState": "failed", "errorCode": "0x87D00607", "lastSyncDateTime": "2026-02-04T09:30:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": true
+    },
+    {
+      "id": "app-010-portal",
+      "displayName": "Company Portal",
+      "description": "Microsoft Intune Company Portal for device management",
+      "publisher": "Microsoft Corporation",
+      "appType": "Store App",
+      "platform": "Windows",
+      "version": "5.0.5484.0",
+      "createdDateTime": "2025-01-15T08:00:00Z",
+      "lastModifiedDateTime": "2026-01-08T09:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 150,
+      "failedDevices": 0,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 100.0,
+      "deviceStatuses": [],
+      "hasFailures": false,
+      "needsAttention": false
+    },
+    {
+      "id": "app-011-printer",
+      "displayName": "Universal Print Driver",
+      "description": "Enterprise printer driver package",
+      "publisher": "Contoso IT",
+      "appType": "MSI",
+      "platform": "Windows",
+      "version": "2.1.0.5",
+      "createdDateTime": "2025-05-10T09:00:00Z",
+      "lastModifiedDateTime": "2025-12-01T11:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 145,
+      "failedDevices": 3,
+      "pendingDevices": 2,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "successRate": 96.7,
+      "deviceStatuses": [
+        { "deviceName": "LAPTOP-VWX234", "userName": "frank.garcia@contoso.com", "installState": "failed", "errorCode": "1603", "lastSyncDateTime": "2026-02-05T08:30:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-012-helpdesk",
+      "displayName": "IT Helpdesk Portal",
+      "description": "Internal IT support and ticketing web application",
+      "publisher": "Contoso IT",
+      "appType": "Web Link",
+      "platform": "Cross-platform",
+      "version": null,
+      "createdDateTime": "2025-06-15T14:00:00Z",
+      "lastModifiedDateTime": "2025-11-10T10:00:00Z",
+      "isFeatured": false,
+      "informationUrl": "https://helpdesk.contoso.com",
+      "assignments": [
+        { "intent": "Available", "targetType": "#microsoft.graph.allLicensedUsersAssignmentTarget", "targetName": "All Users", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": false,
+      "installedDevices": 120,
+      "failedDevices": 0,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 120,
+      "successRate": 100.0,
+      "deviceStatuses": [],
+      "hasFailures": false,
+      "needsAttention": false
+    },
+    {
+      "id": "app-013-winterm",
+      "displayName": "Windows Terminal",
+      "description": "Modern terminal application for Windows",
+      "publisher": "Microsoft Corporation",
+      "appType": "MSIX/AppX",
+      "platform": "Windows",
+      "version": "1.18.10301.0",
+      "createdDateTime": "2025-08-01T10:00:00Z",
+      "lastModifiedDateTime": "2026-01-05T15:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Available", "targetType": "#microsoft.graph.groupAssignmentTarget", "targetName": "Developers", "groupId": "grp-developers" }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": false,
+      "installedDevices": 48,
+      "failedDevices": 1,
+      "pendingDevices": 1,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 50,
+      "successRate": 96.0,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-YZA567", "userName": "grace.hall@contoso.com", "installState": "failed", "errorCode": "0x80073CF9", "lastSyncDateTime": "2026-02-04T12:15:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-014-outlook-ios",
+      "displayName": "Microsoft Outlook",
+      "description": "Email, calendar, and contacts for iOS",
+      "publisher": "Microsoft Corporation",
+      "appType": "iOS Store",
+      "platform": "iOS",
+      "version": "4.2402.0",
+      "createdDateTime": "2025-02-10T09:00:00Z",
+      "lastModifiedDateTime": "2026-01-20T11:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allLicensedUsersAssignmentTarget", "targetName": "All Users", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 85,
+      "failedDevices": 2,
+      "pendingDevices": 3,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 90,
+      "successRate": 94.4,
+      "deviceStatuses": [
+        { "deviceName": "iPhone-ABC123", "userName": "henry.irwin@contoso.com", "deviceId": "dev-010", "osVersion": "17.3.1", "installState": "failed", "installStateDetail": "MDM Installation Failed", "errorCode": "MDM_APP_INSTALL_FAILED", "lastSyncDateTime": "2026-02-05T16:00:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-015-authenticator-ios",
+      "displayName": "Microsoft Authenticator",
+      "description": "Multi-factor authentication app",
+      "publisher": "Microsoft Corporation",
+      "appType": "iOS VPP",
+      "platform": "iOS",
+      "version": "6.7.11",
+      "createdDateTime": "2025-01-05T08:00:00Z",
+      "lastModifiedDateTime": "2026-01-15T09:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allLicensedUsersAssignmentTarget", "targetName": "All Users", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 88,
+      "failedDevices": 0,
+      "pendingDevices": 2,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 90,
+      "successRate": 97.8,
+      "deviceStatuses": [],
+      "hasFailures": false,
+      "needsAttention": false
+    },
+    {
+      "id": "app-016-companyportal-android",
+      "displayName": "Intune Company Portal",
+      "description": "Company Portal for Android devices",
+      "publisher": "Microsoft Corporation",
+      "appType": "Android Store",
+      "platform": "Android",
+      "version": "5.0.5847.0",
+      "createdDateTime": "2025-01-10T10:00:00Z",
+      "lastModifiedDateTime": "2026-01-18T14:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 62,
+      "failedDevices": 3,
+      "pendingDevices": 5,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 70,
+      "successRate": 88.6,
+      "deviceStatuses": [
+        { "deviceName": "SM-S918U", "userName": "ivan.jones@contoso.com", "deviceId": "dev-011", "osVersion": "Android 14", "installState": "failed", "installStateDetail": "Insufficient Storage", "errorCode": "INSTALL_FAILED_INSUFFICIENT_STORAGE", "lastSyncDateTime": "2026-02-05T09:30:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-017-teams-android",
+      "displayName": "Microsoft Teams",
+      "description": "Chat and collaboration for Android",
+      "publisher": "Microsoft Corporation",
+      "appType": "Android Managed",
+      "platform": "Android",
+      "version": "1416/1.0.0.2024012301",
+      "createdDateTime": "2025-03-01T11:00:00Z",
+      "lastModifiedDateTime": "2026-01-10T08:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Available", "targetType": "#microsoft.graph.allLicensedUsersAssignmentTarget", "targetName": "All Users", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": false,
+      "installedDevices": 55,
+      "failedDevices": 1,
+      "pendingDevices": 4,
+      "notInstalledDevices": 10,
+      "notApplicableDevices": 0,
+      "totalDevices": 70,
+      "successRate": 78.6,
+      "deviceStatuses": [],
+      "hasFailures": true,
+      "needsAttention": true
+    },
+    {
+      "id": "app-018-custom-android-lob",
+      "displayName": "Contoso Field Service",
+      "description": "Custom field service application for technicians",
+      "publisher": "Contoso IT",
+      "appType": "Android LOB",
+      "platform": "Android",
+      "version": "3.2.1",
+      "createdDateTime": "2025-04-15T14:00:00Z",
+      "lastModifiedDateTime": "2025-12-01T10:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.groupAssignmentTarget", "targetName": "Field Technicians", "groupId": "grp-field-techs" }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 28,
+      "failedDevices": 2,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 30,
+      "successRate": 93.3,
+      "deviceStatuses": [
+        { "deviceName": "Pixel-7-Pro", "userName": "james.kim@contoso.com", "installState": "failed", "errorCode": "INSTALL_PARSE_FAILED_MANIFEST", "lastSyncDateTime": "2026-02-04T11:00:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-019-edge-macos",
+      "displayName": "Microsoft Edge",
+      "description": "Web browser for macOS",
+      "publisher": "Microsoft Corporation",
+      "appType": "macOS Edge",
+      "platform": "macOS",
+      "version": "121.0.2277.83",
+      "createdDateTime": "2025-02-20T09:00:00Z",
+      "lastModifiedDateTime": "2026-01-25T15:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 38,
+      "failedDevices": 1,
+      "pendingDevices": 1,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 40,
+      "successRate": 95.0,
+      "deviceStatuses": [],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-020-defender-macos",
+      "displayName": "Microsoft Defender",
+      "description": "Endpoint protection for macOS",
+      "publisher": "Microsoft Corporation",
+      "appType": "macOS Defender",
+      "platform": "macOS",
+      "version": "101.24012.0002",
+      "createdDateTime": "2025-01-25T10:00:00Z",
+      "lastModifiedDateTime": "2026-01-30T11:00:00Z",
+      "isFeatured": true,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 40,
+      "failedDevices": 0,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 40,
+      "successRate": 100.0,
+      "deviceStatuses": [],
+      "hasFailures": false,
+      "needsAttention": false
+    },
+    {
+      "id": "app-021-slack-macos",
+      "displayName": "Slack for macOS",
+      "description": "Business communication platform for macOS",
+      "publisher": "Slack Technologies, LLC",
+      "appType": "macOS DMG",
+      "platform": "macOS",
+      "version": "4.36.140",
+      "createdDateTime": "2025-05-01T13:00:00Z",
+      "lastModifiedDateTime": "2025-11-15T09:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Available", "targetType": "#microsoft.graph.groupAssignmentTarget", "targetName": "Marketing", "groupId": "grp-marketing" }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": false,
+      "installedDevices": 18,
+      "failedDevices": 2,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 20,
+      "successRate": 90.0,
+      "deviceStatuses": [
+        { "deviceName": "MacBook-Pro-KLM", "userName": "karen.lewis@contoso.com", "deviceId": "dev-015", "osVersion": "macOS 14.3.1", "installState": "failed", "installStateDetail": "Notarization Failed", "errorCode": "INSTALL_FAILED_NOTARIZATION", "lastSyncDateTime": "2026-02-03T14:00:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-022-custom-macos-pkg",
+      "displayName": "Contoso Security Agent",
+      "description": "Custom security monitoring agent",
+      "publisher": "Contoso IT",
+      "appType": "macOS PKG",
+      "platform": "macOS",
+      "version": "2.5.0",
+      "createdDateTime": "2025-06-01T10:00:00Z",
+      "lastModifiedDateTime": "2025-12-10T11:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.allDevicesAssignmentTarget", "targetName": "All Devices", "groupId": null }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 39,
+      "failedDevices": 1,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 40,
+      "successRate": 97.5,
+      "deviceStatuses": [],
+      "hasFailures": true,
+      "needsAttention": false
+    },
+    {
+      "id": "app-023-ios-lob",
+      "displayName": "Contoso Sales App",
+      "description": "Custom sales application for iOS",
+      "publisher": "Contoso IT",
+      "appType": "iOS LOB",
+      "platform": "iOS",
+      "version": "4.1.0",
+      "createdDateTime": "2025-03-15T09:00:00Z",
+      "lastModifiedDateTime": "2025-12-20T10:00:00Z",
+      "isFeatured": false,
+      "assignments": [
+        { "intent": "Required", "targetType": "#microsoft.graph.groupAssignmentTarget", "targetName": "Sales Team", "groupId": "grp-sales" }
+      ],
+      "assignmentCount": 1,
+      "hasRequiredAssignment": true,
+      "installedDevices": 42,
+      "failedDevices": 3,
+      "pendingDevices": 0,
+      "notInstalledDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 45,
+      "successRate": 93.3,
+      "deviceStatuses": [
+        { "deviceName": "iPad-Pro-NOP", "userName": "lisa.martin@contoso.com", "installState": "failed", "errorCode": "INSTALL_FAILED_PROVISIONING", "lastSyncDateTime": "2026-02-04T10:30:00Z" }
+      ],
+      "hasFailures": true,
+      "needsAttention": false
+    }
+  ],
+  "failedDevices": [
+    {
+      "deviceName": "DESKTOP-ABC123",
+      "userName": "john.doe@contoso.com",
+      "failedApps": ["Microsoft 365 Apps for Enterprise", "Adobe Acrobat Reader DC", "Visual Studio Code", "Corporate VPN Client"],
+      "failedAppCount": 4
+    },
+    {
+      "deviceName": "LAPTOP-MNO345",
+      "userName": "charlie.davis@contoso.com",
+      "failedApps": ["Slack", "Corporate VPN Client"],
+      "failedAppCount": 2
+    },
+    {
+      "deviceName": "LAPTOP-DEF456",
+      "userName": "jane.smith@contoso.com",
+      "failedApps": ["Microsoft 365 Apps for Enterprise"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "DESKTOP-GHI789",
+      "userName": "bob.wilson@contoso.com",
+      "failedApps": ["Google Chrome"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "LAPTOP-JKL012",
+      "userName": "alice.brown@contoso.com",
+      "failedApps": ["Adobe Acrobat Reader DC"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "LAPTOP-VWX234",
+      "userName": "frank.garcia@contoso.com",
+      "failedApps": ["Universal Print Driver"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "DESKTOP-YZA567",
+      "userName": "grace.hall@contoso.com",
+      "failedApps": ["Windows Terminal"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "iPhone-ABC123",
+      "userName": "henry.irwin@contoso.com",
+      "failedApps": ["Microsoft Outlook"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "SM-S918U",
+      "userName": "ivan.jones@contoso.com",
+      "failedApps": ["Intune Company Portal"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "Pixel-7-Pro",
+      "userName": "james.kim@contoso.com",
+      "failedApps": ["Contoso Field Service"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "MacBook-Pro-KLM",
+      "userName": "karen.lewis@contoso.com",
+      "failedApps": ["Slack for macOS"],
+      "failedAppCount": 1
+    },
+    {
+      "deviceName": "iPad-Pro-NOP",
+      "userName": "lisa.martin@contoso.com",
+      "failedApps": ["Contoso Sales App"],
+      "failedAppCount": 1
+    }
+  ],
+  "insights": [
+    {
+      "id": "high-failure-apps",
+      "title": "Apps with high failure rates",
+      "severity": "critical",
+      "description": "2 apps have more than 10 failed installations",
+      "impactedApps": 2,
+      "impactedDevices": 30,
+      "recommendedAction": "Review installation logs and app requirements for failing applications",
+      "category": "Installation Failures"
+    },
+    {
+      "id": "required-apps-failing",
+      "title": "Required apps with failures",
+      "severity": "high",
+      "description": "10 required apps have installation failures across Windows, iOS, Android, and macOS",
+      "impactedApps": 10,
+      "impactedDevices": 42,
+      "recommendedAction": "Prioritize fixing required app deployments as they impact device compliance",
+      "category": "Required Apps"
+    },
+    {
+      "id": "low-install-rate",
+      "title": "Apps with low install rates",
+      "severity": "high",
+      "description": "3 apps have install success rate below 80%",
+      "impactedApps": 3,
+      "recommendedAction": "Review app compatibility and deployment settings",
+      "category": "Deployment Health"
+    },
+    {
+      "id": "multi-app-failures",
+      "title": "Devices with multiple app failures",
+      "severity": "high",
+      "description": "1 device is failing 3 or more app installations",
+      "impactedDevices": 1,
+      "recommendedAction": "Investigate these devices for systemic issues (disk space, permissions, connectivity)",
+      "category": "Device Health"
+    },
+    {
+      "id": "pending-deployments",
+      "title": "Apps with pending installations",
+      "severity": "medium",
+      "description": "52 devices have pending app installations across 10 apps",
+      "impactedApps": 10,
+      "impactedDevices": 52,
+      "recommendedAction": "Check device connectivity and sync status",
+      "category": "Pending"
+    },
+    {
+      "id": "cross-platform-coverage",
+      "title": "Multi-platform app deployment",
+      "severity": "info",
+      "description": "Apps are deployed across 5 platforms: Windows (14), iOS (4), Android (3), macOS (4), Cross-platform (1)",
+      "impactedApps": 23,
+      "recommendedAction": "Ensure consistent app experience across all platforms",
+      "category": "Platform Coverage"
+    }
+  ],
+  "summary": {
+    "totalApps": 23,
+    "win32Apps": 6,
+    "storeApps": 4,
+    "lobApps": 4,
+    "webApps": 1,
+    "m365Apps": 1,
+    "totalInstalled": 1758,
+    "totalFailed": 67,
+    "totalPending": 52,
+    "appsWithFailures": 17,
+    "overallInstallRate": 93.7,
+    "platformBreakdown": {
+      "Windows": { "apps": 14, "installed": 1443, "failed": 49 },
+      "iOS": { "apps": 4, "installed": 257, "failed": 5 },
+      "Android": { "apps": 3, "installed": 145, "failed": 6 },
+      "macOS": { "apps": 4, "installed": 135, "failed": 4 },
+      "Cross-platform": { "apps": 1, "installed": 120, "failed": 0 }
+    },
+    "typeBreakdown": {
+      "Win32": { "apps": 6, "installed": 615, "failed": 41 },
+      "Microsoft 365 Apps": { "apps": 1, "installed": 145, "failed": 3 },
+      "Store for Business": { "apps": 1, "installed": 72, "failed": 1 },
+      "Store App": { "apps": 1, "installed": 150, "failed": 0 },
+      "MSI": { "apps": 1, "installed": 145, "failed": 3 },
+      "Web Link": { "apps": 1, "installed": 120, "failed": 0 },
+      "MSIX/AppX": { "apps": 1, "installed": 48, "failed": 1 },
+      "iOS Store": { "apps": 1, "installed": 85, "failed": 2 },
+      "iOS VPP": { "apps": 1, "installed": 88, "failed": 0 },
+      "iOS LOB": { "apps": 1, "installed": 42, "failed": 3 },
+      "Android Store": { "apps": 1, "installed": 62, "failed": 3 },
+      "Android Managed": { "apps": 1, "installed": 55, "failed": 1 },
+      "Android LOB": { "apps": 1, "installed": 28, "failed": 2 },
+      "macOS Edge": { "apps": 1, "installed": 38, "failed": 1 },
+      "macOS Defender": { "apps": 1, "installed": 40, "failed": 0 },
+      "macOS DMG": { "apps": 1, "installed": 18, "failed": 2 },
+      "macOS PKG": { "apps": 1, "installed": 39, "failed": 1 }
+    }
   },
-  {
-    "displayName": "Google Chrome",
-    "appType": "Win32",
-    "publisher": "Google",
-    "assignedCount": 150,
-    "installedCount": 148,
-    "failedCount": 1,
-    "pendingCount": 1,
-    "installRate": 99
-  },
-  {
-    "displayName": "Adobe Acrobat Reader",
-    "appType": "Win32",
-    "publisher": "Adobe",
-    "assignedCount": 150,
-    "installedCount": 140,
-    "failedCount": 5,
-    "pendingCount": 5,
-    "installRate": 93
-  },
-  {
-    "displayName": "Zoom Workplace",
-    "appType": "Win32",
-    "publisher": "Zoom",
-    "assignedCount": 100,
-    "installedCount": 95,
-    "failedCount": 2,
-    "pendingCount": 3,
-    "installRate": 95
-  },
-  {
-    "displayName": "7-Zip",
-    "appType": "Win32",
-    "publisher": "Igor Pavlov",
-    "assignedCount": 150,
-    "installedCount": 150,
-    "failedCount": 0,
-    "pendingCount": 0,
-    "installRate": 100
-  },
-  {
-    "displayName": "Microsoft Teams",
-    "appType": "Store for Business",
-    "publisher": "Microsoft",
-    "assignedCount": 75,
-    "installedCount": 72,
-    "failedCount": 1,
-    "pendingCount": 2,
-    "installRate": 96
-  },
-  {
-    "displayName": "Visual Studio Code",
-    "appType": "Win32",
-    "publisher": "Microsoft",
-    "assignedCount": 50,
-    "installedCount": 45,
-    "failedCount": 3,
-    "pendingCount": 2,
-    "installRate": 90
-  },
-  {
-    "displayName": "Slack",
-    "appType": "Win32",
-    "publisher": "Slack Technologies",
-    "assignedCount": 80,
-    "installedCount": 65,
-    "failedCount": 10,
-    "pendingCount": 5,
-    "installRate": 81
-  },
-  {
-    "displayName": "Corporate VPN Client",
-    "appType": "Win32",
-    "publisher": "Contoso IT",
-    "assignedCount": 150,
-    "installedCount": 120,
-    "failedCount": 20,
-    "pendingCount": 10,
-    "installRate": 80
-  },
-  {
-    "displayName": "Company Portal",
-    "appType": "Store App",
-    "publisher": "Microsoft",
-    "assignedCount": 150,
-    "installedCount": 150,
-    "failedCount": 0,
-    "pendingCount": 0,
-    "installRate": 100
-  }
-]
+  "collectionDate": "2026-02-06T12:00:00Z"
+}

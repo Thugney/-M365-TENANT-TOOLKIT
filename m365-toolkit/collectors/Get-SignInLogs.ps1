@@ -61,6 +61,7 @@ function Get-SignInStatus {
     <#
     .SYNOPSIS
         Determines sign-in status from error code.
+        Returns: Success, Failed, or Interrupted (matches sample data structure)
     #>
     param(
         [int]$ErrorCode,
@@ -68,14 +69,9 @@ function Get-SignInStatus {
     )
 
     if ($ErrorCode -eq 0) { return "Success" }
-    if ($ErrorCode -eq 50140) { return "MFA Required" }
-    if ($ErrorCode -eq 50074) { return "MFA Prompted" }
-    if ($ErrorCode -eq 50076) { return "MFA Challenge" }
-    if ($ErrorCode -eq 53003) { return "CA Blocked" }
-    if ($ErrorCode -eq 50053) { return "Account Locked" }
-    if ($ErrorCode -eq 50126) { return "Invalid Credentials" }
-    if ($ErrorCode -eq 50057) { return "Account Disabled" }
-    if ($ErrorCode -eq 50055) { return "Password Expired" }
+    # Interrupted statuses - MFA/CA challenge not yet completed
+    if ($ErrorCode -in @(50140, 50074, 50076)) { return "Interrupted" }
+    # All other error codes are failures
     return "Failed"
 }
 
@@ -208,9 +204,14 @@ try {
 
         switch ($status) {
             "Success"     { $signInData.summary.successfulSignIns++ }
-            "CA Blocked"  { $signInData.summary.caBlocked++; $signInData.summary.failedSignIns++ }
-            { $_ -match "MFA" } { $signInData.summary.mfaChallenges++ }
-            default       { if ($signIn.status.errorCode -ne 0) { $signInData.summary.failedSignIns++ } }
+            "Interrupted" { $signInData.summary.mfaChallenges++ }
+            "Failed"      {
+                $signInData.summary.failedSignIns++
+                # Track CA blocked separately (error code 53003)
+                if ($signIn.status.errorCode -eq 53003) {
+                    $signInData.summary.caBlocked++
+                }
+            }
         }
 
         if ($riskLevel -in @("High", "Medium")) {

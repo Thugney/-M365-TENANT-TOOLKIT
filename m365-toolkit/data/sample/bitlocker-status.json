@@ -1,74 +1,366 @@
-[
-  {
-    "deviceName": "DESKTOP-WIN001",
-    "userPrincipalName": "john.smith@contoso.com",
-    "encryptionState": "encrypted",
-    "recoveryKeyEscrowed": true,
-    "tpmVersion": "2.0",
-    "manufacturer": "Dell",
-    "model": "Latitude 5520"
+{
+  "devices": [
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-111111111111",
+      "deviceName": "DESKTOP-WIN001",
+      "userPrincipalName": "john.smith@contoso.com",
+      "manufacturer": "Dell Inc.",
+      "model": "Latitude 5520",
+      "serialNumber": "ABC123456",
+      "osVersion": "10.0.22631.3007",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-06T10:30:00Z",
+      "daysSinceSync": 0,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-001-abc", "createdDateTime": "2025-06-15T08:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-222222222222",
+      "deviceName": "LAPTOP-WIN002",
+      "userPrincipalName": "jane.doe@contoso.com",
+      "manufacturer": "HP",
+      "model": "EliteBook 840 G8",
+      "serialNumber": "DEF789012",
+      "osVersion": "10.0.22631.2861",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-05T14:20:00Z",
+      "daysSinceSync": 1,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 2,
+      "recoveryKeys": [
+        { "keyId": "key-002-abc", "createdDateTime": "2025-03-10T09:00:00Z", "volumeType": "operatingSystemVolume" },
+        { "keyId": "key-002-def", "createdDateTime": "2025-03-10T09:00:00Z", "volumeType": "fixedDataVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-333333333333",
+      "deviceName": "DESKTOP-WIN003",
+      "userPrincipalName": "bob.wilson@contoso.com",
+      "manufacturer": "Lenovo",
+      "model": "ThinkPad T14",
+      "serialNumber": "GHI345678",
+      "osVersion": "10.0.19045.3803",
+      "complianceState": "noncompliant",
+      "lastSyncDateTime": "2026-02-01T08:00:00Z",
+      "daysSinceSync": 5,
+      "isEncrypted": false,
+      "encryptionState": "notEncrypted",
+      "hasRecoveryKey": false,
+      "recoveryKeyEscrowed": false,
+      "recoveryKeyCount": 0,
+      "recoveryKeys": [],
+      "needsEncryption": true
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-444444444444",
+      "deviceName": "LAPTOP-WIN004",
+      "userPrincipalName": "sarah.jones@contoso.com",
+      "manufacturer": "Microsoft Corporation",
+      "model": "Surface Pro 9",
+      "serialNumber": "JKL901234",
+      "osVersion": "10.0.22631.2861",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-06T06:00:00Z",
+      "daysSinceSync": 0,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-004-abc", "createdDateTime": "2025-09-20T11:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-555555555555",
+      "deviceName": "DESKTOP-WIN005",
+      "userPrincipalName": "mike.brown@contoso.com",
+      "manufacturer": "Dell Inc.",
+      "model": "OptiPlex 7090",
+      "serialNumber": "MNO567890",
+      "osVersion": "10.0.19045.3803",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-03T16:45:00Z",
+      "daysSinceSync": 3,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": false,
+      "recoveryKeyEscrowed": false,
+      "recoveryKeyCount": 0,
+      "recoveryKeys": [],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-666666666666",
+      "deviceName": "LAPTOP-WIN006",
+      "userPrincipalName": "lisa.chen@contoso.com",
+      "manufacturer": "HP",
+      "model": "ZBook 15 G8",
+      "serialNumber": "PQR123456",
+      "osVersion": "10.0.22621.2861",
+      "complianceState": "noncompliant",
+      "lastSyncDateTime": "2026-01-15T12:00:00Z",
+      "daysSinceSync": 22,
+      "isEncrypted": false,
+      "encryptionState": "notEncrypted",
+      "hasRecoveryKey": false,
+      "recoveryKeyEscrowed": false,
+      "recoveryKeyCount": 0,
+      "recoveryKeys": [],
+      "needsEncryption": true
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-777777777777",
+      "deviceName": "DESKTOP-WIN007",
+      "userPrincipalName": "david.kim@contoso.com",
+      "manufacturer": "Lenovo",
+      "model": "ThinkCentre M90q",
+      "serialNumber": "STU789012",
+      "osVersion": "10.0.22631.3007",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-05T09:00:00Z",
+      "daysSinceSync": 1,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-007-abc", "createdDateTime": "2025-07-01T10:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-888888888888",
+      "deviceName": "LAPTOP-WIN008",
+      "userPrincipalName": "emma.taylor@contoso.com",
+      "manufacturer": "Dell Inc.",
+      "model": "XPS 15 9520",
+      "serialNumber": "VWX345678",
+      "osVersion": "10.0.22631.2861",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-06T08:00:00Z",
+      "daysSinceSync": 0,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-008-abc", "createdDateTime": "2025-11-15T14:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-999999999999",
+      "deviceName": "DESKTOP-WIN009",
+      "userPrincipalName": "alex.martinez@contoso.com",
+      "manufacturer": "HP",
+      "model": "ProDesk 400 G7",
+      "serialNumber": "YZA901234",
+      "osVersion": "10.0.19045.3803",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-04T11:30:00Z",
+      "daysSinceSync": 2,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-009-abc", "createdDateTime": "2025-08-22T15:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-aaaaaaaaaaaa",
+      "deviceName": "LAPTOP-WIN010",
+      "userPrincipalName": "rachel.green@contoso.com",
+      "manufacturer": "Lenovo",
+      "model": "ThinkPad X1 Carbon",
+      "serialNumber": "BCD567890",
+      "osVersion": "10.0.22631.3007",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-06T07:15:00Z",
+      "daysSinceSync": 0,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 2,
+      "recoveryKeys": [
+        { "keyId": "key-010-abc", "createdDateTime": "2025-10-05T09:00:00Z", "volumeType": "operatingSystemVolume" },
+        { "keyId": "key-010-def", "createdDateTime": "2025-10-05T09:00:00Z", "volumeType": "fixedDataVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-bbbbbbbbbbbb",
+      "deviceName": "DESKTOP-WIN011",
+      "userPrincipalName": "tom.anderson@contoso.com",
+      "manufacturer": "Dell Inc.",
+      "model": "Precision 5560",
+      "serialNumber": "EFG123456",
+      "osVersion": "10.0.22631.2861",
+      "complianceState": "noncompliant",
+      "lastSyncDateTime": "2026-01-20T14:00:00Z",
+      "daysSinceSync": 17,
+      "isEncrypted": false,
+      "encryptionState": "notEncrypted",
+      "hasRecoveryKey": false,
+      "recoveryKeyEscrowed": false,
+      "recoveryKeyCount": 0,
+      "recoveryKeys": [],
+      "needsEncryption": true
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-cccccccccccc",
+      "deviceName": "LAPTOP-WIN012",
+      "userPrincipalName": "chris.lee@contoso.com",
+      "manufacturer": "Microsoft Corporation",
+      "model": "Surface Laptop 5",
+      "serialNumber": "HIJ789012",
+      "osVersion": "10.0.22631.3007",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-06T09:45:00Z",
+      "daysSinceSync": 0,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-012-abc", "createdDateTime": "2025-12-01T10:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-dddddddddddd",
+      "deviceName": "DESKTOP-WIN013",
+      "userPrincipalName": "nancy.white@contoso.com",
+      "manufacturer": "HP",
+      "model": "EliteDesk 800 G6",
+      "serialNumber": "KLM345678",
+      "osVersion": "10.0.19045.3803",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-05T16:30:00Z",
+      "daysSinceSync": 1,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": false,
+      "recoveryKeyEscrowed": false,
+      "recoveryKeyCount": 0,
+      "recoveryKeys": [],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-eeeeeeeeeeee",
+      "deviceName": "LAPTOP-WIN014",
+      "userPrincipalName": "kevin.davis@contoso.com",
+      "manufacturer": "Lenovo",
+      "model": "ThinkPad E14",
+      "serialNumber": "NOP901234",
+      "osVersion": "10.0.22621.2861",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-04T08:00:00Z",
+      "daysSinceSync": 2,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-014-abc", "createdDateTime": "2025-05-18T11:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    },
+    {
+      "id": "d1a2b3c4-5678-90ab-cdef-ffffffffffff",
+      "deviceName": "DESKTOP-WIN015",
+      "userPrincipalName": "amy.hall@contoso.com",
+      "manufacturer": "Dell Inc.",
+      "model": "Latitude 7420",
+      "serialNumber": "QRS567890",
+      "osVersion": "10.0.22631.3007",
+      "complianceState": "compliant",
+      "lastSyncDateTime": "2026-02-06T11:00:00Z",
+      "daysSinceSync": 0,
+      "isEncrypted": true,
+      "encryptionState": "encrypted",
+      "hasRecoveryKey": true,
+      "recoveryKeyEscrowed": true,
+      "recoveryKeyCount": 1,
+      "recoveryKeys": [
+        { "keyId": "key-015-abc", "createdDateTime": "2025-04-10T14:00:00Z", "volumeType": "operatingSystemVolume" }
+      ],
+      "needsEncryption": false
+    }
+  ],
+  "insights": [
+    {
+      "id": "not-encrypted-devices",
+      "severity": "critical",
+      "description": "3 devices are not encrypted with BitLocker",
+      "affectedDevices": 3,
+      "recommendedAction": "Enable BitLocker encryption on these devices to protect sensitive data",
+      "category": "Security"
+    },
+    {
+      "id": "missing-recovery-keys",
+      "severity": "high",
+      "description": "2 encrypted devices do not have recovery keys escrowed to Azure AD",
+      "affectedDevices": 2,
+      "recommendedAction": "Backup BitLocker recovery keys to Azure AD for these devices",
+      "category": "Recovery"
+    },
+    {
+      "id": "stale-devices",
+      "severity": "medium",
+      "description": "2 devices have not synced in over 14 days",
+      "affectedDevices": 2,
+      "recommendedAction": "Verify these devices are still active and connected to the network",
+      "category": "Compliance"
+    },
+    {
+      "id": "multiple-volumes",
+      "severity": "info",
+      "description": "2 devices have multiple volumes encrypted with separate recovery keys",
+      "affectedDevices": 2,
+      "recommendedAction": "Ensure all recovery keys are properly documented for disaster recovery",
+      "category": "Recovery"
+    }
+  ],
+  "summary": {
+    "totalDevices": 15,
+    "encryptedDevices": 12,
+    "notEncryptedDevices": 3,
+    "unknownDevices": 0,
+    "devicesWithRecoveryKeys": 10,
+    "devicesMissingKeys": 2,
+    "encryptionRate": 80.0,
+    "recoveryKeyRate": 83.3,
+    "manufacturerBreakdown": {
+      "Dell Inc.": { "total": 5, "encrypted": 4 },
+      "HP": { "total": 4, "encrypted": 3 },
+      "Lenovo": { "total": 4, "encrypted": 4 },
+      "Microsoft Corporation": { "total": 2, "encrypted": 2 }
+    },
+    "osBreakdown": {
+      "Windows 11": { "total": 10, "encrypted": 9 },
+      "Windows 10": { "total": 5, "encrypted": 3 }
+    }
   },
-  {
-    "deviceName": "LAPTOP-WIN002",
-    "userPrincipalName": "jane.doe@contoso.com",
-    "encryptionState": "encrypted",
-    "recoveryKeyEscrowed": true,
-    "tpmVersion": "2.0",
-    "manufacturer": "HP",
-    "model": "EliteBook 840"
-  },
-  {
-    "deviceName": "DESKTOP-WIN003",
-    "userPrincipalName": "bob.wilson@contoso.com",
-    "encryptionState": "notEncrypted",
-    "recoveryKeyEscrowed": false,
-    "tpmVersion": "1.2",
-    "manufacturer": "Lenovo",
-    "model": "ThinkPad T14"
-  },
-  {
-    "deviceName": "LAPTOP-WIN004",
-    "userPrincipalName": "sarah.jones@contoso.com",
-    "encryptionState": "encrypted",
-    "recoveryKeyEscrowed": true,
-    "tpmVersion": "2.0",
-    "manufacturer": "Microsoft",
-    "model": "Surface Pro 9"
-  },
-  {
-    "deviceName": "DESKTOP-WIN005",
-    "userPrincipalName": "mike.brown@contoso.com",
-    "encryptionState": "encryptionInProgress",
-    "recoveryKeyEscrowed": false,
-    "tpmVersion": "2.0",
-    "manufacturer": "Dell",
-    "model": "OptiPlex 7090"
-  },
-  {
-    "deviceName": "LAPTOP-WIN006",
-    "userPrincipalName": "admin@contoso.com",
-    "encryptionState": "encrypted",
-    "recoveryKeyEscrowed": true,
-    "tpmVersion": "2.0",
-    "manufacturer": "HP",
-    "model": "ZBook 15"
-  },
-  {
-    "deviceName": "DESKTOP-WIN007",
-    "userPrincipalName": "lisa.chen@contoso.com",
-    "encryptionState": "notEncrypted",
-    "recoveryKeyEscrowed": false,
-    "tpmVersion": null,
-    "manufacturer": "Lenovo",
-    "model": "ThinkCentre M90"
-  },
-  {
-    "deviceName": "LAPTOP-WIN008",
-    "userPrincipalName": "david.kim@contoso.com",
-    "encryptionState": "encrypted",
-    "recoveryKeyEscrowed": true,
-    "tpmVersion": "2.0",
-    "manufacturer": "Dell",
-    "model": "XPS 15"
-  }
-]
+  "collectionDate": "2026-02-06T12:00:00Z"
+}

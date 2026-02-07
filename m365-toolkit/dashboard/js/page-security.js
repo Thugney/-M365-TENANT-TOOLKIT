@@ -18,17 +18,15 @@
 const PageSecurity = (function() {
     'use strict';
 
-    /**
-     * Renders the security page content.
-     *
-     * @param {HTMLElement} container - The page container element
-     */
-    function render(container) {
-        const allRiskySignins = DataLoader.getData('riskySignins');
-        const adminRoles = DataLoader.getData('adminRoles');
-        const allUsers = DataLoader.getData('users');
-        const defenderAlerts = DataLoader.getData('defenderAlerts');
-        const secureScore = DataLoader.getData('secureScore');
+    var currentTab = 'overview';
+    var securityState = null;
+
+    function buildState() {
+        const allRiskySignins = DataLoader.getData('riskySignins') || [];
+        const adminRoles = DataLoader.getData('adminRoles') || [];
+        const allUsers = DataLoader.getData('users') || [];
+        const defenderAlerts = DataLoader.getData('defenderAlerts') || [];
+        const secureScore = DataLoader.getData('secureScore') || null;
 
         // Apply department filter to user-centric data
         const users = (typeof DepartmentFilter !== 'undefined')
@@ -48,129 +46,159 @@ const PageSecurity = (function() {
         // Secure Score data
         const hasSecureScore = secureScore && secureScore.scorePct !== undefined;
         const scorePct = hasSecureScore ? secureScore.scorePct : null;
-        const scoreClass = scorePct >= 70 ? 'success' : (scorePct >= 40 ? 'warning' : 'critical');
+        const scoreTextClass = scorePct >= 70 ? 'text-success' : (scorePct >= 40 ? 'text-warning' : 'text-critical');
+        const scoreCardClass = scorePct >= 70 ? 'card-success' : (scorePct >= 40 ? 'card-warning' : 'card-danger');
 
         // Total admins (unique)
         const adminUserIds = new Set();
         adminRoles.forEach(role => {
-            role.members.forEach(m => adminUserIds.add(m.userId));
+            (role.members || []).forEach(m => adminUserIds.add(m.userId));
         });
 
-        container.innerHTML = `
-            <div class="page-header">
-                <h2 class="page-title">Security Posture</h2>
-                <p class="page-description">Security status and risk indicators</p>
-            </div>
+        return {
+            users: users,
+            riskySignins: riskySignins,
+            adminRoles: adminRoles,
+            defenderAlerts: defenderAlerts,
+            secureScore: secureScore,
+            highRiskCount: highRiskCount,
+            mediumRiskCount: mediumRiskCount,
+            noMfaUsers: noMfaUsers,
+            activeAlerts: activeAlerts,
+            highAlerts: highAlerts,
+            adminCount: adminUserIds.size,
+            hasSecureScore: hasSecureScore,
+            scorePct: scorePct,
+            scoreTextClass: scoreTextClass,
+            scoreCardClass: scoreCardClass
+        };
+    }
 
-            <!-- Summary Cards -->
-            <div class="cards-grid">
-                <div class="card ${hasSecureScore ? (scorePct >= 70 ? 'card-success' : (scorePct >= 40 ? 'card-warning' : 'card-critical')) : ''}">
-                    <div class="card-label">Secure Score</div>
-                    <div class="card-value ${hasSecureScore ? scoreClass : ''}">${hasSecureScore ? scorePct + '%' : '--'}</div>
-                </div>
-                <div class="card ${highRiskCount > 0 ? 'card-critical' : ''}">
-                    <div class="card-label">High Risk Sign-ins</div>
-                    <div class="card-value ${highRiskCount > 0 ? 'critical' : 'success'}">${highRiskCount}</div>
-                </div>
-                <div class="card ${noMfaUsers.length > 0 ? 'card-critical' : 'card-success'}">
-                    <div class="card-label">Users Without MFA</div>
-                    <div class="card-value ${noMfaUsers.length > 0 ? 'critical' : 'success'}">${noMfaUsers.length}</div>
-                </div>
-                <div class="card">
-                    <div class="card-label">Admin Accounts</div>
-                    <div class="card-value">${adminUserIds.size}</div>
-                </div>
-                <div class="card ${highAlerts.length > 0 ? 'card-critical' : ''}">
-                    <div class="card-label">Active High Alerts</div>
-                    <div class="card-value ${highAlerts.length > 0 ? 'critical' : 'success'}">${highAlerts.length}</div>
-                </div>
-            </div>
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        renderContent();
+    }
 
-            <!-- MFA Chart -->
-            <div class="charts-row" id="security-charts"></div>
+    function renderContent() {
+        var container = document.getElementById('security-content');
+        if (!container || !securityState) return;
 
-            <!-- Secure Score Improvement Actions -->
-            ${hasSecureScore && secureScore.controlScores && secureScore.controlScores.length > 0 ? `
-            <div class="section">
-                <div class="section-header">
-                    <div>
-                        <h3 class="section-title">Secure Score: ${secureScore.currentScore} / ${secureScore.maxScore} (${scorePct}%)</h3>
-                        <p class="section-subtitle">Top improvement actions to increase your security posture</p>
-                    </div>
-                </div>
-                <div id="secure-score-actions-table"></div>
-            </div>
-            ` : ''}
+        switch (currentTab) {
+            case 'overview':
+                renderOverview(container, securityState);
+                break;
+            case 'risky-signins':
+                renderRiskySignins(container, securityState);
+                break;
+            case 'admin-roles':
+                renderAdminRoles(container, securityState);
+                break;
+            case 'mfa-gaps':
+                renderMfaGaps(container, securityState);
+                break;
+            case 'defender-alerts':
+                renderDefenderAlerts(container, securityState);
+                break;
+        }
+    }
 
-            <!-- Risky Sign-ins Section -->
-            <div class="section">
-                <div class="section-header">
-                    <div>
-                        <h3 class="section-title">Risky Sign-ins</h3>
-                        <p class="section-subtitle">Identity Protection risk detections</p>
-                    </div>
-                </div>
-                <div id="risky-signins-table"></div>
-            </div>
+    function renderOverview(container, data) {
+        var html = '<div class="charts-row" id="security-charts"></div>';
 
-            <!-- Admin Roles Section -->
-            <div class="section">
-                <div class="section-header">
-                    <div>
-                        <h3 class="section-title">Admin Roles</h3>
-                        <p class="section-subtitle">Directory role assignments (high-privilege roles highlighted)</p>
-                    </div>
-                </div>
-                <div id="admin-roles-table"></div>
-            </div>
+        if (data.hasSecureScore && data.secureScore.controlScores && data.secureScore.controlScores.length > 0) {
+            html += '<div class="analytics-section">';
+            html += '<h3>Secure Score Improvements</h3>';
+            html += '<p class="section-description">Top improvement actions to increase your security posture</p>';
+            html += '<div class="table-container" id="secure-score-actions-table"></div>';
+            html += '</div>';
+        }
 
-            <!-- MFA Gaps Section -->
-            <div class="section">
-                <div class="section-header">
-                    <div>
-                        <h3 class="section-title">MFA Gaps</h3>
-                        <p class="section-subtitle">Enabled users without MFA registration</p>
-                    </div>
-                </div>
-                <div id="mfa-gaps-table"></div>
-            </div>
-
-            <!-- Defender Alerts Section -->
-            <div class="section">
-                <div class="section-header">
-                    <div>
-                        <h3 class="section-title">Defender Alerts</h3>
-                        <p class="section-subtitle">Security alerts from Microsoft Defender</p>
-                    </div>
-                </div>
-                <div id="defender-alerts-table"></div>
-            </div>
-        `;
+        container.innerHTML = html;
 
         // Render Secure Score actions table
-        if (hasSecureScore && secureScore.controlScores && secureScore.controlScores.length > 0) {
+        if (data.hasSecureScore && data.secureScore.controlScores && data.secureScore.controlScores.length > 0) {
             Tables.render({
                 containerId: 'secure-score-actions-table',
-                data: secureScore.controlScores,
+                data: data.secureScore.controlScores,
                 columns: [
                     { key: 'name', label: 'Control Name' },
                     { key: 'description', label: 'Description' },
                     { key: 'scoreInPercentage', label: 'Progress', formatter: function(v) {
                         const cls = v >= 80 ? 'text-success' : (v >= 50 ? 'text-warning' : 'text-critical');
-                        return `<span class="${cls}">${v}%</span>`;
+                        return '<span class="' + cls + '">' + v + '%</span>';
                     }},
                     { key: 'maxScore', label: 'Max Points', formatter: function(v) {
-                        return `<span class="text-muted">${v}</span>`;
+                        return '<span class="text-muted">' + v + '</span>';
                     }}
                 ],
                 pageSize: 10
             });
         }
 
-        // Render risky sign-ins table
+        renderSecurityCharts(data);
+    }
+
+    function renderSecurityCharts(data) {
+        var chartsRow = document.getElementById('security-charts');
+        if (!chartsRow || typeof DashboardCharts === 'undefined') return;
+
+        chartsRow.textContent = '';
+        var C = DashboardCharts.colors;
+
+        // Secure Score chart
+        if (data.hasSecureScore) {
+            var scoreColor = data.scorePct >= 70 ? C.green : (data.scorePct >= 40 ? C.yellow : C.red);
+            chartsRow.appendChild(DashboardCharts.createChartCard(
+                'Secure Score',
+                [
+                    { value: data.scorePct, label: 'Achieved', color: scoreColor },
+                    { value: 100 - data.scorePct, label: 'Remaining', color: C.gray }
+                ],
+                data.scorePct + '%', 'of ' + data.secureScore.maxScore + ' points'
+            ));
+        }
+
+        // MFA Coverage chart
+        var mfaRegistered = data.users.filter(u => u.mfaRegistered && u.accountEnabled).length;
+        var enabledUsers = data.users.filter(u => u.accountEnabled).length;
+        var mfaPct = enabledUsers > 0 ? Math.round((mfaRegistered / enabledUsers) * 100) : 0;
+
+        chartsRow.appendChild(DashboardCharts.createChartCard(
+            'MFA Coverage (Enabled Users)',
+            [
+                { value: mfaRegistered, label: 'Registered', color: C.green },
+                { value: data.noMfaUsers.length, label: 'Not Registered', color: C.red }
+            ],
+            mfaPct + '%', 'coverage'
+        ));
+
+        // Alert severity distribution
+        var highCount = data.defenderAlerts.filter(a => a.severity === 'high').length;
+        var medCount = data.defenderAlerts.filter(a => a.severity === 'medium').length;
+        var lowCount = data.defenderAlerts.filter(a => a.severity === 'low').length;
+        var infoCount = data.defenderAlerts.filter(a => a.severity === 'informational').length;
+
+        chartsRow.appendChild(DashboardCharts.createChartCard(
+            'Alert Severity Distribution',
+            [
+                { value: highCount, label: 'High', color: C.red },
+                { value: medCount, label: 'Medium', color: C.yellow },
+                { value: lowCount, label: 'Low', color: C.blue },
+                { value: infoCount, label: 'Info', color: C.gray }
+            ],
+            String(data.defenderAlerts.length), 'total alerts'
+        ));
+    }
+
+    function renderRiskySignins(container, data) {
+        container.innerHTML = '<div class="table-container" id="risky-signins-table"></div>';
+
         Tables.render({
             containerId: 'risky-signins-table',
-            data: riskySignins,
+            data: data.riskySignins,
             columns: [
                 { key: 'userPrincipalName', label: 'User', className: 'cell-truncate' },
                 { key: 'riskLevel', label: 'Risk Level', formatter: Tables.formatters.severity },
@@ -183,11 +211,14 @@ const PageSecurity = (function() {
             pageSize: 10,
             onRowClick: showRiskySigninDetails
         });
+    }
 
-        // Render admin roles table
+    function renderAdminRoles(container, data) {
+        container.innerHTML = '<div class="table-container" id="admin-roles-table"></div>';
+
         Tables.render({
             containerId: 'admin-roles-table',
-            data: adminRoles,
+            data: data.adminRoles,
             columns: [
                 { key: 'roleName', label: 'Role' },
                 { key: 'isHighPrivilege', label: 'High Privilege', formatter: formatHighPrivilege },
@@ -197,11 +228,14 @@ const PageSecurity = (function() {
             pageSize: 20,
             onRowClick: showRoleDetails
         });
+    }
 
-        // Render MFA gaps table
+    function renderMfaGaps(container, data) {
+        container.innerHTML = '<div class="table-container" id="mfa-gaps-table"></div>';
+
         Tables.render({
             containerId: 'mfa-gaps-table',
-            data: noMfaUsers,
+            data: data.noMfaUsers,
             columns: [
                 { key: 'displayName', label: 'Name' },
                 { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
@@ -212,61 +246,14 @@ const PageSecurity = (function() {
             ],
             pageSize: 10
         });
+    }
 
-        // Render charts
-        var chartsRow = document.getElementById('security-charts');
-        if (chartsRow) {
-            var C = DashboardCharts.colors;
+    function renderDefenderAlerts(container, data) {
+        container.innerHTML = '<div class="table-container" id="defender-alerts-table"></div>';
 
-            // Secure Score chart
-            if (hasSecureScore) {
-                var scoreColor = scorePct >= 70 ? C.green : (scorePct >= 40 ? C.yellow : C.red);
-                chartsRow.appendChild(DashboardCharts.createChartCard(
-                    'Secure Score',
-                    [
-                        { value: scorePct, label: 'Achieved', color: scoreColor },
-                        { value: 100 - scorePct, label: 'Remaining', color: C.gray }
-                    ],
-                    scorePct + '%', 'of ' + secureScore.maxScore + ' points'
-                ));
-            }
-
-            // MFA Coverage chart
-            var mfaRegistered = users.filter(u => u.mfaRegistered && u.accountEnabled).length;
-            var enabledUsers = users.filter(u => u.accountEnabled).length;
-            var mfaPct = enabledUsers > 0 ? Math.round((mfaRegistered / enabledUsers) * 100) : 0;
-
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'MFA Coverage (Enabled Users)',
-                [
-                    { value: mfaRegistered, label: 'Registered', color: C.green },
-                    { value: noMfaUsers.length, label: 'Not Registered', color: C.red }
-                ],
-                mfaPct + '%', 'coverage'
-            ));
-
-            // Alert severity distribution
-            var highCount = defenderAlerts.filter(a => a.severity === 'high').length;
-            var medCount = defenderAlerts.filter(a => a.severity === 'medium').length;
-            var lowCount = defenderAlerts.filter(a => a.severity === 'low').length;
-            var infoCount = defenderAlerts.filter(a => a.severity === 'informational').length;
-
-            chartsRow.appendChild(DashboardCharts.createChartCard(
-                'Alert Severity Distribution',
-                [
-                    { value: highCount, label: 'High', color: C.red },
-                    { value: medCount, label: 'Medium', color: C.yellow },
-                    { value: lowCount, label: 'Low', color: C.blue },
-                    { value: infoCount, label: 'Info', color: C.gray }
-                ],
-                String(defenderAlerts.length), 'total alerts'
-            ));
-        }
-
-        // Render Defender alerts table
         Tables.render({
             containerId: 'defender-alerts-table',
-            data: defenderAlerts,
+            data: data.defenderAlerts,
             columns: [
                 { key: 'title', label: 'Alert', className: 'cell-truncate' },
                 { key: 'severity', label: 'Severity', formatter: Tables.formatters.severity },
@@ -279,6 +266,48 @@ const PageSecurity = (function() {
             pageSize: 10,
             onRowClick: showAlertDetails
         });
+    }
+
+    /**
+     * Renders the security page content.
+     *
+     * @param {HTMLElement} container - The page container element
+     */
+    function render(container) {
+        securityState = buildState();
+        var data = securityState;
+
+        var scoreValue = data.hasSecureScore ? data.scorePct + '%' : '--';
+        var scoreCardClass = data.hasSecureScore ? data.scoreCardClass : '';
+        var scoreValueClass = data.hasSecureScore ? data.scoreTextClass : '';
+
+        var html = '<div class="page-header"><h2>Security Posture</h2><p class="page-description">Security status and risk indicators</p></div>';
+
+        html += '<div class="summary-cards">';
+        html += '<div class="summary-card ' + scoreCardClass + '"><div class="summary-value ' + scoreValueClass + '">' + scoreValue + '</div><div class="summary-label">Secure Score</div></div>';
+        html += '<div class="summary-card' + (data.highRiskCount > 0 ? ' card-danger' : '') + '"><div class="summary-value ' + (data.highRiskCount > 0 ? 'text-critical' : 'text-success') + '">' + data.highRiskCount + '</div><div class="summary-label">High Risk Sign-ins</div></div>';
+        html += '<div class="summary-card' + (data.noMfaUsers.length > 0 ? ' card-danger' : ' card-success') + '"><div class="summary-value ' + (data.noMfaUsers.length > 0 ? 'text-critical' : 'text-success') + '">' + data.noMfaUsers.length + '</div><div class="summary-label">Users Without MFA</div></div>';
+        html += '<div class="summary-card"><div class="summary-value">' + data.adminCount + '</div><div class="summary-label">Admin Accounts</div></div>';
+        html += '<div class="summary-card' + (data.highAlerts.length > 0 ? ' card-danger' : '') + '"><div class="summary-value ' + (data.highAlerts.length > 0 ? 'text-critical' : 'text-success') + '">' + data.highAlerts.length + '</div><div class="summary-label">Active High Alerts</div></div>';
+        html += '</div>';
+
+        html += '<div class="tab-bar">';
+        html += '<button class="tab-btn active" data-tab="overview">Overview</button>';
+        html += '<button class="tab-btn" data-tab="risky-signins">Risky Sign-ins (' + data.riskySignins.length + ')</button>';
+        html += '<button class="tab-btn" data-tab="admin-roles">Admin Roles (' + data.adminRoles.length + ')</button>';
+        html += '<button class="tab-btn" data-tab="mfa-gaps">MFA Gaps (' + data.noMfaUsers.length + ')</button>';
+        html += '<button class="tab-btn" data-tab="defender-alerts">Defender Alerts (' + data.defenderAlerts.length + ')</button>';
+        html += '</div>';
+
+        html += '<div class="content-area" id="security-content"></div>';
+        container.innerHTML = html;
+
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+        });
+
+        currentTab = 'overview';
+        renderContent();
     }
 
     /**

@@ -116,7 +116,29 @@ $profileCount = 0
 try {
     Write-Host "    Collecting device configuration profiles..." -ForegroundColor Gray
 
+    # Initialize data structure
+    $profileData = @{
+        profiles = @()
+        failedDevices = @()
+        settingFailures = @()
+        insights = @()
+        summary = @{
+            totalProfiles = 0
+            totalDevices = 0
+            successDevices = 0
+            errorDevices = 0
+            conflictDevices = 0
+            pendingDevices = 0
+            overallSuccessRate = 0
+            profilesWithErrors = 0
+            profilesWithConflicts = 0
+            platformBreakdown = @{}
+            typeBreakdown = @{}
+        }
+    }
+
     $allProfiles = @()
+    $allFailedDevices = @{}
 
     # ========================================
     # Collect Device Configurations (Legacy)
@@ -184,10 +206,33 @@ try {
 
     $processedProfiles = @()
 
+    # Build a cache for group names
+    $groupNameCache = @{}
+
     foreach ($item in $allProfiles) {
         try {
             $profile = $item.data
             $source = $item.source
+
+            # Determine platform early (needed for setting failures)
+            $platform = if ($source -eq "configurationPolicies" -and $profile.platforms) {
+                switch ($profile.platforms) {
+                    "windows10" { "Windows" }
+                    "android"   { "Android" }
+                    "iOS"       { "iOS/iPadOS" }
+                    "macOS"     { "macOS" }
+                    default     { $profile.platforms }
+                }
+            } else {
+                Get-ProfilePlatform -ODataType $profile.'@odata.type'
+            }
+
+            # Determine profile type early
+            $profileType = if ($source -eq "configurationPolicies") {
+                "Settings Catalog"
+            } else {
+                Get-ProfileType -ODataType $profile.'@odata.type'
+            }
 
             # Get status overview
             $successCount = 0
@@ -226,41 +271,174 @@ try {
                 # Status may not be available for all profiles
             }
 
+            # Get assignments for this profile
+            $assignments = @()
+            try {
+                $assignmentUri = if ($source -eq "deviceConfigurations") {
+                    "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations/$($profile.id)/assignments"
+                } else {
+                    "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies/$($profile.id)/assignments"
+                }
+
+                $assignmentResponse = Invoke-MgGraphRequest -Method GET -Uri $assignmentUri -OutputType PSObject
+
+                foreach ($assignment in $assignmentResponse.value) {
+                    $targetType = $assignment.target.'@odata.type'
+                    if ($targetType -eq "#microsoft.graph.allDevicesAssignmentTarget") {
+                        $assignments += @{ type = "AllDevices"; name = "All Devices" }
+                    }
+                    elseif ($targetType -eq "#microsoft.graph.allLicensedUsersAssignmentTarget") {
+                        $assignments += @{ type = "AllUsers"; name = "All Users" }
+                    }
+                    elseif ($targetType -eq "#microsoft.graph.groupAssignmentTarget") {
+                        $groupId = $assignment.target.groupId
+                        $groupName = $groupId
+
+                        # Try to resolve group name from cache or API
+                        if ($groupNameCache.ContainsKey($groupId)) {
+                            $groupName = $groupNameCache[$groupId]
+                        } else {
+                            try {
+                                $groupInfo = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/groups/$groupId`?`$select=displayName" -OutputType PSObject
+                                $groupName = $groupInfo.displayName
+                                $groupNameCache[$groupId] = $groupName
+                            } catch {
+                                $groupNameCache[$groupId] = $groupId
+                            }
+                        }
+
+                        $assignments += @{ type = "Group"; groupId = $groupId; name = $groupName }
+                    }
+                    elseif ($targetType -eq "#microsoft.graph.exclusionGroupAssignmentTarget") {
+                        $groupId = $assignment.target.groupId
+                        $groupName = $groupId
+
+                        if ($groupNameCache.ContainsKey($groupId)) {
+                            $groupName = $groupNameCache[$groupId]
+                        } else {
+                            try {
+                                $groupInfo = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/groups/$groupId`?`$select=displayName" -OutputType PSObject
+                                $groupName = $groupInfo.displayName
+                                $groupNameCache[$groupId] = $groupName
+                            } catch {
+                                $groupNameCache[$groupId] = $groupId
+                            }
+                        }
+
+                        $assignments += @{ type = "ExcludeGroup"; groupId = $groupId; name = "$groupName (Excluded)" }
+                    }
+                }
+            }
+            catch { }
+
+            # Get failed device details
+            $deviceStatuses = @()
+            $profileNameForTracking = if ($profile.displayName) { $profile.displayName } elseif ($profile.name) { $profile.name } else { "Unknown Profile" }
+
+            if ($errorCount -gt 0 -or $conflictCount -gt 0) {
+                try {
+                    $statusUri = if ($source -eq "deviceConfigurations") {
+                        "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations/$($profile.id)/deviceStatuses?`$filter=status eq 'error' or status eq 'conflict'&`$top=50"
+                    } else {
+                        "https://graph.microsoft.com/beta/deviceManagement/configurationPolicies/$($profile.id)/deviceStatuses?`$filter=status eq 'error' or status eq 'conflict'&`$top=50"
+                    }
+
+                    $deviceStatusResponse = Invoke-MgGraphRequest -Method GET -Uri $statusUri -OutputType PSObject
+
+                    foreach ($status in $deviceStatusResponse.value) {
+                        $deviceStatuses += [PSCustomObject]@{
+                            deviceName = $status.deviceDisplayName
+                            userName = $status.userName
+                            status = $status.status
+                            lastReportedDateTime = Format-IsoDate -DateValue $status.lastReportedDateTime
+                        }
+
+                        # Track unique failed devices across all profiles
+                        $deviceKey = $status.deviceDisplayName
+                        if ($deviceKey) {
+                            if (-not $allFailedDevices.ContainsKey($deviceKey)) {
+                                $allFailedDevices[$deviceKey] = @{
+                                    deviceName = $status.deviceDisplayName
+                                    userName = $status.userName
+                                    failedProfiles = @()
+                                    errorCount = 0
+                                    conflictCount = 0
+                                }
+                            }
+                            $allFailedDevices[$deviceKey].failedProfiles += $profileNameForTracking
+                            if ($status.status -eq "error") { $allFailedDevices[$deviceKey].errorCount++ }
+                            if ($status.status -eq "conflict") { $allFailedDevices[$deviceKey].conflictCount++ }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            # Get setting-level failures for this profile
+            # Note: Setting-level failures are available for deviceConfigurations via deviceSettingStateSummaries
+            # For Settings Catalog (configurationPolicies), detailed setting failures require different approach
+            $settingStatuses = @()
+            $profileDisplayName = if ($profile.displayName) { $profile.displayName } elseif ($profile.name) { $profile.name } else { "Unknown" }
+
+            if ($source -eq "deviceConfigurations") {
+                try {
+                    $settingUri = "https://graph.microsoft.com/v1.0/deviceManagement/deviceConfigurations/$($profile.id)/deviceSettingStateSummaries"
+                    $settingResponse = Invoke-MgGraphRequest -Method GET -Uri $settingUri -OutputType PSObject
+
+                    foreach ($setting in $settingResponse.value) {
+                        if ($setting.errorDeviceCount -gt 0 -or $setting.conflictDeviceCount -gt 0) {
+                            $settingStatuses += [PSCustomObject]@{
+                                settingName = $setting.settingName
+                                errorCount = $setting.errorDeviceCount
+                                conflictCount = $setting.conflictDeviceCount
+                            }
+
+                            # Track setting failures globally
+                            $profileData.settingFailures += [PSCustomObject]@{
+                                profileId = $profile.id
+                                profileName = $profileDisplayName
+                                platform = $platform
+                                settingName = $setting.settingName
+                                errorCount = $setting.errorDeviceCount
+                                conflictCount = $setting.conflictDeviceCount
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+
             $totalDevices = $successCount + $errorCount + $conflictCount + $pendingCount
             $successRate = if ($totalDevices -gt 0) {
                 [Math]::Round(($successCount / $totalDevices) * 100, 1)
             } else { $null }
 
-            # Determine profile type and platform
-            $profileType = if ($source -eq "configurationPolicies") {
-                "Settings Catalog"
-            } else {
-                Get-ProfileType -ODataType $profile.'@odata.type'
-            }
+            # Determine category based on profile type (platform and profileType already set above)
+            $category = "General"
+            if ($profileType -match "Endpoint Protection|Firewall|Identity") { $category = "Security" }
+            elseif ($profileType -match "VPN|Wi-Fi|Certificate") { $category = "Network" }
+            elseif ($profileType -match "Kiosk|Shared") { $category = "Kiosk" }
+            elseif ($profileType -match "Update|Delivery") { $category = "Updates" }
+            elseif ($profileType -match "Restriction") { $category = "Restrictions" }
 
-            $platform = if ($source -eq "configurationPolicies" -and $profile.platforms) {
-                switch ($profile.platforms) {
-                    "windows10" { "Windows" }
-                    "android"   { "Android" }
-                    "iOS"       { "iOS/iPadOS" }
-                    "macOS"     { "macOS" }
-                    default     { $profile.platforms }
-                }
-            } else {
-                Get-ProfilePlatform -ODataType $profile.'@odata.type'
-            }
+            # Get display name (Settings Catalog uses 'name', legacy uses 'displayName')
+            $displayName = if ($profile.displayName) { $profile.displayName } elseif ($profile.name) { $profile.name } else { "Unnamed Profile" }
 
             # Build processed profile object
             $processedProfile = [PSCustomObject]@{
                 id                   = $profile.id
-                displayName          = $profile.displayName -or $profile.name
+                displayName          = $displayName
                 description          = $profile.description
                 profileType          = $profileType
                 platform             = $platform
+                category             = $category
                 source               = $source
                 createdDateTime      = Format-IsoDate -DateValue $profile.createdDateTime
                 lastModifiedDateTime = Format-IsoDate -DateValue $profile.lastModifiedDateTime
                 version              = $profile.version
+                # Assignments
+                assignments          = $assignments
+                assignmentCount      = $assignments.Count
                 # Deployment status
                 successDevices       = $successCount
                 errorDevices         = $errorCount
@@ -269,6 +447,9 @@ try {
                 notApplicableDevices = $notApplicableCount
                 totalDevices         = $totalDevices
                 successRate          = $successRate
+                # Detailed statuses
+                deviceStatuses       = $deviceStatuses
+                settingStatuses      = $settingStatuses
                 # Health indicators
                 hasErrors            = ($errorCount -gt 0)
                 hasConflicts         = ($conflictCount -gt 0)
@@ -277,6 +458,31 @@ try {
 
             $processedProfiles += $processedProfile
             $profileCount++
+
+            # Update summary
+            $profileData.summary.totalDevices += $totalDevices
+            $profileData.summary.successDevices += $successCount
+            $profileData.summary.errorDevices += $errorCount
+            $profileData.summary.conflictDevices += $conflictCount
+            $profileData.summary.pendingDevices += $pendingCount
+            if ($errorCount -gt 0) { $profileData.summary.profilesWithErrors++ }
+            if ($conflictCount -gt 0) { $profileData.summary.profilesWithConflicts++ }
+
+            # Update platform breakdown
+            if (-not $profileData.summary.platformBreakdown.ContainsKey($platform)) {
+                $profileData.summary.platformBreakdown[$platform] = @{ profiles = 0; success = 0; errors = 0 }
+            }
+            $profileData.summary.platformBreakdown[$platform].profiles++
+            $profileData.summary.platformBreakdown[$platform].success += $successCount
+            $profileData.summary.platformBreakdown[$platform].errors += $errorCount
+
+            # Update type breakdown
+            if (-not $profileData.summary.typeBreakdown.ContainsKey($profileType)) {
+                $profileData.summary.typeBreakdown[$profileType] = @{ profiles = 0; success = 0; errors = 0 }
+            }
+            $profileData.summary.typeBreakdown[$profileType].profiles++
+            $profileData.summary.typeBreakdown[$profileType].success += $successCount
+            $profileData.summary.typeBreakdown[$profileType].errors += $errorCount
 
         }
         catch {
@@ -292,8 +498,120 @@ try {
         Descending = $true
     }
 
+    # Finalize data structure
+    $profileData.profiles = $processedProfiles
+    $profileData.summary.totalProfiles = $processedProfiles.Count
+
+    # Convert failed devices hashtable to array
+    foreach ($device in $allFailedDevices.Values) {
+        $profileData.failedDevices += [PSCustomObject]@{
+            deviceName = $device.deviceName
+            userName = $device.userName
+            failedProfiles = $device.failedProfiles
+            failedProfileCount = $device.failedProfiles.Count
+            errorCount = $device.errorCount
+            conflictCount = $device.conflictCount
+        }
+    }
+
+    # Sort failed devices by count
+    $profileData.failedDevices = $profileData.failedDevices |
+        Sort-Object -Property failedProfileCount -Descending
+
+    # Calculate overall success rate
+    if ($profileData.summary.totalDevices -gt 0) {
+        $profileData.summary.overallSuccessRate = [Math]::Round(
+            ($profileData.summary.successDevices / $profileData.summary.totalDevices) * 100, 1
+        )
+    }
+
+    # Sort setting failures
+    $profileData.settingFailures = $profileData.settingFailures |
+        Sort-Object -Property errorCount -Descending |
+        Select-Object -First 20
+
+    # ========================================
+    # Generate Insights
+    # ========================================
+
+    # Insight: Profiles with low success rate
+    $lowSuccessProfiles = $processedProfiles | Where-Object { $_.successRate -lt 80 -and $_.successRate -ne $null }
+    if ($lowSuccessProfiles.Count -gt 0) {
+        $profileData.insights += [PSCustomObject]@{
+            id = "low-success-profiles"
+            severity = "high"
+            description = "$($lowSuccessProfiles.Count) profiles have success rate below 80%"
+            impactedProfiles = $lowSuccessProfiles.Count
+            affectedDevices = ($lowSuccessProfiles | Measure-Object -Property errorDevices -Sum).Sum
+            recommendedAction = "Review failed devices and remediate configuration issues"
+            category = "Deployment"
+        }
+    }
+
+    # Insight: Profiles with conflicts
+    $conflictProfiles = $processedProfiles | Where-Object { $_.hasConflicts }
+    if ($conflictProfiles.Count -gt 0) {
+        $totalConflicts = ($conflictProfiles | Measure-Object -Property conflictDevices -Sum).Sum
+        $profileData.insights += [PSCustomObject]@{
+            id = "profile-conflicts"
+            severity = "high"
+            description = "$($conflictProfiles.Count) profiles have configuration conflicts"
+            impactedProfiles = $conflictProfiles.Count
+            affectedDevices = $totalConflicts
+            recommendedAction = "Review conflicting profiles and consolidate settings"
+            category = "Conflicts"
+        }
+    }
+
+    # Insight: Devices failing multiple profiles
+    $multiFailDevices = $profileData.failedDevices | Where-Object { $_.failedProfileCount -gt 2 }
+    if ($multiFailDevices.Count -gt 0) {
+        $profileData.insights += [PSCustomObject]@{
+            id = "multi-profile-failures"
+            severity = "high"
+            description = "$($multiFailDevices.Count) devices are failing 3 or more configuration profiles"
+            impactedDevices = $multiFailDevices.Count
+            recommendedAction = "Investigate these devices for systemic issues"
+            category = "Device Health"
+        }
+    }
+
+    # Insight: Security profiles with errors
+    $securityWithErrors = $processedProfiles | Where-Object { $_.category -eq "Security" -and $_.hasErrors }
+    if ($securityWithErrors.Count -gt 0) {
+        $profileData.insights += [PSCustomObject]@{
+            id = "security-profile-errors"
+            severity = "critical"
+            description = "$($securityWithErrors.Count) security profiles have deployment errors"
+            impactedProfiles = $securityWithErrors.Count
+            affectedDevices = ($securityWithErrors | Measure-Object -Property errorDevices -Sum).Sum
+            recommendedAction = "Prioritize fixing security profile deployment issues"
+            category = "Security"
+        }
+    }
+
+    # Insight: Pending deployments
+    $pendingProfiles = $processedProfiles | Where-Object { $_.pendingDevices -gt 10 }
+    if ($pendingProfiles.Count -gt 0) {
+        $totalPending = ($pendingProfiles | Measure-Object -Property pendingDevices -Sum).Sum
+        $profileData.insights += [PSCustomObject]@{
+            id = "pending-deployments"
+            severity = "medium"
+            description = "$totalPending devices have pending profile deployments"
+            impactedProfiles = $pendingProfiles.Count
+            affectedDevices = $totalPending
+            recommendedAction = "Check device connectivity and sync status"
+            category = "Pending"
+        }
+    }
+
+    Write-Host "      Generated $($profileData.insights.Count) deployment insights" -ForegroundColor Gray
+
+    # Add collection date
+    $profileData.collectionDate = (Get-Date).ToString("o")
+
     # Save data
-    Save-CollectorData -Data $processedProfiles -OutputPath $OutputPath | Out-Null
+    Save-CollectorData -Data $profileData -OutputPath $OutputPath | Out-Null
 
     Write-Host "    [OK] Collected $profileCount configuration profiles" -ForegroundColor Green
 
@@ -309,7 +627,14 @@ catch {
 
     Write-Host "    [X] Failed: $errorMessage" -ForegroundColor Red
 
-    Save-CollectorData -Data @() -OutputPath $OutputPath | Out-Null
+    Save-CollectorData -Data @{
+        profiles = @()
+        failedDevices = @()
+        settingFailures = @()
+        insights = @()
+        summary = @{}
+        collectionDate = (Get-Date).ToString("o")
+    } -OutputPath $OutputPath | Out-Null
 
     return New-CollectorResult -Success $false -Count 0 -Errors $errors
 }

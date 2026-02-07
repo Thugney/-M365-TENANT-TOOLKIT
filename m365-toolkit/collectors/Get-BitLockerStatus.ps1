@@ -240,6 +240,44 @@ try {
         $summary.encryptionRate = [Math]::Round(($summary.encryptedDevices / $summary.totalDevices) * 100, 1)
     }
 
+    # Build manufacturer breakdown
+    $manufacturerBreakdown = @{}
+    foreach ($device in $processedDevices) {
+        $mfr = if ($device.manufacturer) { $device.manufacturer } else { "Unknown" }
+        if (-not $manufacturerBreakdown.ContainsKey($mfr)) {
+            $manufacturerBreakdown[$mfr] = @{ total = 0; encrypted = 0 }
+        }
+        $manufacturerBreakdown[$mfr].total++
+        if ($device.encryptionState -eq "encrypted") {
+            $manufacturerBreakdown[$mfr].encrypted++
+        }
+    }
+    $summary.manufacturerBreakdown = $manufacturerBreakdown
+
+    # Build OS breakdown (Windows 11 vs Windows 10)
+    $osBreakdown = @{}
+    foreach ($device in $processedDevices) {
+        $osType = "Unknown"
+        if ($device.osVersion) {
+            # Windows 11 builds start with 10.0.22000 and higher
+            # Windows 10 builds are 10.0.19xxx
+            if ($device.osVersion -match "10\.0\.(2[2-9]\d{3}|[3-9]\d{4})") {
+                $osType = "Windows 11"
+            }
+            elseif ($device.osVersion -match "10\.0\.1\d{4}") {
+                $osType = "Windows 10"
+            }
+        }
+        if (-not $osBreakdown.ContainsKey($osType)) {
+            $osBreakdown[$osType] = @{ total = 0; encrypted = 0 }
+        }
+        $osBreakdown[$osType].total++
+        if ($device.encryptionState -eq "encrypted") {
+            $osBreakdown[$osType].encrypted++
+        }
+    }
+    $summary.osBreakdown = $osBreakdown
+
     # Sort by encryption state (not encrypted first)
     $processedDevices = $processedDevices | Sort-Object -Property @{
         Expression = {
@@ -252,9 +290,88 @@ try {
         }
     }
 
+    # ========================================
+    # Generate Insights
+    # ========================================
+    $insights = @()
+
+    # Insight: Not encrypted devices
+    if ($summary.notEncryptedDevices -gt 0) {
+        $insights += [PSCustomObject]@{
+            id = "not-encrypted-devices"
+            severity = "critical"
+            description = "$($summary.notEncryptedDevices) devices are not encrypted with BitLocker"
+            affectedDevices = $summary.notEncryptedDevices
+            recommendedAction = "Enable BitLocker encryption on these devices to protect sensitive data"
+            category = "Security"
+        }
+    }
+
+    # Insight: Missing recovery keys
+    $encryptedWithoutKeys = ($processedDevices | Where-Object {
+        $_.encryptionState -eq "encrypted" -and $_.recoveryKeyEscrowed -eq $false
+    }).Count
+    if ($encryptedWithoutKeys -gt 0) {
+        $insights += [PSCustomObject]@{
+            id = "missing-recovery-keys"
+            severity = "high"
+            description = "$encryptedWithoutKeys encrypted devices do not have recovery keys escrowed to Azure AD"
+            affectedDevices = $encryptedWithoutKeys
+            recommendedAction = "Backup BitLocker recovery keys to Azure AD for these devices"
+            category = "Recovery"
+        }
+    }
+
+    # Insight: Stale devices (not synced in 14+ days)
+    $staleDevices = ($processedDevices | Where-Object { $_.daysSinceSync -gt 14 }).Count
+    if ($staleDevices -gt 0) {
+        $insights += [PSCustomObject]@{
+            id = "stale-devices"
+            severity = "medium"
+            description = "$staleDevices devices have not synced in over 14 days"
+            affectedDevices = $staleDevices
+            recommendedAction = "Verify these devices are still active and connected to the network"
+            category = "Compliance"
+        }
+    }
+
+    # Insight: Multiple volume encryption
+    $multiVolumeDevices = ($processedDevices | Where-Object { $_.recoveryKeyCount -gt 1 }).Count
+    if ($multiVolumeDevices -gt 0) {
+        $insights += [PSCustomObject]@{
+            id = "multiple-volumes"
+            severity = "info"
+            description = "$multiVolumeDevices devices have multiple volumes encrypted with separate recovery keys"
+            affectedDevices = $multiVolumeDevices
+            recommendedAction = "Ensure all recovery keys are properly documented for disaster recovery"
+            category = "Recovery"
+        }
+    }
+
+    # Insight: Low encryption rate
+    if ($summary.encryptionRate -lt 90 -and $summary.totalDevices -gt 0) {
+        $insights += [PSCustomObject]@{
+            id = "low-encryption-rate"
+            severity = "high"
+            description = "Overall encryption rate is only $($summary.encryptionRate)%"
+            affectedDevices = $summary.notEncryptedDevices
+            recommendedAction = "Review and remediate devices that are not encrypted to improve security posture"
+            category = "Security"
+        }
+    }
+
+    Write-Host "      Generated $($insights.Count) BitLocker insights" -ForegroundColor Gray
+
+    # Add additional summary fields
+    $summary.devicesMissingKeys = $encryptedWithoutKeys
+    $summary.recoveryKeyRate = if ($summary.encryptedDevices -gt 0) {
+        [Math]::Round(($summary.devicesWithRecoveryKeys / $summary.encryptedDevices) * 100, 1)
+    } else { 0 }
+
     # Build output
     $output = @{
         devices = $processedDevices
+        insights = $insights
         summary = $summary
         collectionDate = (Get-Date).ToString("o")
     }

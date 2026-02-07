@@ -53,5 +53,9 @@ output/
 bsure/
 nul
 docs/
-!docs/TenantSccope.png
-m365-toolkit/endpointgraphapi.md
+!docs/TenantSccope.png/
+m365-toolkit/endpointgraphapi.md/
+M365-TENANT-TOOLKIT-ARCHITECTURE.md/
+nul/
+technical-architecture.png/
+Features.md/

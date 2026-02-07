@@ -63,31 +63,62 @@ try {
 
     # Define properties to retrieve from Graph API
     # signInActivity requires AuditLog.Read.All and Entra ID P1/P2
+    # licenseAssignmentStates shows group vs direct assignment
     $selectProperties = @(
+        # Core identity
         "id",
         "displayName",
         "userPrincipalName",
         "mail",
         "accountEnabled",
         "createdDateTime",
-        "lastPasswordChangeDateTime",
         "userType",
+
+        # Organization
         "department",
         "jobTitle",
         "companyName",
         "officeLocation",
         "city",
         "country",
-        "mobilePhone",
         "usageLocation",
+
+        # Contact info
+        "mobilePhone",
+        "businessPhones",
+        "proxyAddresses",
+        "otherMails",
+
+        # Employee lifecycle attributes (HR integration)
+        "employeeId",
+        "employeeType",
+        "employeeHireDate",
+        "employeeLeaveDateTime",
+
+        # Password management
+        "lastPasswordChangeDateTime",
+        "passwordPolicies",
+
+        # On-premises sync details (hybrid environments)
         "onPremisesSyncEnabled",
+        "onPremisesLastSyncDateTime",
+        "onPremisesSamAccountName",
+        "onPremisesDistinguishedName",
+        "onPremisesDomainName",
+        "onPremisesImmutableId",
+
+        # Licensing
         "assignedLicenses",
+        "licenseAssignmentStates",
+
+        # Activity (requires P1/P2)
         "signInActivity"
     )
 
     # Retrieve all users with pagination handled by -All parameter
+    # Expand manager with full details for org hierarchy
     $graphUsers = Invoke-GraphWithRetry -ScriptBlock {
-        Get-MgUser -All -Property ($selectProperties -join ",") -ExpandProperty "manager(`$select=displayName,id)" -ConsistencyLevel eventual -CountVariable userTotal
+        Get-MgUser -All -Property ($selectProperties -join ",") -ExpandProperty "manager(`$select=id,displayName,userPrincipalName,mail)" -ConsistencyLevel eventual -CountVariable userTotal
     } -OperationName "User retrieval"
 
     Write-Host "      Retrieved $($graphUsers.Count) users from Graph API" -ForegroundColor Gray
@@ -121,12 +152,60 @@ try {
         # Classify user domain using shared utility
         $domain = Get-DomainClassification -UserPrincipalName $user.UserPrincipalName -Config $Config
 
-        # Count assigned licenses and extract SKU IDs
+        # Count assigned licenses and extract detailed license information
         $licenseCount = 0
         $assignedSkuIds = @()
+        $assignedLicenses = @()
+        $directLicenseCount = 0
+        $groupLicenseCount = 0
+        $hasDisabledPlans = $false
+
         if ($user.AssignedLicenses) {
             $licenseCount = $user.AssignedLicenses.Count
             $assignedSkuIds = $user.AssignedLicenses | ForEach-Object { $_.SkuId }
+
+            # Build detailed license assignments with disabled plans
+            foreach ($license in $user.AssignedLicenses) {
+                $disabledPlans = @()
+                if ($license.DisabledPlans) {
+                    $disabledPlans = @($license.DisabledPlans)
+                    if ($disabledPlans.Count -gt 0) {
+                        $hasDisabledPlans = $true
+                    }
+                }
+
+                # Get assignment state for this license (group vs direct)
+                $assignmentSource = "Direct"
+                $assignedViaGroupId = $null
+                $assignmentState = "Active"
+                $assignmentError = $null
+
+                if ($user.LicenseAssignmentStates) {
+                    $state = $user.LicenseAssignmentStates | Where-Object { $_.SkuId -eq $license.SkuId } | Select-Object -First 1
+                    if ($state) {
+                        if ($state.AssignedByGroup) {
+                            $assignmentSource = "Group"
+                            $assignedViaGroupId = $state.AssignedByGroup
+                            $groupLicenseCount++
+                        }
+                        else {
+                            $directLicenseCount++
+                        }
+                        $assignmentState = $state.State
+                        $assignmentError = $state.Error
+                    }
+                }
+
+                $assignedLicenses += [PSCustomObject]@{
+                    skuId              = $license.SkuId
+                    disabledPlans      = $disabledPlans
+                    disabledPlanCount  = $disabledPlans.Count
+                    assignmentSource   = $assignmentSource
+                    assignedViaGroupId = $assignedViaGroupId
+                    state              = $assignmentState
+                    error              = $assignmentError
+                }
+            }
         }
 
         # Build flags array based on user state
@@ -140,17 +219,58 @@ try {
         # MFA flag will be added by cross-reference step
         # Admin flag will be added by cross-reference step
 
-        # Extract manager display name if available
+        # Extract full manager details for org hierarchy (not just display name)
         $managerName = $null
+        $managerId = $null
+        $managerUpn = $null
+        $managerMail = $null
         if ($user.Manager) {
             $managerName = $user.Manager.AdditionalProperties.displayName
+            $managerId = $user.Manager.Id
+            $managerUpn = $user.Manager.AdditionalProperties.userPrincipalName
+            $managerMail = $user.Manager.AdditionalProperties.mail
         }
 
         # Determine user source (cloud-only vs on-premises synced)
         $userSource = if ($user.OnPremisesSyncEnabled) { "On-premises synced" } else { "Cloud" }
 
+        # Calculate password age (days since last password change)
+        $passwordAge = $null
+        $lastPasswordChange = $null
+        if ($user.LastPasswordChangeDateTime) {
+            $lastPasswordChange = Format-IsoDate -DateValue $user.LastPasswordChangeDateTime
+            $passwordAge = Get-DaysSinceDate -DateValue $user.LastPasswordChangeDateTime
+        }
+
+        # Parse password policies
+        $passwordNeverExpires = $false
+        $disableStrongPassword = $false
+        if ($user.PasswordPolicies) {
+            $passwordNeverExpires = $user.PasswordPolicies -match "DisablePasswordExpiration"
+            $disableStrongPassword = $user.PasswordPolicies -match "DisableStrongPassword"
+        }
+
+        # Calculate account age (days since creation)
+        $accountAge = Get-DaysSinceDate -DateValue $user.CreatedDateTime
+
+        # Calculate days until leave (if employeeLeaveDateTime is set)
+        $daysUntilLeave = $null
+        if ($user.EmployeeLeaveDateTime) {
+            $leaveDate = [DateTime]$user.EmployeeLeaveDateTime
+            $daysUntilLeave = ($leaveDate - (Get-Date)).Days
+        }
+
+        # Extract on-premises sync details
+        $onPremLastSync = $null
+        $onPremSyncAge = $null
+        if ($user.OnPremisesLastSyncDateTime) {
+            $onPremLastSync = Format-IsoDate -DateValue $user.OnPremisesLastSyncDateTime
+            $onPremSyncAge = Get-DaysSinceDate -DateValue $user.OnPremisesLastSyncDateTime
+        }
+
         # Build output object matching our schema
         $processedUser = [PSCustomObject]@{
+            # Core identity
             id                       = $user.Id
             displayName              = $user.DisplayName
             userPrincipalName        = $user.UserPrincipalName
@@ -158,24 +278,70 @@ try {
             accountEnabled           = $user.AccountEnabled
             userType                 = $user.UserType
             domain                   = $domain
+
+            # Organization
             department               = $user.Department
             jobTitle                 = $user.JobTitle
             companyName              = $user.CompanyName
             officeLocation           = $user.OfficeLocation
             city                     = $user.City
             country                  = $user.Country
-            mobilePhone              = $user.MobilePhone
             usageLocation            = $user.UsageLocation
+
+            # Manager (full details for org hierarchy)
             manager                  = $managerName
+            managerId                = $managerId
+            managerUpn               = $managerUpn
+            managerMail              = $managerMail
+
+            # Contact info
+            mobilePhone              = $user.MobilePhone
+            businessPhones           = @($user.BusinessPhones)
+            proxyAddresses           = @($user.ProxyAddresses)
+            otherMails               = @($user.OtherMails)
+
+            # Employee lifecycle (HR integration)
+            employeeId               = $user.EmployeeId
+            employeeType             = $user.EmployeeType
+            employeeHireDate         = Format-IsoDate -DateValue $user.EmployeeHireDate
+            employeeLeaveDateTime    = Format-IsoDate -DateValue $user.EmployeeLeaveDateTime
+            daysUntilLeave           = $daysUntilLeave
+
+            # Account lifecycle
             userSource               = $userSource
             createdDateTime          = Format-IsoDate -DateValue $user.CreatedDateTime
+            accountAge               = $accountAge
+
+            # Password management
+            lastPasswordChange       = $lastPasswordChange
+            passwordAge              = $passwordAge
+            passwordNeverExpires     = $passwordNeverExpires
+            disableStrongPassword    = $disableStrongPassword
+
+            # Activity
             lastSignIn               = Format-IsoDate -DateValue $lastSignIn
             lastNonInteractiveSignIn = Format-IsoDate -DateValue $lastNonInteractiveSignIn
             daysSinceLastSignIn      = $daysSinceLastSignIn
             isInactive               = $isInactive
+
+            # On-premises sync (hybrid)
             onPremSync               = [bool]$user.OnPremisesSyncEnabled
+            onPremLastSync           = $onPremLastSync
+            onPremSyncAge            = $onPremSyncAge
+            onPremSamAccountName     = $user.OnPremisesSamAccountName
+            onPremDistinguishedName  = $user.OnPremisesDistinguishedName
+            onPremDomainName         = $user.OnPremisesDomainName
+            onPremImmutableId        = $user.OnPremisesImmutableId
+
+            # Licensing
             licenseCount             = $licenseCount
             assignedSkuIds           = $assignedSkuIds
+            assignedLicenses         = $assignedLicenses
+            directLicenseCount       = $directLicenseCount
+            groupLicenseCount        = $groupLicenseCount
+            hasDisabledPlans         = $hasDisabledPlans
+
+            # Security
             mfaRegistered            = $true  # Default, will be updated by MFA cross-reference
             flags                    = $flags
         }

@@ -61,14 +61,30 @@ try {
     Write-Host "    Collecting guest users from Entra ID..." -ForegroundColor Gray
 
     # Define properties to retrieve from Graph API
+    # Extended properties for security visibility
     $selectProperties = @(
+        # Core identity
         "id",
         "displayName",
         "mail",
         "userPrincipalName",
+        "accountEnabled",
+
+        # Invitation and external state
         "createdDateTime",
+        "creationType",
         "externalUserState",
         "externalUserStateChangeDateTime",
+
+        # Identity providers (critical for security)
+        "identities",
+
+        # Organization info (if set)
+        "companyName",
+        "department",
+        "jobTitle",
+
+        # Activity
         "signInActivity"
     )
 
@@ -78,6 +94,33 @@ try {
     } -OperationName "Guest user retrieval"
 
     Write-Host "      Retrieved $($graphGuests.Count) guests from Graph API" -ForegroundColor Gray
+
+    # Get group membership counts for each guest (for access scope visibility)
+    # This is critical for security - understanding what guests can access
+    Write-Host "      Collecting group memberships for guests..." -ForegroundColor Gray
+    $guestGroupMemberships = @{}
+
+    foreach ($guest in $graphGuests) {
+        try {
+            $memberships = Get-MgUserMemberOf -UserId $guest.Id -All -ErrorAction SilentlyContinue
+            $guestGroupMemberships[$guest.Id] = @{
+                totalGroups      = ($memberships | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.group' }).Count
+                securityGroups   = ($memberships | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.group' -and $_.SecurityEnabled }).Count
+                m365Groups       = ($memberships | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.group' -and $_.GroupTypes -contains 'Unified' }).Count
+                teams            = ($memberships | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.group' -and $_.ResourceProvisioningOptions -contains 'Team' }).Count
+                directoryRoles   = ($memberships | Where-Object { $_.'@odata.type' -eq '#microsoft.graph.directoryRole' }).Count
+            }
+        }
+        catch {
+            $guestGroupMemberships[$guest.Id] = @{
+                totalGroups      = 0
+                securityGroups   = 0
+                m365Groups       = 0
+                teams            = 0
+                directoryRoles   = 0
+            }
+        }
+    }
 
     # Get stale threshold from config
     $staleThreshold = $Config.thresholds.staleGuestDays
@@ -104,6 +147,10 @@ try {
             $invitationState = "PendingAcceptance"
         }
 
+        # Calculate days since invitation (for pending invitations)
+        $daysSinceInvitation = Get-DaysSinceDate -DateValue $guest.CreatedDateTime
+        $invitationAge = if ($invitationState -eq "PendingAcceptance") { $daysSinceInvitation } else { $null }
+
         # Determine if guest is stale using shared utility
         $activityStatus = Get-ActivityStatus -DaysSinceActivity $daysSinceLastSignIn -InactiveThreshold $staleThreshold
         $isStale = $activityStatus.isInactive
@@ -114,18 +161,77 @@ try {
         # Extract source domain using shared utility
         $sourceDomain = Get-SourceDomain -Email $guest.Mail
 
-        # Build output object
+        # Extract identity providers (shows how guest authenticates)
+        $identityProviders = @()
+        $primaryIdentityProvider = "Unknown"
+        if ($guest.Identities) {
+            foreach ($identity in $guest.Identities) {
+                $identityProviders += [PSCustomObject]@{
+                    signInType       = $identity.SignInType
+                    issuer           = $identity.Issuer
+                    issuerAssignedId = $identity.IssuerAssignedId
+                }
+                # Primary is typically the first one
+                if ($identity.SignInType -eq "federated") {
+                    $primaryIdentityProvider = $identity.Issuer
+                }
+                elseif ($identity.SignInType -eq "emailAddress") {
+                    $primaryIdentityProvider = "Email OTP"
+                }
+            }
+        }
+
+        # Get group membership data for this guest
+        $groupMembership = $guestGroupMemberships[$guest.Id]
+        if (-not $groupMembership) {
+            $groupMembership = @{ totalGroups = 0; securityGroups = 0; m365Groups = 0; teams = 0; directoryRoles = 0 }
+        }
+
+        # Determine if guest has any access (security flag)
+        $hasGroupAccess = $groupMembership.totalGroups -gt 0
+        $hasAdminRole = $groupMembership.directoryRoles -gt 0
+
+        # Build comprehensive output object
         $processedGuest = [PSCustomObject]@{
-            id                  = $guest.Id
-            displayName         = $guest.DisplayName
-            mail                = $guest.Mail
-            sourceDomain        = $sourceDomain
-            createdDateTime     = Format-IsoDate -DateValue $guest.CreatedDateTime
-            invitationState     = $invitationState
-            lastSignIn          = Format-IsoDate -DateValue $lastSignIn
-            daysSinceLastSignIn = $daysSinceLastSignIn
-            isStale             = $isStale
-            neverSignedIn       = $neverSignedIn
+            # Core identity
+            id                     = $guest.Id
+            displayName            = $guest.DisplayName
+            mail                   = $guest.Mail
+            userPrincipalName      = $guest.UserPrincipalName
+            accountEnabled         = $guest.AccountEnabled
+            sourceDomain           = $sourceDomain
+
+            # Invitation tracking
+            createdDateTime        = Format-IsoDate -DateValue $guest.CreatedDateTime
+            creationType           = $guest.CreationType
+            invitationState        = $invitationState
+            invitationStateChanged = Format-IsoDate -DateValue $guest.ExternalUserStateChangeDateTime
+            daysSinceInvitation    = $daysSinceInvitation
+            invitationAge          = $invitationAge
+
+            # Identity provider (critical for security)
+            primaryIdentityProvider = $primaryIdentityProvider
+            identityProviders       = $identityProviders
+
+            # Organization (if set by guest)
+            companyName            = $guest.CompanyName
+            department             = $guest.Department
+            jobTitle               = $guest.JobTitle
+
+            # Activity
+            lastSignIn             = Format-IsoDate -DateValue $lastSignIn
+            daysSinceLastSignIn    = $daysSinceLastSignIn
+            isStale                = $isStale
+            neverSignedIn          = $neverSignedIn
+
+            # Access scope (security visibility)
+            groupCount             = $groupMembership.totalGroups
+            securityGroupCount     = $groupMembership.securityGroups
+            m365GroupCount         = $groupMembership.m365Groups
+            teamsCount             = $groupMembership.teams
+            directoryRoleCount     = $groupMembership.directoryRoles
+            hasGroupAccess         = $hasGroupAccess
+            hasAdminRole           = $hasAdminRole
         }
 
         $processedGuests += $processedGuest

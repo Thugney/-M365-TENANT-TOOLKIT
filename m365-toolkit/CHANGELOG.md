@@ -5,6 +5,111 @@ All notable changes to TenantScope will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-02-06
+
+### Added
+- **Compliance Policies Collector Enhancements**:
+  - Per-device compliance status with failure details
+  - Setting-level compliance status (which specific settings are failing)
+  - Policy categorization (Security, Encryption, Password, OS Version, Device Health)
+  - Critical policy identification (security policies or all-device assignments)
+  - Generated insights: low compliance, critical policy issues, multi-policy failures, common settings
+  - Platform breakdown summary
+  - Nested data structure: `{policies, nonCompliantDevices, settingFailures, insights, summary}`
+
+- **Compliance Policies Dashboard Enhancements**:
+  - Tab-based navigation: Overview, Policies, Non-Compliant Devices, Setting Failures
+  - Overview tab with compliance donut chart, platform breakdown, policy categories
+  - Insights section showing compliance issues and recommendations
+  - Critical policies needing attention section
+  - Non-Compliant Devices tab showing devices failing multiple policies
+  - Setting Failures tab showing which settings are commonly failing
+  - Enhanced policy detail modal with failing settings table
+  - Category filter added to policies tab
+
+- **Configuration Profiles Collector Enhancements**:
+  - Per-device deployment status with failure details
+  - Setting-level failures (which specific settings are failing)
+  - Profile categorization (Security, Network, General, Kiosk, etc.)
+  - Assignment tracking (groups, all users, all devices)
+  - Generated insights: low-success profiles, profile conflicts, multi-profile failures, security profile errors, pending deployments
+  - Platform and type breakdown summary
+  - Nested data structure: `{profiles, failedDevices, settingFailures, insights, summary}`
+
+- **Configuration Profiles Dashboard Enhancements**:
+  - Tab-based navigation: Overview, Profiles, Failed Devices, Setting Failures
+  - Overview tab with deployment donut chart, platform breakdown, profile types
+  - Insights section showing deployment issues and recommendations
+  - Profiles needing attention section
+  - Failed Devices tab showing devices failing multiple profiles
+  - Setting Failures tab showing which settings are commonly failing
+  - Enhanced profile detail modal with device issues and setting failures
+  - Category filter added to profiles tab
+
+---
+
+## [2.0.3] - 2026-02-06
+
+### Added
+- **Windows Update Collector Enhancements**:
+  - Quality updates now include classification (Security, Critical), expedited status, and deployment progress
+  - Driver updates now pull full driver inventories with manufacturer, version, approval status
+  - Added device compliance collection showing per-device update status
+  - New summary fields: expeditedUpdates, securityUpdates, totalDriverPolicies
+
+- **Endpoint Analytics Collector Enhancements**:
+  - Added model insights computation (aggregates devices by model with avg scores and recommendations)
+  - Added actionable insights generation (poor health, slow startup, problem apps, blue screens)
+  - App reliability now includes trend indicators (Improving, Stable, Degrading)
+  - New summary fields: modelsWithIssues, problemApps
+
+- **Windows Update Page Enhancements**:
+  - Added Driver Updates tab with approval status, manufacturer, version, and deployment progress
+  - Enhanced Quality Updates display with classification badges (Security, Critical), progress percentage
+  - Overview now shows Quality Updates and Driver Updates sections with summary statistics
+  - Quality updates show expedited status for critical security patches
+
+- **Endpoint Analytics Page Enhancements**:
+  - Added Actionable Insights section showing critical issues and recommendations
+  - Model Comparison now shows recommendations for each device model
+  - App Reliability shows trend indicators (Improving, Stable, Degrading)
+  - Enhanced problem apps section with health scores and MTTF data
+
+- **Enhanced Sample Data**:
+  - Windows Update: 5 update rings, 3 quality updates (2 expedited), 4 driver updates, device compliance records
+  - Endpoint Analytics: 25 devices with multiple per model for meaningful comparison, 10 apps, 7 model insights, 4 actionable insights
+
+---
+
+## [2.0.2] - 2026-02-06
+
+### Fixed
+- **Comprehensive sample data rewrite** - All 9 new sample data files now match collector output:
+  - All files use proper nested structure ({data: [], summary: {}, collectionDate})
+  - Rich data with all fields collectors actually produce
+  - Realistic sample values for testing/demo
+
+- **Dashboard pages now handle field name differences**:
+  - `page-compliance-policies.js`: Maps compliantDevices → compliantCount, etc.
+  - `page-configuration-profiles.js`: Maps successDevices → successCount, etc.
+  - `page-app-deployments.js`: Maps installedDevices → installedCount, successRate → installRate
+  - `page-endpoint-analytics.js`: Enhanced to merge deviceScores with devicePerformance data
+  - `page-signin-logs.js`: Normalizes status and builds location from city/country
+  - `page-asr-rules.js`: Derives mode from blockCount/auditCount fields
+  - `page-credential-expiry.js`: Already handled nested application structure
+
+### Added
+- Sample data now includes comprehensive fields for endpoint admin visibility:
+  - compliance-policies.json: Added errorDevices, conflictDevices, notApplicableDevices, assignments
+  - configuration-profiles.json: Added conflictDevices, pendingDevices, successRate, hasConflicts
+  - app-deployments.json: Added assignments, version, platform, notInstalledDevices, hasFailures
+  - endpoint-analytics.json: Added devicePerformance, appReliability, overview sections
+  - signin-logs.json: Added deviceDetail, mfaDetail, riskState, riskDetail, errorCode
+  - asr-rules.json: Added policies array with detailed ASR rule configurations
+  - service-principal-secrets.json: Added full application details with secrets/certificates arrays
+
+---
+
 ## [2.0.1] - 2026-02-06
 
 ### Fixed

@@ -105,29 +105,130 @@ try {
 
     foreach ($record in $mfaDetails) {
         # Handle both PascalCase (cmdlet) and camelCase (direct API) property names
+        # Core identity
         $recordId = if ($record.Id) { $record.Id } else { $record.id }
         $upn = if ($record.UserPrincipalName) { $record.UserPrincipalName } else { $record.userPrincipalName }
+        $displayName = if ($record.UserDisplayName) { $record.UserDisplayName } else { $record.userDisplayName }
+        $userType = if ($record.UserType) { $record.UserType } else { $record.userType }
+
+        # MFA status
         $mfaRegistered = if ($null -ne $record.IsMfaRegistered) { $record.IsMfaRegistered } else { $record.isMfaRegistered }
         $mfaCapable = if ($null -ne $record.IsMfaCapable) { $record.IsMfaCapable } else { $record.isMfaCapable }
         $defaultMfa = if ($record.DefaultMfaMethod) { $record.DefaultMfaMethod } else { $record.defaultMfaMethod }
 
+        # Passwordless capabilities (critical for modern auth)
+        $passwordlessCapable = if ($null -ne $record.IsPasswordlessCapable) { $record.IsPasswordlessCapable } else { $record.isPasswordlessCapable }
+
+        # SSPR status (Self-Service Password Reset)
+        $ssprRegistered = if ($null -ne $record.IsSsprRegistered) { $record.IsSsprRegistered } else { $record.isSsprRegistered }
+        $ssprEnabled = if ($null -ne $record.IsSsprEnabled) { $record.IsSsprEnabled } else { $record.isSsprEnabled }
+        $ssprCapable = if ($null -ne $record.IsSsprCapable) { $record.IsSsprCapable } else { $record.isSsprCapable }
+
+        # System-managed authentication preferences
+        $systemPreferredEnabled = if ($null -ne $record.IsSystemPreferredAuthenticationMethodEnabled) {
+            $record.IsSystemPreferredAuthenticationMethodEnabled
+        } else {
+            $record.isSystemPreferredAuthenticationMethodEnabled
+        }
+        $systemPreferredMethods = if ($record.SystemPreferredAuthenticationMethods) {
+            $record.SystemPreferredAuthenticationMethods
+        } else {
+            $record.systemPreferredAuthenticationMethods
+        }
+
+        # User preferences
+        $userPreferredMethod = if ($record.UserPreferredMethodForSecondaryAuthentication) {
+            $record.UserPreferredMethodForSecondaryAuthentication
+        } else {
+            $record.userPreferredMethodForSecondaryAuthentication
+        }
+
         # Extract methods registered (handle both cases)
         $methods = @()
         if ($record.MethodsRegistered) {
-            $methods = $record.MethodsRegistered
+            $methods = @($record.MethodsRegistered)
         }
         elseif ($record.methodsRegistered) {
-            $methods = $record.methodsRegistered
+            $methods = @($record.methodsRegistered)
         }
 
-        # Build output object matching our schema
+        # Last updated timestamp
+        $lastUpdated = if ($record.LastUpdatedDateTime) {
+            Format-IsoDate -DateValue $record.LastUpdatedDateTime
+        } elseif ($record.lastUpdatedDateTime) {
+            Format-IsoDate -DateValue $record.lastUpdatedDateTime
+        } else {
+            $null
+        }
+
+        # Derive additional security flags
+        $methodCount = $methods.Count
+
+        # Phishing-resistant methods: FIDO2, Windows Hello, Certificate
+        $hasPhishingResistant = $false
+        $phishingResistantMethods = @()
+        foreach ($method in $methods) {
+            if ($method -in @('fido2', 'windowsHelloForBusiness', 'x509Certificate', 'passKeyDeviceBound', 'passKeyDeviceBoundAuthenticator')) {
+                $hasPhishingResistant = $true
+                $phishingResistantMethods += $method
+            }
+        }
+
+        # Weak methods: SMS, voice call (can be SIM-swapped)
+        $hasWeakMethod = $false
+        $weakMethods = @()
+        foreach ($method in $methods) {
+            if ($method -in @('mobilePhone', 'alternateMobilePhone', 'officePhone', 'voiceCall', 'sms')) {
+                $hasWeakMethod = $true
+                $weakMethods += $method
+            }
+        }
+
+        # Strong methods (non-phishing-resistant but better than SMS)
+        $hasStrongMethod = $false
+        foreach ($method in $methods) {
+            if ($method -in @('microsoftAuthenticatorPush', 'softwareOneTimePasscode', 'hardwareOneTimePasscode', 'microsoftAuthenticatorPasswordless')) {
+                $hasStrongMethod = $true
+            }
+        }
+
+        # Build comprehensive output object
         $mfaRecord = [PSCustomObject]@{
-            userId              = $recordId
-            userPrincipalName   = $upn
-            isMfaRegistered     = [bool]$mfaRegistered
-            isMfaCapable        = [bool]$mfaCapable
-            methods             = $methods
-            defaultMethod       = $defaultMfa
+            # Core identity
+            userId                   = $recordId
+            userPrincipalName        = $upn
+            userDisplayName          = $displayName
+            userType                 = $userType
+
+            # MFA status
+            isMfaRegistered          = [bool]$mfaRegistered
+            isMfaCapable             = [bool]$mfaCapable
+            methods                  = $methods
+            methodCount              = $methodCount
+            defaultMethod            = $defaultMfa
+
+            # Passwordless (modern auth)
+            isPasswordlessCapable    = [bool]$passwordlessCapable
+
+            # SSPR status
+            isSsprRegistered         = [bool]$ssprRegistered
+            isSsprEnabled            = [bool]$ssprEnabled
+            isSsprCapable            = [bool]$ssprCapable
+
+            # Authentication method preferences
+            isSystemPreferredEnabled = [bool]$systemPreferredEnabled
+            systemPreferredMethods   = if ($systemPreferredMethods) { @($systemPreferredMethods) } else { @() }
+            userPreferredMethod      = $userPreferredMethod
+
+            # Security analysis flags
+            hasPhishingResistant     = $hasPhishingResistant
+            phishingResistantMethods = $phishingResistantMethods
+            hasWeakMethod            = $hasWeakMethod
+            weakMethods              = $weakMethods
+            hasStrongMethod          = $hasStrongMethod
+
+            # Metadata
+            lastUpdatedDateTime      = $lastUpdated
         }
 
         $processedMfa += $mfaRecord

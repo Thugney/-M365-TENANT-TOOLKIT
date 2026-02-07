@@ -1,62 +1,337 @@
-[
-  {
-    "displayName": "Windows 10 Security Baseline",
-    "description": "Baseline security policy for all Windows 10/11 devices",
-    "platform": "Windows 10/11",
-    "assignedCount": 150,
-    "compliantCount": 142,
-    "nonCompliantCount": 5,
-    "complianceRate": 95,
-    "lastModified": "2026-01-12T10:30:00Z"
+{
+  "policies": [
+    {
+      "id": "cp-001-baseline",
+      "displayName": "Windows 10 Security Baseline",
+      "description": "Baseline security policy for all Windows 10/11 devices",
+      "platform": "Windows 10/11",
+      "category": "Security",
+      "isCritical": true,
+      "odataType": "#microsoft.graph.windows10CompliancePolicy",
+      "createdDateTime": "2025-06-15T10:00:00Z",
+      "lastModifiedDateTime": "2026-01-12T10:30:00Z",
+      "version": 3,
+      "assignments": [
+        { "type": "AllDevices", "name": "All Devices" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 142,
+      "nonCompliantDevices": 5,
+      "errorDevices": 2,
+      "conflictDevices": 1,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "complianceRate": 94.7,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-A1B2C3", "userName": "john.doe@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T14:30:00Z" },
+        { "deviceName": "LAPTOP-X7Y8Z9", "userName": "jane.smith@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T09:15:00Z" },
+        { "deviceName": "DESKTOP-M4N5O6", "userName": "bob.wilson@contoso.com", "status": "error", "lastReportedDateTime": "2026-02-04T16:45:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "BitLockerEnabled", "compliantDeviceCount": 145, "nonCompliantDeviceCount": 3, "errorDeviceCount": 2, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 },
+        { "settingName": "FirewallEnabled", "compliantDeviceCount": 148, "nonCompliantDeviceCount": 2, "errorDeviceCount": 0, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    },
+    {
+      "id": "cp-002-ios",
+      "displayName": "iOS Device Compliance",
+      "description": "Compliance requirements for corporate iOS devices",
+      "platform": "iOS/iPadOS",
+      "category": "General",
+      "isCritical": false,
+      "odataType": "#microsoft.graph.iosCompliancePolicy",
+      "createdDateTime": "2025-05-20T14:00:00Z",
+      "lastModifiedDateTime": "2026-01-08T14:15:00Z",
+      "version": 2,
+      "assignments": [
+        { "type": "Group", "groupId": "grp-ios-users", "name": "Group: iOS Users" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 72,
+      "nonCompliantDevices": 2,
+      "errorDevices": 1,
+      "conflictDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 75,
+      "complianceRate": 96.0,
+      "deviceStatuses": [
+        { "deviceName": "iPhone-Sarah", "userName": "sarah.jones@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T11:20:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "PasscodeRequired", "compliantDeviceCount": 73, "nonCompliantDeviceCount": 2, "errorDeviceCount": 0, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    },
+    {
+      "id": "cp-003-android",
+      "displayName": "Android Enterprise Policy",
+      "description": "Work profile compliance for Android devices",
+      "platform": "Android Enterprise",
+      "category": "General",
+      "isCritical": false,
+      "odataType": "#microsoft.graph.androidWorkProfileCompliancePolicy",
+      "createdDateTime": "2025-04-10T09:00:00Z",
+      "lastModifiedDateTime": "2025-12-20T09:00:00Z",
+      "version": 4,
+      "assignments": [
+        { "type": "Group", "groupId": "grp-android-users", "name": "Group: Android Users" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 38,
+      "nonCompliantDevices": 5,
+      "errorDevices": 2,
+      "conflictDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 45,
+      "complianceRate": 84.4,
+      "deviceStatuses": [
+        { "deviceName": "Pixel-Mike", "userName": "mike.brown@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T08:45:00Z" },
+        { "deviceName": "Samsung-Lisa", "userName": "lisa.white@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-04T17:30:00Z" },
+        { "deviceName": "OnePlus-David", "userName": "david.lee@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-04T12:00:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "MinimumOsVersion", "compliantDeviceCount": 40, "nonCompliantDeviceCount": 3, "errorDeviceCount": 2, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 },
+        { "settingName": "DeviceNotRooted", "compliantDeviceCount": 43, "nonCompliantDeviceCount": 2, "errorDeviceCount": 0, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    },
+    {
+      "id": "cp-004-macos",
+      "displayName": "macOS Security Requirements",
+      "description": "Security compliance for Mac devices",
+      "platform": "macOS",
+      "category": "Security",
+      "isCritical": true,
+      "odataType": "#microsoft.graph.macOSCompliancePolicy",
+      "createdDateTime": "2025-07-01T11:00:00Z",
+      "lastModifiedDateTime": "2026-01-05T11:45:00Z",
+      "version": 2,
+      "assignments": [
+        { "type": "Group", "groupId": "grp-mac-users", "name": "Group: Mac Users" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 28,
+      "nonCompliantDevices": 1,
+      "errorDevices": 1,
+      "conflictDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 30,
+      "complianceRate": 93.3,
+      "deviceStatuses": [
+        { "deviceName": "MacBook-Pro-Tom", "userName": "tom.taylor@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T10:00:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "FileVaultEnabled", "compliantDeviceCount": 29, "nonCompliantDeviceCount": 1, "errorDeviceCount": 0, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    },
+    {
+      "id": "cp-005-bitlocker",
+      "displayName": "BitLocker Encryption Policy",
+      "description": "Requires BitLocker encryption on all Windows devices",
+      "platform": "Windows 10/11",
+      "category": "Encryption",
+      "isCritical": true,
+      "odataType": "#microsoft.graph.windows10CompliancePolicy",
+      "createdDateTime": "2025-03-15T16:00:00Z",
+      "lastModifiedDateTime": "2025-11-15T16:20:00Z",
+      "version": 5,
+      "assignments": [
+        { "type": "AllDevices", "name": "All Devices" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 135,
+      "nonCompliantDevices": 12,
+      "errorDevices": 3,
+      "conflictDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "complianceRate": 90.0,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-Q1W2E3", "userName": "alex.martin@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T13:00:00Z" },
+        { "deviceName": "LAPTOP-R4T5Y6", "userName": "emily.davis@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T11:30:00Z" },
+        { "deviceName": "DESKTOP-U7I8O9", "userName": "chris.miller@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-04T15:00:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "BitLockerEnabled", "compliantDeviceCount": 135, "nonCompliantDeviceCount": 12, "errorDeviceCount": 3, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    },
+    {
+      "id": "cp-006-defender",
+      "displayName": "Windows Defender AV Policy",
+      "description": "Requires Windows Defender with real-time protection",
+      "platform": "Windows 10/11",
+      "category": "Security",
+      "isCritical": true,
+      "odataType": "#microsoft.graph.windows10CompliancePolicy",
+      "createdDateTime": "2025-02-01T08:00:00Z",
+      "lastModifiedDateTime": "2026-01-10T08:30:00Z",
+      "version": 6,
+      "assignments": [
+        { "type": "AllDevices", "name": "All Devices" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 148,
+      "nonCompliantDevices": 2,
+      "errorDevices": 0,
+      "conflictDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "complianceRate": 98.7,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-P0O9I8", "userName": "kevin.anderson@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T09:00:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "DefenderEnabled", "compliantDeviceCount": 148, "nonCompliantDeviceCount": 2, "errorDeviceCount": 0, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    },
+    {
+      "id": "cp-007-password",
+      "displayName": "Windows Password Policy",
+      "description": "Enforces minimum password complexity requirements",
+      "platform": "Windows 10/11",
+      "category": "Password",
+      "isCritical": false,
+      "odataType": "#microsoft.graph.windows10CompliancePolicy",
+      "createdDateTime": "2025-01-15T09:00:00Z",
+      "lastModifiedDateTime": "2026-01-02T10:00:00Z",
+      "version": 3,
+      "assignments": [
+        { "type": "AllDevices", "name": "All Devices" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 147,
+      "nonCompliantDevices": 3,
+      "errorDevices": 0,
+      "conflictDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "complianceRate": 98.0,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-L5K4J3", "userName": "nancy.thomas@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-05T07:30:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "PasswordMinLength", "compliantDeviceCount": 148, "nonCompliantDeviceCount": 2, "errorDeviceCount": 0, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 },
+        { "settingName": "PasswordComplexity", "compliantDeviceCount": 149, "nonCompliantDeviceCount": 1, "errorDeviceCount": 0, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    },
+    {
+      "id": "cp-008-osversion",
+      "displayName": "Windows OS Version Policy",
+      "description": "Requires minimum Windows 10 22H2 or Windows 11",
+      "platform": "Windows 10/11",
+      "category": "OS Version",
+      "isCritical": false,
+      "odataType": "#microsoft.graph.windows10CompliancePolicy",
+      "createdDateTime": "2025-08-01T12:00:00Z",
+      "lastModifiedDateTime": "2026-01-15T12:30:00Z",
+      "version": 2,
+      "assignments": [
+        { "type": "AllDevices", "name": "All Devices" }
+      ],
+      "assignmentCount": 1,
+      "compliantDevices": 140,
+      "nonCompliantDevices": 8,
+      "errorDevices": 2,
+      "conflictDevices": 0,
+      "notApplicableDevices": 0,
+      "totalDevices": 150,
+      "complianceRate": 93.3,
+      "deviceStatuses": [
+        { "deviceName": "DESKTOP-OLD1", "userName": "old.user1@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-04T14:00:00Z" },
+        { "deviceName": "DESKTOP-OLD2", "userName": "old.user2@contoso.com", "status": "nonCompliant", "lastReportedDateTime": "2026-02-04T13:00:00Z" }
+      ],
+      "settingStatuses": [
+        { "settingName": "MinimumOsVersion", "compliantDeviceCount": 140, "nonCompliantDeviceCount": 8, "errorDeviceCount": 2, "notApplicableDeviceCount": 0, "conflictDeviceCount": 0 }
+      ],
+      "hasIssues": true
+    }
+  ],
+  "nonCompliantDevices": [
+    { "deviceName": "DESKTOP-A1B2C3", "userName": "john.doe@contoso.com", "failedPolicies": ["Windows 10 Security Baseline", "BitLocker Encryption Policy", "Windows OS Version Policy"], "failedPolicyCount": 3 },
+    { "deviceName": "LAPTOP-X7Y8Z9", "userName": "jane.smith@contoso.com", "failedPolicies": ["Windows 10 Security Baseline", "BitLocker Encryption Policy"], "failedPolicyCount": 2 },
+    { "deviceName": "DESKTOP-Q1W2E3", "userName": "alex.martin@contoso.com", "failedPolicies": ["BitLocker Encryption Policy", "Windows OS Version Policy"], "failedPolicyCount": 2 },
+    { "deviceName": "Pixel-Mike", "userName": "mike.brown@contoso.com", "failedPolicies": ["Android Enterprise Policy"], "failedPolicyCount": 1 },
+    { "deviceName": "Samsung-Lisa", "userName": "lisa.white@contoso.com", "failedPolicies": ["Android Enterprise Policy"], "failedPolicyCount": 1 },
+    { "deviceName": "iPhone-Sarah", "userName": "sarah.jones@contoso.com", "failedPolicies": ["iOS Device Compliance"], "failedPolicyCount": 1 },
+    { "deviceName": "MacBook-Pro-Tom", "userName": "tom.taylor@contoso.com", "failedPolicies": ["macOS Security Requirements"], "failedPolicyCount": 1 },
+    { "deviceName": "DESKTOP-P0O9I8", "userName": "kevin.anderson@contoso.com", "failedPolicies": ["Windows Defender AV Policy"], "failedPolicyCount": 1 }
+  ],
+  "settingFailures": [
+    { "policyId": "cp-005-bitlocker", "policyName": "BitLocker Encryption Policy", "platform": "Windows 10/11", "settingName": "BitLockerEnabled", "nonCompliantCount": 12, "errorCount": 3 },
+    { "policyId": "cp-008-osversion", "policyName": "Windows OS Version Policy", "platform": "Windows 10/11", "settingName": "MinimumOsVersion", "nonCompliantCount": 8, "errorCount": 2 },
+    { "policyId": "cp-003-android", "policyName": "Android Enterprise Policy", "platform": "Android Enterprise", "settingName": "MinimumOsVersion", "nonCompliantCount": 3, "errorCount": 2 },
+    { "policyId": "cp-001-baseline", "policyName": "Windows 10 Security Baseline", "platform": "Windows 10/11", "settingName": "BitLockerEnabled", "nonCompliantCount": 3, "errorCount": 2 },
+    { "policyId": "cp-007-password", "policyName": "Windows Password Policy", "platform": "Windows 10/11", "settingName": "PasswordMinLength", "nonCompliantCount": 2, "errorCount": 0 },
+    { "policyId": "cp-002-ios", "policyName": "iOS Device Compliance", "platform": "iOS/iPadOS", "settingName": "PasscodeRequired", "nonCompliantCount": 2, "errorCount": 0 },
+    { "policyId": "cp-006-defender", "policyName": "Windows Defender AV Policy", "platform": "Windows 10/11", "settingName": "DefenderEnabled", "nonCompliantCount": 2, "errorCount": 0 },
+    { "policyId": "cp-003-android", "policyName": "Android Enterprise Policy", "platform": "Android Enterprise", "settingName": "DeviceNotRooted", "nonCompliantCount": 2, "errorCount": 0 },
+    { "policyId": "cp-001-baseline", "policyName": "Windows 10 Security Baseline", "platform": "Windows 10/11", "settingName": "FirewallEnabled", "nonCompliantCount": 2, "errorCount": 0 }
+  ],
+  "insights": [
+    {
+      "id": "critical-policy-issues",
+      "severity": "critical",
+      "description": "4 critical security policies have non-compliant devices",
+      "impactedPolicies": 4,
+      "affectedDevices": 20,
+      "recommendedAction": "Prioritize remediation of security and encryption policy failures",
+      "category": "Security"
+    },
+    {
+      "id": "low-compliance-policies",
+      "severity": "high",
+      "description": "1 policy has compliance rate below 80%",
+      "impactedPolicies": 1,
+      "affectedDevices": 5,
+      "recommendedAction": "Review non-compliant devices and remediate or adjust policy settings",
+      "category": "Compliance"
+    },
+    {
+      "id": "multi-policy-failures",
+      "severity": "high",
+      "description": "1 device is failing 3 or more compliance policies",
+      "impactedDevices": 1,
+      "recommendedAction": "Investigate these devices for systemic issues or consider device refresh",
+      "category": "Device Health"
+    },
+    {
+      "id": "common-setting-failure",
+      "severity": "medium",
+      "description": "Setting 'BitLockerEnabled' is failing on 12 devices",
+      "impactedDevices": 12,
+      "recommendedAction": "Review if this setting requirement is appropriate or needs user communication",
+      "category": "Settings"
+    },
+    {
+      "id": "policy-errors",
+      "severity": "medium",
+      "description": "9 devices have errors evaluating 4 policies",
+      "impactedPolicies": 4,
+      "impactedDevices": 9,
+      "recommendedAction": "Check device connectivity and policy configuration for errors",
+      "category": "Errors"
+    }
+  ],
+  "summary": {
+    "totalPolicies": 8,
+    "totalDevices": 750,
+    "compliantDevices": 710,
+    "nonCompliantDevices": 31,
+    "errorDevices": 9,
+    "overallComplianceRate": 94.7,
+    "platformBreakdown": {
+      "Windows 10/11": { "policies": 5, "compliant": 570, "nonCompliant": 22 },
+      "iOS/iPadOS": { "policies": 1, "compliant": 72, "nonCompliant": 2 },
+      "Android Enterprise": { "policies": 1, "compliant": 38, "nonCompliant": 5 },
+      "macOS": { "policies": 1, "compliant": 28, "nonCompliant": 1 }
+    },
+    "criticalPolicies": 4,
+    "policiesWithIssues": 8
   },
-  {
-    "displayName": "iOS Device Compliance",
-    "description": "Compliance requirements for corporate iOS devices",
-    "platform": "iOS/iPadOS",
-    "assignedCount": 75,
-    "compliantCount": 72,
-    "nonCompliantCount": 2,
-    "complianceRate": 96,
-    "lastModified": "2026-01-08T14:15:00Z"
-  },
-  {
-    "displayName": "Android Enterprise Policy",
-    "description": "Work profile compliance for Android devices",
-    "platform": "Android Enterprise",
-    "assignedCount": 45,
-    "compliantCount": 38,
-    "nonCompliantCount": 5,
-    "complianceRate": 84,
-    "lastModified": "2025-12-20T09:00:00Z"
-  },
-  {
-    "displayName": "macOS Security Requirements",
-    "description": "Security compliance for Mac devices",
-    "platform": "macOS",
-    "assignedCount": 30,
-    "compliantCount": 28,
-    "nonCompliantCount": 1,
-    "complianceRate": 93,
-    "lastModified": "2026-01-05T11:45:00Z"
-  },
-  {
-    "displayName": "BitLocker Encryption Policy",
-    "description": "Requires BitLocker encryption on all Windows devices",
-    "platform": "Windows 10/11",
-    "assignedCount": 150,
-    "compliantCount": 135,
-    "nonCompliantCount": 12,
-    "complianceRate": 90,
-    "lastModified": "2025-11-15T16:20:00Z"
-  },
-  {
-    "displayName": "Windows Defender AV Policy",
-    "description": "Requires Windows Defender with real-time protection",
-    "platform": "Windows 10/11",
-    "assignedCount": 150,
-    "compliantCount": 148,
-    "nonCompliantCount": 2,
-    "complianceRate": 99,
-    "lastModified": "2026-01-10T08:30:00Z"
-  }
-]
+  "collectionDate": "2026-02-06T10:00:00Z"
+}

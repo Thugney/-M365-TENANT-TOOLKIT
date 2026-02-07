@@ -58,6 +58,88 @@
   },
   "licenseOverlapRules": [
     {
+      "_comment": "=== M365 Enterprise Tier Overlaps ===",
+      "name": "E3 + E5 (Tier redundancy)",
+      "higherSku": "SPE_E5",
+      "lowerSku": "SPE_E3",
+      "description": "E5 includes all E3 features - remove E3 to eliminate redundancy"
+    },
+    {
+      "name": "E1 + E3 (Tier redundancy)",
+      "higherSku": "SPE_E3",
+      "lowerSku": "STANDARDPACK",
+      "description": "E3 includes all E1 features - remove E1 to eliminate redundancy"
+    },
+    {
+      "_comment": "=== Standalone + Bundle Overlaps ===",
+      "name": "Exchange Online + E3 (Included in bundle)",
+      "higherSku": "SPE_E3",
+      "lowerSku": "EXCHANGESTANDARD",
+      "description": "Exchange Online Plan 1 is included in M365 E3"
+    },
+    {
+      "name": "Exchange Online + E5 (Included in bundle)",
+      "higherSku": "SPE_E5",
+      "lowerSku": "EXCHANGESTANDARD",
+      "description": "Exchange Online Plan 1 is included in M365 E5"
+    },
+    {
+      "name": "Intune + E3 (Included in bundle)",
+      "higherSku": "SPE_E3",
+      "lowerSku": "INTUNE_A",
+      "description": "Intune is included in M365 E3 - standalone license is redundant"
+    },
+    {
+      "name": "Intune + E5 (Included in bundle)",
+      "higherSku": "SPE_E5",
+      "lowerSku": "INTUNE_A",
+      "description": "Intune is included in M365 E5 - standalone license is redundant"
+    },
+    {
+      "name": "Entra ID P1 + E3 (Included in bundle)",
+      "higherSku": "SPE_E3",
+      "lowerSku": "AAD_PREMIUM",
+      "description": "Entra ID P1 is included in M365 E3 - standalone license is redundant"
+    },
+    {
+      "name": "Entra ID P1 + E5 (Included in bundle)",
+      "higherSku": "SPE_E5",
+      "lowerSku": "AAD_PREMIUM",
+      "description": "Entra ID P1 is included in M365 E5 - standalone license is redundant"
+    },
+    {
+      "name": "Entra ID P2 + E5 (Included in bundle)",
+      "higherSku": "SPE_E5",
+      "lowerSku": "AAD_PREMIUM_P2",
+      "description": "Entra ID P2 is included in M365 E5 - standalone license is redundant"
+    },
+    {
+      "name": "Entra ID P1 + P2 (Tier redundancy)",
+      "higherSku": "AAD_PREMIUM_P2",
+      "lowerSku": "AAD_PREMIUM",
+      "description": "Entra ID P2 includes all P1 features - remove P1"
+    },
+    {
+      "name": "Power BI Pro + E5 (Included in bundle)",
+      "higherSku": "SPE_E5",
+      "lowerSku": "POWER_BI_PRO",
+      "description": "Power BI Pro is included in M365 E5 - standalone license is redundant"
+    },
+    {
+      "_comment": "=== Education License Overlaps ===",
+      "name": "A1 + A3 (Tier redundancy)",
+      "higherSku": "M365EDU_A3_STUUSEBNFT",
+      "lowerSku": "M365EDU_A1",
+      "description": "A3 includes all A1 features - remove A1 to eliminate redundancy"
+    },
+    {
+      "name": "A3 + A5 (Tier redundancy)",
+      "higherSku": "M365EDU_A5_STUUSEBNFT",
+      "lowerSku": "M365EDU_A3_STUUSEBNFT",
+      "description": "A5 includes all A3 features - remove A3 to eliminate redundancy"
+    },
+    {
+      "_comment": "=== Role/Department Mismatch Rules ===",
       "name": "F1 + E3 (Role mismatch)",
       "higherSku": "SPE_E3",
       "lowerSku": "SPE_F1",
@@ -80,6 +162,19 @@
       "higherSku": "M365EDU_A5_FACULTY",
       "lowerSku": "SPE_F1",
       "description": "Undervisning staff should not have F1 frontline license"
+    },
+    {
+      "_comment": "=== EMS Overlaps ===",
+      "name": "EMS E3 + E5 (Tier redundancy)",
+      "higherSku": "EMSPREMIUM",
+      "lowerSku": "EMS",
+      "description": "EMS E5 includes all EMS E3 features - remove EMS E3"
+    },
+    {
+      "name": "EMS E3 + M365 E3 (Included in bundle)",
+      "higherSku": "SPE_E3",
+      "lowerSku": "EMS",
+      "description": "EMS E3 components (Intune, Entra ID P1) are included in M365 E3"
     }
   ],
   "dashboard": {

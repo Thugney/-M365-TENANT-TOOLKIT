@@ -163,6 +163,28 @@ try {
             $roleName = $roleLookup[$schedule.RoleDefinitionId]
             if (-not $roleName) { $roleName = "Unknown Role" }
 
+            # Get schedule times - try both direct properties and nested ScheduleInfo
+            # (Graph API version may return at different paths)
+            $eligibleStart = $null
+            $eligibleEnd = $null
+
+            # Try direct properties first (some API versions)
+            if ($schedule.StartDateTime) {
+                $eligibleStart = $schedule.StartDateTime.ToString("o")
+            }
+            # Fall back to nested ScheduleInfo
+            elseif ($schedule.ScheduleInfo -and $schedule.ScheduleInfo.StartDateTime) {
+                $eligibleStart = $schedule.ScheduleInfo.StartDateTime.ToString("o")
+            }
+
+            # End time from direct property or nested
+            if ($schedule.EndDateTime) {
+                $eligibleEnd = $schedule.EndDateTime.ToString("o")
+            }
+            elseif ($schedule.ScheduleInfo -and $schedule.ScheduleInfo.Expiration -and $schedule.ScheduleInfo.Expiration.EndDateTime) {
+                $eligibleEnd = $schedule.ScheduleInfo.Expiration.EndDateTime.ToString("o")
+            }
+
             $processedEntry = [PSCustomObject]@{
                 id                     = $schedule.Id
                 action                 = "eligible"
@@ -173,8 +195,8 @@ try {
                 status                 = $schedule.Status
                 createdDateTime        = if ($schedule.CreatedDateTime) { $schedule.CreatedDateTime.ToString("o") } else { $null }
                 justification          = ""
-                scheduleStartDateTime  = if ($schedule.ScheduleInfo -and $schedule.ScheduleInfo.StartDateTime) { $schedule.ScheduleInfo.StartDateTime.ToString("o") } else { $null }
-                scheduleEndDateTime    = if ($schedule.ScheduleInfo -and $schedule.ScheduleInfo.Expiration -and $schedule.ScheduleInfo.Expiration.EndDateTime) { $schedule.ScheduleInfo.Expiration.EndDateTime.ToString("o") } else { $null }
+                scheduleStartDateTime  = $eligibleStart
+                scheduleEndDateTime    = $eligibleEnd
                 isEligible             = $true
                 entryType              = "eligible"
             }

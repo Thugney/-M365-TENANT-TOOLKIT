@@ -6,6 +6,8 @@ const PageCredentialExpiry = (function() {
     'use strict';
 
     var colSelector = null;
+    var currentTab = 'overview';
+    var credState = null;
 
     // Extract flat credentials from nested structure
     function extractCredentials(rawData) {
@@ -67,23 +69,54 @@ const PageCredentialExpiry = (function() {
         Tables.render({ containerId: 'creds-table', data: data, columns: allDefs.filter(function(c) { return visible.indexOf(c.key) !== -1; }), pageSize: 50 });
     }
 
-    function render(container) {
-        var creds = extractCredentials(DataLoader.getData('servicePrincipalSecrets'));
-        var total = creds.length;
-        var expired = creds.filter(function(c) { return c.status === 'expired'; }).length;
-        var critical = creds.filter(function(c) { return c.status === 'critical'; }).length;
-        var warning = creds.filter(function(c) { return c.status === 'warning'; }).length;
-        var healthy = creds.filter(function(c) { return c.status === 'healthy'; }).length;
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        renderContent();
+    }
 
-        var html = '<div class="page-header"><h2>Credential Expiry</h2></div>';
-        html += '<div class="summary-cards">';
-        html += '<div class="summary-card"><div class="summary-value">' + total + '</div><div class="summary-label">Total Credentials</div></div>';
-        html += '<div class="summary-card card-danger"><div class="summary-value">' + expired + '</div><div class="summary-label">Expired</div></div>';
-        html += '<div class="summary-card card-danger"><div class="summary-value">' + critical + '</div><div class="summary-label">Critical</div></div>';
-        html += '<div class="summary-card card-warning"><div class="summary-value">' + warning + '</div><div class="summary-label">Warning</div></div>';
-        html += '<div class="summary-card card-success"><div class="summary-value">' + healthy + '</div><div class="summary-label">Healthy</div></div>';
-        html += '</div>';
-        html += '<div class="filter-bar"><input type="text" class="filter-input" id="creds-search" placeholder="Search applications...">';
+    function renderContent() {
+        var container = document.getElementById('creds-content');
+        if (!container || !credState) return;
+
+        switch (currentTab) {
+            case 'overview':
+                renderOverview(container, credState);
+                break;
+            case 'credentials':
+                renderCredentialsTab(container, credState);
+                break;
+        }
+    }
+
+    function renderOverview(container, state) {
+        container.innerHTML = '<div class="charts-row" id="creds-charts"></div>';
+        renderCredCharts(state);
+    }
+
+    function renderCredCharts(state) {
+        var chartsRow = document.getElementById('creds-charts');
+        if (!chartsRow || typeof DashboardCharts === 'undefined') return;
+
+        chartsRow.textContent = '';
+        var C = DashboardCharts.colors;
+
+        chartsRow.appendChild(DashboardCharts.createChartCard(
+            'Credential Status',
+            [
+                { value: state.expired, label: 'Expired', color: C.red },
+                { value: state.critical, label: 'Critical', color: C.orange },
+                { value: state.warning, label: 'Warning', color: C.yellow },
+                { value: state.healthy, label: 'Healthy', color: C.green }
+            ],
+            String(state.total), 'total credentials'
+        ));
+    }
+
+    function renderCredentialsTab(container, state) {
+        var html = '<div class="filter-bar"><input type="text" class="filter-input" id="creds-search" placeholder="Search applications...">';
         html += '<select class="filter-select" id="creds-type"><option value="all">All Types</option><option value="secret">Secrets</option><option value="certificate">Certificates</option></select>';
         html += '<select class="filter-select" id="creds-status"><option value="all">All Statuses</option><option value="expired">Expired</option><option value="critical">Critical</option><option value="warning">Warning</option><option value="healthy">Healthy</option></select>';
         html += '<div id="creds-colselector"></div></div>';
@@ -108,6 +141,48 @@ const PageCredentialExpiry = (function() {
         Filters.setup('creds-type', applyFilters);
         Filters.setup('creds-status', applyFilters);
         applyFilters();
+    }
+
+    function render(container) {
+        var creds = extractCredentials(DataLoader.getData('servicePrincipalSecrets'));
+        var total = creds.length;
+        var expired = creds.filter(function(c) { return c.status === 'expired'; }).length;
+        var critical = creds.filter(function(c) { return c.status === 'critical'; }).length;
+        var warning = creds.filter(function(c) { return c.status === 'warning'; }).length;
+        var healthy = creds.filter(function(c) { return c.status === 'healthy'; }).length;
+
+        credState = {
+            creds: creds,
+            total: total,
+            expired: expired,
+            critical: critical,
+            warning: warning,
+            healthy: healthy
+        };
+
+        var html = '<div class="page-header"><h2>Credential Expiry</h2></div>';
+        html += '<div class="summary-cards">';
+        html += '<div class="summary-card"><div class="summary-value">' + total + '</div><div class="summary-label">Total Credentials</div></div>';
+        html += '<div class="summary-card card-danger"><div class="summary-value">' + expired + '</div><div class="summary-label">Expired</div></div>';
+        html += '<div class="summary-card card-danger"><div class="summary-value">' + critical + '</div><div class="summary-label">Critical</div></div>';
+        html += '<div class="summary-card card-warning"><div class="summary-value">' + warning + '</div><div class="summary-label">Warning</div></div>';
+        html += '<div class="summary-card card-success"><div class="summary-value">' + healthy + '</div><div class="summary-label">Healthy</div></div>';
+        html += '</div>';
+
+        html += '<div class="tab-bar">';
+        html += '<button class="tab-btn active" data-tab="overview">Overview</button>';
+        html += '<button class="tab-btn" data-tab="credentials">Credentials (' + total + ')</button>';
+        html += '</div>';
+
+        html += '<div class="content-area" id="creds-content"></div>';
+        container.innerHTML = html;
+
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+        });
+
+        currentTab = 'overview';
+        renderContent();
     }
 
     return { render: render };

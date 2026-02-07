@@ -2,161 +2,369 @@
   {
     "roleId": "62e90394-69f5-4237-9190-012177145e10",
     "roleName": "Global Administrator",
+    "roleDescription": "Can manage all aspects of Azure AD and Microsoft services that use Azure AD identities.",
+    "roleTemplateId": "62e90394-69f5-4237-9190-012177145e10",
     "isHighPrivilege": true,
     "members": [
       {
-        "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "displayName": "Erik Hansen",
+        "memberType": "User",
         "userPrincipalName": "erik.hansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 1
+        "daysSinceLastSignIn": 1,
+        "mfaRegistered": true
       },
       {
-        "userId": "a7b8c9d0-e1f2-3456-0123-789012345678",
+        "id": "a7b8c9d0-e1f2-3456-0123-789012345678",
         "displayName": "Anders Kristiansen",
+        "memberType": "User",
         "userPrincipalName": "anders.kristiansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 0
+        "daysSinceLastSignIn": 0,
+        "mfaRegistered": true
+      },
+      {
+        "id": "sp-emergency-access-001",
+        "displayName": "Emergency Access Automation",
+        "memberType": "ServicePrincipal",
+        "appId": "11111111-2222-3333-4444-555555555555",
+        "servicePrincipalType": "Application",
+        "accountEnabled": true
       }
     ],
-    "memberCount": 2
+    "memberCount": 3,
+    "userCount": 2,
+    "servicePrincipalCount": 1,
+    "groupCount": 0,
+    "hasServicePrincipals": true,
+    "hasGroups": false,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
   },
   {
     "roleId": "29232cdf-9323-42fd-ade2-1d097af3e4de",
     "roleName": "Exchange Administrator",
+    "roleDescription": "Can manage all aspects of the Exchange product.",
+    "roleTemplateId": "29232cdf-9323-42fd-ade2-1d097af3e4de",
     "isHighPrivilege": true,
     "members": [
       {
-        "userId": "a7b8c9d0-e1f2-3456-0123-789012345678",
+        "id": "a7b8c9d0-e1f2-3456-0123-789012345678",
         "displayName": "Anders Kristiansen",
+        "memberType": "User",
         "userPrincipalName": "anders.kristiansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 0
+        "daysSinceLastSignIn": 0,
+        "mfaRegistered": true
+      },
+      {
+        "id": "grp-exchange-admins-001",
+        "displayName": "Exchange Admins",
+        "memberType": "Group",
+        "groupType": "Security",
+        "isRoleAssignable": true,
+        "securityEnabled": true
       }
     ],
-    "memberCount": 1
+    "memberCount": 2,
+    "userCount": 1,
+    "servicePrincipalCount": 0,
+    "groupCount": 1,
+    "hasServicePrincipals": false,
+    "hasGroups": true,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
   },
   {
     "roleId": "fe930be7-5e62-47db-91af-98c3a49a38b1",
     "roleName": "User Administrator",
+    "roleDescription": "Can manage all aspects of users and groups, including resetting passwords for limited admins.",
+    "roleTemplateId": "fe930be7-5e62-47db-91af-98c3a49a38b1",
     "isHighPrivilege": true,
     "members": [
       {
-        "userId": "d4e5f6a7-b8c9-0123-def0-456789012345",
+        "id": "d4e5f6a7-b8c9-0123-def0-456789012345",
         "displayName": "Kari Andersen",
+        "memberType": "User",
         "userPrincipalName": "kari.andersen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 1
+        "daysSinceLastSignIn": 1,
+        "mfaRegistered": true
       },
       {
-        "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "displayName": "Erik Hansen",
+        "memberType": "User",
         "userPrincipalName": "erik.hansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 1
+        "daysSinceLastSignIn": 1,
+        "mfaRegistered": true
       }
     ],
-    "memberCount": 2
+    "memberCount": 2,
+    "userCount": 2,
+    "servicePrincipalCount": 0,
+    "groupCount": 0,
+    "hasServicePrincipals": false,
+    "hasGroups": false,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
   },
   {
     "roleId": "194ae4cb-b126-40b2-bd5b-6091b380977d",
     "roleName": "Security Administrator",
+    "roleDescription": "Can read security information and reports, and manage configuration in Azure AD and Office 365.",
+    "roleTemplateId": "194ae4cb-b126-40b2-bd5b-6091b380977d",
     "isHighPrivilege": true,
     "members": [
       {
-        "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "displayName": "Erik Hansen",
+        "memberType": "User",
         "userPrincipalName": "erik.hansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 1
+        "daysSinceLastSignIn": 1,
+        "mfaRegistered": true
       },
       {
-        "userId": "a7b8c9d0-e1f2-3456-0123-789012345678",
+        "id": "a7b8c9d0-e1f2-3456-0123-789012345678",
         "displayName": "Anders Kristiansen",
+        "memberType": "User",
         "userPrincipalName": "anders.kristiansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 0
+        "daysSinceLastSignIn": 0,
+        "mfaRegistered": true
+      },
+      {
+        "id": "sp-security-automation-001",
+        "displayName": "Security Automation Service",
+        "memberType": "ServicePrincipal",
+        "appId": "22222222-3333-4444-5555-666666666666",
+        "servicePrincipalType": "Application",
+        "accountEnabled": true
       }
     ],
-    "memberCount": 2
+    "memberCount": 3,
+    "userCount": 2,
+    "servicePrincipalCount": 1,
+    "groupCount": 0,
+    "hasServicePrincipals": true,
+    "hasGroups": false,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
   },
   {
     "roleId": "f28a1f50-f6e7-4571-818b-6a12f2af6b6c",
     "roleName": "SharePoint Administrator",
-    "isHighPrivilege": false,
+    "roleDescription": "Can manage all aspects of the SharePoint service.",
+    "roleTemplateId": "f28a1f50-f6e7-4571-818b-6a12f2af6b6c",
+    "isHighPrivilege": true,
     "members": [
       {
-        "userId": "a7b8c9d0-e1f2-3456-0123-789012345678",
+        "id": "a7b8c9d0-e1f2-3456-0123-789012345678",
         "displayName": "Anders Kristiansen",
+        "memberType": "User",
         "userPrincipalName": "anders.kristiansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 0
+        "daysSinceLastSignIn": 0,
+        "mfaRegistered": true
       }
     ],
-    "memberCount": 1
+    "memberCount": 1,
+    "userCount": 1,
+    "servicePrincipalCount": 0,
+    "groupCount": 0,
+    "hasServicePrincipals": false,
+    "hasGroups": false,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
   },
   {
     "roleId": "69091246-20e8-4a56-aa4d-066075b2a7a8",
     "roleName": "Teams Administrator",
+    "roleDescription": "Can manage the Microsoft Teams service.",
+    "roleTemplateId": "69091246-20e8-4a56-aa4d-066075b2a7a8",
     "isHighPrivilege": false,
     "members": [
       {
-        "userId": "a7b8c9d0-e1f2-3456-0123-789012345678",
+        "id": "a7b8c9d0-e1f2-3456-0123-789012345678",
         "displayName": "Anders Kristiansen",
+        "memberType": "User",
         "userPrincipalName": "anders.kristiansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 0
+        "daysSinceLastSignIn": 0,
+        "mfaRegistered": true
       },
       {
-        "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "displayName": "Erik Hansen",
+        "memberType": "User",
         "userPrincipalName": "erik.hansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 1
+        "daysSinceLastSignIn": 1,
+        "mfaRegistered": true
       }
     ],
-    "memberCount": 2
+    "memberCount": 2,
+    "userCount": 2,
+    "servicePrincipalCount": 0,
+    "groupCount": 0,
+    "hasServicePrincipals": false,
+    "hasGroups": false,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
   },
   {
     "roleId": "3a2c62db-5318-420d-8d74-23affee5d9d5",
     "roleName": "Intune Administrator",
+    "roleDescription": "Can manage all aspects of the Intune product.",
+    "roleTemplateId": "3a2c62db-5318-420d-8d74-23affee5d9d5",
     "isHighPrivilege": true,
     "members": [
       {
-        "userId": "a7b8c9d0-e1f2-3456-0123-789012345678",
+        "id": "a7b8c9d0-e1f2-3456-0123-789012345678",
         "displayName": "Anders Kristiansen",
+        "memberType": "User",
         "userPrincipalName": "anders.kristiansen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 0
+        "daysSinceLastSignIn": 0,
+        "mfaRegistered": true
+      },
+      {
+        "id": "grp-intune-admins-001",
+        "displayName": "Intune Administrators",
+        "memberType": "Group",
+        "groupType": "Security",
+        "isRoleAssignable": true,
+        "securityEnabled": true
       }
     ],
-    "memberCount": 1
+    "memberCount": 2,
+    "userCount": 1,
+    "servicePrincipalCount": 0,
+    "groupCount": 1,
+    "hasServicePrincipals": false,
+    "hasGroups": true,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
   },
   {
     "roleId": "44367163-eba1-44c3-98af-f5787879f96a",
     "roleName": "Helpdesk Administrator",
+    "roleDescription": "Can reset passwords for non-administrators and Helpdesk Administrators.",
+    "roleTemplateId": "44367163-eba1-44c3-98af-f5787879f96a",
     "isHighPrivilege": false,
     "members": [
       {
-        "userId": "d4e5f6a7-b8c9-0123-def0-456789012345",
+        "id": "d4e5f6a7-b8c9-0123-def0-456789012345",
         "displayName": "Kari Andersen",
+        "memberType": "User",
         "userPrincipalName": "kari.andersen@modum.kommune.no",
         "accountEnabled": true,
         "isInactive": false,
-        "daysSinceLastSignIn": 1
+        "daysSinceLastSignIn": 1,
+        "mfaRegistered": true
+      },
+      {
+        "id": "b8c9d0e1-f2a3-4567-1234-890123456789",
+        "displayName": "Hanna Larsen",
+        "memberType": "User",
+        "userPrincipalName": "hanna.larsen@modum.kommune.no",
+        "accountEnabled": true,
+        "isInactive": true,
+        "daysSinceLastSignIn": 120,
+        "mfaRegistered": false
       }
     ],
-    "memberCount": 1
+    "memberCount": 2,
+    "userCount": 2,
+    "servicePrincipalCount": 0,
+    "groupCount": 0,
+    "hasServicePrincipals": false,
+    "hasGroups": false,
+    "hasInactiveUsers": true,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": true
+  },
+  {
+    "roleId": "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3",
+    "roleName": "Application Administrator",
+    "roleDescription": "Can create and manage all aspects of app registrations and enterprise apps.",
+    "roleTemplateId": "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3",
+    "isHighPrivilege": true,
+    "members": [
+      {
+        "id": "sp-devops-pipeline-001",
+        "displayName": "DevOps CI/CD Pipeline",
+        "memberType": "ServicePrincipal",
+        "appId": "33333333-4444-5555-6666-777777777777",
+        "servicePrincipalType": "Application",
+        "accountEnabled": true
+      },
+      {
+        "id": "sp-terraform-automation-001",
+        "displayName": "Terraform Infrastructure Automation",
+        "memberType": "ServicePrincipal",
+        "appId": "44444444-5555-6666-7777-888888888888",
+        "servicePrincipalType": "Application",
+        "accountEnabled": true
+      }
+    ],
+    "memberCount": 2,
+    "userCount": 0,
+    "servicePrincipalCount": 2,
+    "groupCount": 0,
+    "hasServicePrincipals": true,
+    "hasGroups": false,
+    "hasInactiveUsers": false,
+    "hasDisabledUsers": false,
+    "hasUsersWithoutMfa": false
+  },
+  {
+    "roleId": "b0f54661-2d74-4c50-afa3-1ec803f12efe",
+    "roleName": "Billing Administrator",
+    "roleDescription": "Can perform common billing related tasks like updating payment information.",
+    "roleTemplateId": "b0f54661-2d74-4c50-afa3-1ec803f12efe",
+    "isHighPrivilege": true,
+    "members": [
+      {
+        "id": "e5f6a7b8-c9d0-1234-ef01-567890123456",
+        "displayName": "Magnus Nilsen",
+        "memberType": "User",
+        "userPrincipalName": "magnus.nilsen@modum.kommune.no",
+        "accountEnabled": false,
+        "isInactive": true,
+        "daysSinceLastSignIn": 95,
+        "mfaRegistered": true
+      }
+    ],
+    "memberCount": 1,
+    "userCount": 1,
+    "servicePrincipalCount": 0,
+    "groupCount": 0,
+    "hasServicePrincipals": false,
+    "hasGroups": false,
+    "hasInactiveUsers": true,
+    "hasDisabledUsers": true,
+    "hasUsersWithoutMfa": false
   }
 ]

@@ -130,6 +130,34 @@ $appCount = 0
 try {
     Write-Host "    Collecting Intune app deployments..." -ForegroundColor Gray
 
+    # Initialize data structure
+    $appData = @{
+        apps = @()
+        failedDevices = @()
+        insights = @()
+        summary = @{
+            totalApps = 0
+            win32Apps = 0
+            storeApps = 0
+            lobApps = 0
+            webApps = 0
+            m365Apps = 0
+            totalInstalled = 0
+            totalFailed = 0
+            totalPending = 0
+            appsWithFailures = 0
+            overallInstallRate = 0
+            platformBreakdown = @{}
+            typeBreakdown = @{}
+        }
+    }
+
+    # Build a cache for group names
+    $groupNameCache = @{}
+
+    # Track failed devices across all apps
+    $allFailedDevices = @{}
+
     # Get all mobile apps
     $apps = Invoke-GraphWithRetry -ScriptBlock {
         Invoke-MgGraphRequest -Method GET `
@@ -150,17 +178,6 @@ try {
     Write-Host "      Retrieved $($allApps.Count) assigned apps" -ForegroundColor Gray
 
     $processedApps = @()
-    $summary = @{
-        totalApps = 0
-        win32Apps = 0
-        storeApps = 0
-        lobApps = 0
-        webApps = 0
-        m365Apps = 0
-        totalInstalled = 0
-        totalFailed = 0
-        totalPending = 0
-    }
 
     foreach ($app in $allApps) {
         try {
@@ -178,19 +195,48 @@ try {
                     $targetType = $assignment.target.'@odata.type'
                     $intent = Get-InstallIntent -Intent $assignment.intent
 
-                    $targetName = switch ($targetType) {
-                        "#microsoft.graph.allDevicesAssignmentTarget" { "All Devices" }
-                        "#microsoft.graph.allLicensedUsersAssignmentTarget" { "All Users" }
-                        "#microsoft.graph.groupAssignmentTarget" { "Group: $($assignment.target.groupId)" }
-                        "#microsoft.graph.exclusionGroupAssignmentTarget" { "Exclude: $($assignment.target.groupId)" }
-                        default { "Unknown" }
+                    if ($targetType -eq "#microsoft.graph.allDevicesAssignmentTarget") {
+                        $assignments += @{ intent = $intent; targetType = $targetType; targetName = "All Devices"; groupId = $null }
                     }
+                    elseif ($targetType -eq "#microsoft.graph.allLicensedUsersAssignmentTarget") {
+                        $assignments += @{ intent = $intent; targetType = $targetType; targetName = "All Users"; groupId = $null }
+                    }
+                    elseif ($targetType -eq "#microsoft.graph.groupAssignmentTarget") {
+                        $groupId = $assignment.target.groupId
+                        $groupName = $groupId
 
-                    $assignments += @{
-                        intent = $intent
-                        targetType = $targetType
-                        targetName = $targetName
-                        groupId = $assignment.target.groupId
+                        # Try to resolve group name from cache or API
+                        if ($groupNameCache.ContainsKey($groupId)) {
+                            $groupName = $groupNameCache[$groupId]
+                        } else {
+                            try {
+                                $groupInfo = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/groups/$groupId`?`$select=displayName" -OutputType PSObject
+                                $groupName = $groupInfo.displayName
+                                $groupNameCache[$groupId] = $groupName
+                            } catch {
+                                $groupNameCache[$groupId] = $groupId
+                            }
+                        }
+
+                        $assignments += @{ intent = $intent; targetType = $targetType; targetName = $groupName; groupId = $groupId }
+                    }
+                    elseif ($targetType -eq "#microsoft.graph.exclusionGroupAssignmentTarget") {
+                        $groupId = $assignment.target.groupId
+                        $groupName = $groupId
+
+                        if ($groupNameCache.ContainsKey($groupId)) {
+                            $groupName = $groupNameCache[$groupId]
+                        } else {
+                            try {
+                                $groupInfo = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/groups/$groupId`?`$select=displayName" -OutputType PSObject
+                                $groupName = $groupInfo.displayName
+                                $groupNameCache[$groupId] = $groupName
+                            } catch {
+                                $groupNameCache[$groupId] = $groupId
+                            }
+                        }
+
+                        $assignments += @{ intent = $intent; targetType = $targetType; targetName = "$groupName (Excluded)"; groupId = $groupId }
                     }
                 }
             }
@@ -202,6 +248,7 @@ try {
             $pendingCount = 0
             $notApplicableCount = 0
             $notInstalledCount = 0
+            $deviceStatuses = @()
 
             try {
                 $deviceStatus = Invoke-MgGraphRequest -Method GET `
@@ -211,10 +258,40 @@ try {
                 foreach ($status in $deviceStatus.value) {
                     switch ($status.installState) {
                         "installed"      { $installedCount++ }
-                        "failed"         { $failedCount++ }
-                        "pending"        { $pendingCount++ }
+                        "failed"         {
+                            $failedCount++
+                            # Track failed device details with extended info
+                            $deviceStatuses += [PSCustomObject]@{
+                                deviceName = $status.deviceName
+                                userName = $status.userName
+                                deviceId = $status.deviceId
+                                osVersion = $status.osVersion
+                                installState = $status.installState
+                                installStateDetail = $status.installStateDetail
+                                errorCode = $status.errorCode
+                                lastSyncDateTime = Format-IsoDate -DateValue $status.lastSyncDateTime
+                            }
+
+                            # Track unique failed devices across all apps
+                            $deviceKey = $status.deviceName
+                            if ($deviceKey) {
+                                if (-not $allFailedDevices.ContainsKey($deviceKey)) {
+                                    $allFailedDevices[$deviceKey] = @{
+                                        deviceName = $status.deviceName
+                                        userName = $status.userName
+                                        failedApps = @()
+                                        failedCount = 0
+                                    }
+                                }
+                                $allFailedDevices[$deviceKey].failedApps += $app.displayName
+                                $allFailedDevices[$deviceKey].failedCount++
+                            }
+                        }
+                        { $_ -in @("pending", "pendingInstall", "pendingReboot") } { $pendingCount++ }
                         "notInstalled"   { $notInstalledCount++ }
                         "notApplicable"  { $notApplicableCount++ }
+                        "unknown"        { } # Ignore unknown states
+                        default          { } # Ignore other states
                     }
                 }
             }
@@ -251,6 +328,8 @@ try {
                 notApplicableDevices = $notApplicableCount
                 totalDevices         = $totalDevices
                 successRate          = $successRate
+                # Device statuses (failed only)
+                deviceStatuses       = $deviceStatuses
                 # Health
                 hasFailures          = ($failedCount -gt 0)
                 needsAttention       = ($failedCount -gt 5 -or ($successRate -and $successRate -lt 80))
@@ -260,20 +339,38 @@ try {
             $appCount++
 
             # Update summary
-            $summary.totalApps++
-            $summary.totalInstalled += $installedCount
-            $summary.totalFailed += $failedCount
-            $summary.totalPending += $pendingCount
+            $appData.summary.totalApps++
+            $appData.summary.totalInstalled += $installedCount
+            $appData.summary.totalFailed += $failedCount
+            $appData.summary.totalPending += $pendingCount
+            if ($failedCount -gt 0) { $appData.summary.appsWithFailures++ }
 
+            # Update type breakdown
             switch ($appType) {
-                "Win32"              { $summary.win32Apps++ }
-                "Store App"          { $summary.storeApps++ }
-                "Store for Business" { $summary.storeApps++ }
-                "Microsoft 365 Apps" { $summary.m365Apps++ }
-                "Web Link"           { $summary.webApps++ }
-                "Web App"            { $summary.webApps++ }
-                { $_ -match "LOB" }  { $summary.lobApps++ }
+                "Win32"              { $appData.summary.win32Apps++ }
+                "Store App"          { $appData.summary.storeApps++ }
+                "Store for Business" { $appData.summary.storeApps++ }
+                "Microsoft 365 Apps" { $appData.summary.m365Apps++ }
+                "Web Link"           { $appData.summary.webApps++ }
+                "Web App"            { $appData.summary.webApps++ }
+                { $_ -match "LOB" }  { $appData.summary.lobApps++ }
             }
+
+            # Update platform breakdown
+            if (-not $appData.summary.platformBreakdown.ContainsKey($platform)) {
+                $appData.summary.platformBreakdown[$platform] = @{ apps = 0; installed = 0; failed = 0 }
+            }
+            $appData.summary.platformBreakdown[$platform].apps++
+            $appData.summary.platformBreakdown[$platform].installed += $installedCount
+            $appData.summary.platformBreakdown[$platform].failed += $failedCount
+
+            # Update type breakdown details
+            if (-not $appData.summary.typeBreakdown.ContainsKey($appType)) {
+                $appData.summary.typeBreakdown[$appType] = @{ apps = 0; installed = 0; failed = 0 }
+            }
+            $appData.summary.typeBreakdown[$appType].apps++
+            $appData.summary.typeBreakdown[$appType].installed += $installedCount
+            $appData.summary.typeBreakdown[$appType].failed += $failedCount
 
             # Progress indicator
             if ($appCount % 20 -eq 0) {
@@ -293,15 +390,113 @@ try {
         Expression = { if ($null -eq $_.successRate) { 101 } else { $_.successRate } }
     }
 
-    # Build output
-    $output = @{
-        apps = $processedApps
-        summary = $summary
-        collectionDate = (Get-Date).ToString("o")
+    $appData.apps = $processedApps
+
+    # Convert failed devices hashtable to array
+    foreach ($device in $allFailedDevices.Values) {
+        $appData.failedDevices += [PSCustomObject]@{
+            deviceName = $device.deviceName
+            userName = $device.userName
+            failedApps = $device.failedApps
+            failedAppCount = $device.failedApps.Count
+        }
     }
 
+    # Sort failed devices by count
+    $appData.failedDevices = $appData.failedDevices | Sort-Object -Property failedAppCount -Descending
+
+    # Calculate overall install rate
+    $totalAttempted = $appData.summary.totalInstalled + $appData.summary.totalFailed + $appData.summary.totalPending
+    if ($totalAttempted -gt 0) {
+        $appData.summary.overallInstallRate = [Math]::Round(($appData.summary.totalInstalled / $totalAttempted) * 100, 1)
+    }
+
+    # ========================================
+    # Generate Insights
+    # ========================================
+
+    # Insight: Apps with high failure rates
+    $highFailureApps = $processedApps | Where-Object { $_.failedDevices -gt 10 }
+    if ($highFailureApps.Count -gt 0) {
+        $totalFailures = ($highFailureApps | Measure-Object -Property failedDevices -Sum).Sum
+        $appData.insights += [PSCustomObject]@{
+            id = "high-failure-apps"
+            title = "Apps with high failure rates"
+            severity = "critical"
+            description = "$($highFailureApps.Count) apps have more than 10 failed installations"
+            impactedApps = $highFailureApps.Count
+            impactedDevices = $totalFailures
+            recommendedAction = "Review installation logs and app requirements for failing applications"
+            category = "Installation Failures"
+        }
+    }
+
+    # Insight: Required apps failing
+    $requiredAppsFailing = $processedApps | Where-Object { $_.hasRequiredAssignment -and $_.failedDevices -gt 0 }
+    if ($requiredAppsFailing.Count -gt 0) {
+        $appData.insights += [PSCustomObject]@{
+            id = "required-apps-failing"
+            title = "Required apps with failures"
+            severity = "high"
+            description = "$($requiredAppsFailing.Count) required apps have installation failures"
+            impactedApps = $requiredAppsFailing.Count
+            impactedDevices = ($requiredAppsFailing | Measure-Object -Property failedDevices -Sum).Sum
+            recommendedAction = "Prioritize fixing required app deployments as they impact device compliance"
+            category = "Required Apps"
+        }
+    }
+
+    # Insight: Low install rates
+    $lowInstallRateApps = $processedApps | Where-Object { $_.successRate -and $_.successRate -lt 80 -and $_.totalDevices -ge 10 }
+    if ($lowInstallRateApps.Count -gt 0) {
+        $appData.insights += [PSCustomObject]@{
+            id = "low-install-rate"
+            title = "Apps with low install rates"
+            severity = "high"
+            description = "$($lowInstallRateApps.Count) apps have install success rate below 80%"
+            impactedApps = $lowInstallRateApps.Count
+            recommendedAction = "Review app compatibility and deployment settings"
+            category = "Deployment Health"
+        }
+    }
+
+    # Insight: Devices failing multiple apps
+    $multiFailDevices = $appData.failedDevices | Where-Object { $_.failedAppCount -ge 3 }
+    if ($multiFailDevices.Count -gt 0) {
+        $appData.insights += [PSCustomObject]@{
+            id = "multi-app-failures"
+            title = "Devices with multiple app failures"
+            severity = "high"
+            description = "$($multiFailDevices.Count) devices are failing 3 or more app installations"
+            impactedDevices = $multiFailDevices.Count
+            recommendedAction = "Investigate these devices for systemic issues (disk space, permissions, connectivity)"
+            category = "Device Health"
+        }
+    }
+
+    # Insight: Pending deployments
+    $pendingApps = $processedApps | Where-Object { $_.pendingDevices -gt 10 }
+    if ($pendingApps.Count -gt 0) {
+        $totalPending = ($pendingApps | Measure-Object -Property pendingDevices -Sum).Sum
+        $appData.insights += [PSCustomObject]@{
+            id = "pending-deployments"
+            title = "Apps with pending installations"
+            severity = "medium"
+            description = "$totalPending devices have pending app installations across $($pendingApps.Count) apps"
+            impactedApps = $pendingApps.Count
+            impactedDevices = $totalPending
+            recommendedAction = "Check device connectivity and sync status"
+            category = "Pending"
+        }
+    }
+
+    Write-Host "      Generated $($appData.insights.Count) deployment insights" -ForegroundColor Gray
+
+    # Add collection date
+    $appData.collectionDate = (Get-Date).ToString("o")
+
     # Save data
-    Save-CollectorData -Data $output -OutputPath $OutputPath | Out-Null
+    Save-CollectorData -Data $appData -OutputPath $OutputPath | Out-Null
 
     Write-Host "    [OK] Collected $appCount app deployments" -ForegroundColor Green
 
@@ -319,7 +514,10 @@ catch {
 
     Save-CollectorData -Data @{
         apps = @()
+        failedDevices = @()
+        insights = @()
         summary = @{}
+        collectionDate = (Get-Date).ToString("o")
     } -OutputPath $OutputPath | Out-Null
 
     return New-CollectorResult -Success $false -Count 0 -Errors $errors

@@ -87,6 +87,8 @@ try {
         devicePerformance = @()
         startupHistory = @()
         appReliability = @()
+        modelInsights = @()
+        insights = @()
         summary = @{
             totalDevices = 0
             averageEndpointScore = 0
@@ -97,6 +99,10 @@ try {
             goodDevices = 0
             fairDevices = 0
             poorDevices = 0
+            modelsWithIssues = 0
+            problematicApps = 0
+            topPerformingModel = ""
+            worstPerformingModel = ""
         }
     }
 
@@ -120,6 +126,11 @@ try {
             resourcePerformanceScore     = $overview.resourcePerformanceOverallScore
             totalDevices                 = $overview.totalDeviceCount
             insightsCount                = if ($overview.insights) { $overview.insights.Count } else { 0 }
+            baseline                     = [PSCustomObject]@{
+                overallScore             = 50
+                startupPerformanceScore  = 50
+                appReliabilityScore      = 50
+            }
         }
 
         Write-Host "      Overall Endpoint Score: $($overview.overallScore)" -ForegroundColor Gray
@@ -257,16 +268,32 @@ try {
         } -OperationName "App reliability retrieval"
 
         foreach ($app in $appReliability.value) {
+            # Calculate trend based on health score and MTTF
+            $healthScore = [int]$app.appHealthScore
+            $mttf = [int]$app.meanTimeToFailureInMinutes
+            $crashCount = [int]$app.appCrashCount
+
+            # Determine trend - this would ideally use historical data
+            # Using health score as a proxy: high score = stable/improving, low = degrading
+            $trend = "Stable"
+            if ($healthScore -ge 80 -and $crashCount -le 5) {
+                $trend = "Improving"
+            }
+            elseif ($healthScore -lt 50 -or $crashCount -gt 20) {
+                $trend = "Degrading"
+            }
+
             $analyticsData.appReliability += [PSCustomObject]@{
                 id                    = $app.id
                 appName               = $app.appDisplayName
                 appPublisher          = $app.appPublisher
                 appVersion            = $app.appVersion
-                appCrashCount         = $app.appCrashCount
-                appHangCount          = $app.appHangCount
-                meanTimeToFailure     = $app.meanTimeToFailureInMinutes
-                healthScore           = $app.appHealthScore
-                activeDeviceCount     = $app.activeDeviceCount
+                appCrashCount         = $crashCount
+                appHangCount          = [int]$app.appHangCount
+                meanTimeToFailure     = $mttf
+                healthScore           = $healthScore
+                activeDeviceCount     = [int]$app.activeDeviceCount
+                trend                 = $trend
             }
         }
 
@@ -274,6 +301,139 @@ try {
     }
     catch {
         $errors += "App reliability: $($_.Exception.Message)"
+    }
+
+    # ========================================
+    # Compute Model Insights
+    # ========================================
+    if ($analyticsData.deviceScores.Count -gt 0) {
+        $modelGroups = $analyticsData.deviceScores | Group-Object -Property model
+
+        foreach ($group in $modelGroups) {
+            $modelName = $group.Name
+            if (-not $modelName -or $modelName -eq "") { continue }
+
+            $devices = $group.Group
+            $deviceCount = $devices.Count
+            $avgHealth = [Math]::Round(($devices | Measure-Object -Property endpointAnalyticsScore -Average).Average, 1)
+            $avgStartup = [Math]::Round(($devices | Measure-Object -Property startupPerformanceScore -Average).Average, 1)
+            $avgAppReliability = [Math]::Round(($devices | Measure-Object -Property appReliabilityScore -Average).Average, 1)
+            $poorCount = ($devices | Where-Object { $_.healthStatus -eq "Poor" -or $_.healthStatus -eq "Critical" }).Count
+            $manufacturer = ($devices | Select-Object -First 1).manufacturer
+
+            # Generate recommendation based on scores
+            $recommendation = ""
+            if ($avgHealth -lt 50) {
+                $recommendation = "Hardware refresh recommended - multiple performance issues detected"
+                $analyticsData.summary.modelsWithIssues++
+            }
+            elseif ($avgStartup -lt 40) {
+                $recommendation = "Optimize startup - consider reviewing installed apps and startup items"
+            }
+            elseif ($avgAppReliability -lt 50) {
+                $recommendation = "Investigate app crashes - may need application updates or reinstalls"
+            }
+            elseif ($avgHealth -ge 80) {
+                $recommendation = "Performing well - no action needed"
+            }
+            else {
+                $recommendation = "Monitor device health trends"
+            }
+
+            $analyticsData.modelInsights += [PSCustomObject]@{
+                model               = $modelName
+                manufacturer        = $manufacturer
+                deviceCount         = $deviceCount
+                avgHealthScore      = $avgHealth
+                avgStartupScore     = $avgStartup
+                avgAppReliabilityScore = $avgAppReliability
+                poorDevices         = $poorCount
+                recommendation      = $recommendation
+            }
+        }
+
+        # Sort model insights by health score (worst first)
+        $analyticsData.modelInsights = $analyticsData.modelInsights | Sort-Object -Property avgHealthScore
+
+        # Set top and worst performing models
+        if ($analyticsData.modelInsights.Count -gt 0) {
+            $sortedByScore = $analyticsData.modelInsights | Sort-Object -Property avgHealthScore -Descending
+            $analyticsData.summary.topPerformingModel = $sortedByScore[0].model
+            $analyticsData.summary.worstPerformingModel = $sortedByScore[-1].model
+        }
+
+        Write-Host "      Computed insights for $($analyticsData.modelInsights.Count) device models" -ForegroundColor Gray
+    }
+
+    # ========================================
+    # Extract Actionable Insights
+    # ========================================
+    try {
+        # Get insights from various analytics endpoints
+        $insightSources = @(
+            "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsWorkFromAnywhereMetrics",
+            "https://graph.microsoft.com/beta/deviceManagement/userExperienceAnalyticsBatteryHealthDevicePerformance"
+        )
+
+        # Generate insights from collected data
+        $poorDevices = ($analyticsData.deviceScores | Where-Object { $_.healthStatus -eq "Poor" -or $_.healthStatus -eq "Critical" })
+        if ($poorDevices.Count -gt 0) {
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "poor-health-devices"
+                title = "Devices with poor health scores"
+                severity = "critical"
+                description = "$($poorDevices.Count) devices have poor or critical health scores"
+                impactedDevices = $poorDevices.Count
+                recommendedAction = "Review device hardware and software configurations for affected devices"
+                category = "Device Health"
+            }
+        }
+
+        $slowStartupDevices = ($analyticsData.deviceScores | Where-Object { $_.startupPerformanceScore -lt 40 })
+        if ($slowStartupDevices.Count -gt 0) {
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "slow-startup"
+                title = "Devices with slow startup times"
+                severity = "high"
+                description = "$($slowStartupDevices.Count) devices have slow startup times"
+                impactedDevices = $slowStartupDevices.Count
+                recommendedAction = "Review startup applications and consider SSD upgrades for HDD devices"
+                category = "Startup Performance"
+            }
+        }
+
+        $problemApps = ($analyticsData.appReliability | Where-Object { $_.appCrashCount -gt 10 -or $_.appHangCount -gt 10 })
+        $analyticsData.summary.problematicApps = $problemApps.Count
+        if ($problemApps.Count -gt 0) {
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "problem-apps"
+                title = "Applications with reliability issues"
+                severity = "high"
+                description = "$($problemApps.Count) applications have high crash or hang counts"
+                impactedDevices = ($problemApps | Measure-Object -Property activeDeviceCount -Sum).Sum
+                recommendedAction = "Update or reinstall problematic applications"
+                category = "App Reliability"
+            }
+        }
+
+        $blueScreenDevices = ($analyticsData.devicePerformance | Where-Object { $_.blueScreenCount -gt 0 })
+        if ($blueScreenDevices.Count -gt 0) {
+            $totalBSODs = ($blueScreenDevices | Measure-Object -Property blueScreenCount -Sum).Sum
+            $analyticsData.insights += [PSCustomObject]@{
+                id = "blue-screens"
+                title = "Blue screen events detected"
+                severity = "critical"
+                description = "$totalBSODs blue screen events across $($blueScreenDevices.Count) devices"
+                impactedDevices = $blueScreenDevices.Count
+                recommendedAction = "Investigate driver issues and hardware health for affected devices"
+                category = "System Stability"
+            }
+        }
+
+        Write-Host "      Generated $($analyticsData.insights.Count) actionable insights" -ForegroundColor Gray
+    }
+    catch {
+        $errors += "Insights: $($_.Exception.Message)"
     }
 
     # Sort device scores by score (worst first)
@@ -303,6 +463,9 @@ catch {
         overview = $null
         deviceScores = @()
         devicePerformance = @()
+        appReliability = @()
+        modelInsights = @()
+        insights = @()
         summary = @{}
     } -OutputPath $OutputPath | Out-Null
 

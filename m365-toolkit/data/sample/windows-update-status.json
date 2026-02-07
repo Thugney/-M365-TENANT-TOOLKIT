@@ -1,81 +1,382 @@
 {
   "updateRings": [
     {
+      "id": "ring-001",
       "displayName": "Production Ring",
+      "description": "Standard production devices with conservative update schedule",
+      "createdDateTime": "2025-06-01T09:00:00Z",
+      "lastModifiedDateTime": "2026-01-15T10:30:00Z",
       "qualityUpdatesDeferralDays": 7,
       "featureUpdatesDeferralDays": 60,
       "qualityUpdatesPaused": false,
       "featureUpdatesPaused": false,
+      "deadlineForQualityUpdates": 7,
+      "deadlineForFeatureUpdates": 14,
+      "deadlineGracePeriod": 2,
+      "automaticUpdateMode": "autoInstallAtMaintenanceTime",
+      "microsoftUpdateServiceAllowed": true,
+      "driversExcluded": false,
+      "allowWindows11Upgrade": true,
       "successDevices": 120,
       "pendingDevices": 15,
       "errorDevices": 5,
-      "totalDevices": 140
+      "totalDevices": 140,
+      "assignedGroups": ["All Corporate Devices", "Production Users"]
     },
     {
+      "id": "ring-002",
       "displayName": "Pilot Ring",
+      "description": "Early adopters and IT power users for validation",
+      "createdDateTime": "2025-06-01T10:00:00Z",
+      "lastModifiedDateTime": "2026-01-20T14:00:00Z",
       "qualityUpdatesDeferralDays": 3,
       "featureUpdatesDeferralDays": 14,
       "qualityUpdatesPaused": false,
       "featureUpdatesPaused": false,
+      "deadlineForQualityUpdates": 3,
+      "deadlineForFeatureUpdates": 7,
+      "deadlineGracePeriod": 1,
+      "automaticUpdateMode": "autoInstallAtMaintenanceTime",
+      "microsoftUpdateServiceAllowed": true,
+      "driversExcluded": false,
+      "allowWindows11Upgrade": true,
       "successDevices": 25,
       "pendingDevices": 3,
       "errorDevices": 2,
-      "totalDevices": 30
+      "totalDevices": 30,
+      "assignedGroups": ["IT Pilot Group", "Power Users"]
     },
     {
+      "id": "ring-003",
       "displayName": "IT Test Ring",
+      "description": "IT department for early testing of updates",
+      "createdDateTime": "2025-06-01T11:00:00Z",
+      "lastModifiedDateTime": "2026-01-22T09:00:00Z",
       "qualityUpdatesDeferralDays": 0,
       "featureUpdatesDeferralDays": 0,
       "qualityUpdatesPaused": false,
       "featureUpdatesPaused": false,
+      "deadlineForQualityUpdates": 2,
+      "deadlineForFeatureUpdates": 5,
+      "deadlineGracePeriod": 0,
+      "automaticUpdateMode": "autoInstallAndRebootAtScheduledTime",
+      "microsoftUpdateServiceAllowed": true,
+      "driversExcluded": false,
+      "allowWindows11Upgrade": true,
       "successDevices": 8,
       "pendingDevices": 1,
       "errorDevices": 1,
-      "totalDevices": 10
+      "totalDevices": 10,
+      "assignedGroups": ["IT Department"]
     },
     {
+      "id": "ring-004",
       "displayName": "Kiosk Devices",
+      "description": "Shared kiosk devices with extended deferral",
+      "createdDateTime": "2025-06-01T12:00:00Z",
+      "lastModifiedDateTime": "2026-01-10T16:45:00Z",
       "qualityUpdatesDeferralDays": 14,
       "featureUpdatesDeferralDays": 90,
       "qualityUpdatesPaused": true,
       "featureUpdatesPaused": true,
+      "deadlineForQualityUpdates": 14,
+      "deadlineForFeatureUpdates": 30,
+      "deadlineGracePeriod": 3,
+      "automaticUpdateMode": "autoInstallAtMaintenanceTime",
+      "microsoftUpdateServiceAllowed": true,
+      "driversExcluded": true,
+      "allowWindows11Upgrade": false,
       "successDevices": 18,
       "pendingDevices": 0,
       "errorDevices": 2,
-      "totalDevices": 20
+      "totalDevices": 20,
+      "assignedGroups": ["Kiosk Devices Group"]
+    },
+    {
+      "id": "ring-005",
+      "displayName": "Critical Infrastructure",
+      "description": "Servers and critical workstations with manual approval",
+      "createdDateTime": "2025-06-01T13:00:00Z",
+      "lastModifiedDateTime": "2026-01-05T08:30:00Z",
+      "qualityUpdatesDeferralDays": 30,
+      "featureUpdatesDeferralDays": 180,
+      "qualityUpdatesPaused": false,
+      "featureUpdatesPaused": true,
+      "deadlineForQualityUpdates": 30,
+      "deadlineForFeatureUpdates": 60,
+      "deadlineGracePeriod": 7,
+      "automaticUpdateMode": "userDefined",
+      "microsoftUpdateServiceAllowed": true,
+      "driversExcluded": true,
+      "allowWindows11Upgrade": false,
+      "successDevices": 42,
+      "pendingDevices": 5,
+      "errorDevices": 3,
+      "totalDevices": 50,
+      "assignedGroups": ["Critical Systems", "Server Admins"]
     }
   ],
   "featureUpdates": [
     {
+      "id": "fu-001",
       "displayName": "Windows 11 24H2 Rollout",
+      "description": "Primary Windows 11 24H2 deployment for corporate devices",
       "featureUpdateVersion": "Windows 11, version 24H2",
       "endOfSupportDate": "2027-10-14T00:00:00Z",
+      "rolloutSettings": {
+        "offerStartDateTimeInUTC": "2026-01-15T08:00:00Z",
+        "offerEndDateTimeInUTC": "2026-06-15T08:00:00Z",
+        "offerIntervalInDays": 7
+      },
       "deploymentState": {
         "total": 150,
         "succeeded": 85,
         "pending": 50,
-        "failed": 15
-      }
+        "failed": 15,
+        "notApplicable": 0
+      },
+      "assignedGroups": ["All Corporate Devices"],
+      "createdDateTime": "2026-01-10T10:00:00Z",
+      "lastModifiedDateTime": "2026-02-05T14:30:00Z"
     },
     {
+      "id": "fu-002",
       "displayName": "Windows 11 23H2 Migration",
+      "description": "Legacy migration for remaining Windows 10 devices",
       "featureUpdateVersion": "Windows 11, version 23H2",
       "endOfSupportDate": "2026-11-11T00:00:00Z",
+      "rolloutSettings": {
+        "offerStartDateTimeInUTC": "2025-11-01T08:00:00Z",
+        "offerEndDateTimeInUTC": "2026-03-01T08:00:00Z",
+        "offerIntervalInDays": 14
+      },
       "deploymentState": {
         "total": 50,
         "succeeded": 48,
         "pending": 1,
-        "failed": 1
+        "failed": 1,
+        "notApplicable": 0
+      },
+      "assignedGroups": ["Windows 10 Devices"],
+      "createdDateTime": "2025-10-15T10:00:00Z",
+      "lastModifiedDateTime": "2026-01-28T11:00:00Z"
+    }
+  ],
+  "qualityUpdates": [
+    {
+      "id": "qu-001",
+      "displayName": "January 2026 Security Update (Expedited)",
+      "description": "Monthly security update for Windows with critical vulnerability fixes",
+      "releaseDateDisplayName": "January 14, 2026 - B",
+      "qualityUpdateClassification": "Security",
+      "isExpedited": true,
+      "expeditedUpdateSettings": {
+        "qualityUpdateCadence": "expedited",
+        "daysUntilForcedReboot": 2
+      },
+      "createdDateTime": "2026-01-15T10:00:00Z",
+      "lastModifiedDateTime": "2026-01-20T14:00:00Z",
+      "assignedGroups": ["All Managed Devices"],
+      "deploymentState": {
+        "total": 200,
+        "succeeded": 185,
+        "pending": 10,
+        "failed": 5
+      },
+      "progressPercent": 93
+    },
+    {
+      "id": "qu-002",
+      "displayName": "February 2026 Security Update",
+      "description": "Monthly security update for Windows",
+      "releaseDateDisplayName": "February 11, 2026 - B",
+      "qualityUpdateClassification": "Security",
+      "isExpedited": false,
+      "expeditedUpdateSettings": null,
+      "createdDateTime": "2026-02-12T10:00:00Z",
+      "lastModifiedDateTime": "2026-02-12T10:00:00Z",
+      "assignedGroups": ["All Managed Devices"],
+      "deploymentState": {
+        "total": 200,
+        "succeeded": 95,
+        "pending": 98,
+        "failed": 7
+      },
+      "progressPercent": 48
+    },
+    {
+      "id": "qu-003",
+      "displayName": "Critical OOB Security Patch - CVE-2026-0001",
+      "description": "Out-of-band emergency patch for critical vulnerability CVE-2026-0001",
+      "releaseDateDisplayName": "January 28, 2026 - OOB",
+      "qualityUpdateClassification": "Critical",
+      "isExpedited": true,
+      "expeditedUpdateSettings": {
+        "qualityUpdateCadence": "expedited",
+        "daysUntilForcedReboot": 1
+      },
+      "createdDateTime": "2026-01-28T18:00:00Z",
+      "lastModifiedDateTime": "2026-01-29T09:00:00Z",
+      "assignedGroups": ["All Managed Devices"],
+      "deploymentState": {
+        "total": 200,
+        "succeeded": 198,
+        "pending": 0,
+        "failed": 2
+      },
+      "progressPercent": 99
+    }
+  ],
+  "driverUpdates": [
+    {
+      "id": "du-001",
+      "displayName": "Intel Graphics Driver Update",
+      "driverClass": "Display adapters",
+      "manufacturer": "Intel Corporation",
+      "version": "31.0.101.5592",
+      "releaseDateTime": "2026-01-20T00:00:00Z",
+      "approvalStatus": "approved",
+      "applicableDeviceCount": 85,
+      "profileId": "profile-001",
+      "profileName": "Windows Driver Updates",
+      "deploymentState": {
+        "total": 85,
+        "succeeded": 72,
+        "pending": 10,
+        "failed": 3
+      }
+    },
+    {
+      "id": "du-002",
+      "displayName": "Realtek Audio Driver",
+      "driverClass": "Sound, video and game controllers",
+      "manufacturer": "Realtek Semiconductor Corp.",
+      "version": "6.0.9539.1",
+      "releaseDateTime": "2026-01-15T00:00:00Z",
+      "approvalStatus": "approved",
+      "applicableDeviceCount": 120,
+      "profileId": "profile-001",
+      "profileName": "Windows Driver Updates",
+      "deploymentState": {
+        "total": 120,
+        "succeeded": 115,
+        "pending": 3,
+        "failed": 2
+      }
+    },
+    {
+      "id": "du-003",
+      "displayName": "NVIDIA GeForce Driver",
+      "driverClass": "Display adapters",
+      "manufacturer": "NVIDIA",
+      "version": "551.76",
+      "releaseDateTime": "2026-02-01T00:00:00Z",
+      "approvalStatus": "needs_review",
+      "applicableDeviceCount": 45,
+      "profileId": "profile-001",
+      "profileName": "Windows Driver Updates",
+      "deploymentState": {
+        "total": 45,
+        "succeeded": 0,
+        "pending": 45,
+        "failed": 0
+      }
+    },
+    {
+      "id": "du-004",
+      "displayName": "Dell Firmware Update",
+      "driverClass": "Firmware",
+      "manufacturer": "Dell Inc.",
+      "version": "1.15.0",
+      "releaseDateTime": "2026-01-25T00:00:00Z",
+      "approvalStatus": "approved",
+      "applicableDeviceCount": 65,
+      "profileId": "profile-001",
+      "profileName": "Windows Driver Updates",
+      "deploymentState": {
+        "total": 65,
+        "succeeded": 58,
+        "pending": 5,
+        "failed": 2
       }
     }
   ],
-  "qualityUpdates": [],
-  "driverUpdates": [],
+  "deviceCompliance": [
+    {
+      "deviceId": "dev-001",
+      "deviceName": "DESKTOP-WIN001",
+      "userPrincipalName": "john.smith@contoso.com",
+      "osVersion": "10.0.22631.3007",
+      "lastSyncDateTime": "2026-02-06T08:30:00Z",
+      "updateStatus": "upToDate",
+      "pendingUpdates": 0,
+      "failedUpdates": 0,
+      "updateRing": "Production Ring",
+      "featureUpdateVersion": "Windows 11, version 24H2"
+    },
+    {
+      "deviceId": "dev-002",
+      "deviceName": "LAPTOP-WIN002",
+      "userPrincipalName": "jane.doe@contoso.com",
+      "osVersion": "10.0.22631.2861",
+      "lastSyncDateTime": "2026-02-06T09:15:00Z",
+      "updateStatus": "pendingUpdate",
+      "pendingUpdates": 2,
+      "failedUpdates": 0,
+      "updateRing": "Production Ring",
+      "featureUpdateVersion": "Windows 11, version 23H2"
+    },
+    {
+      "deviceId": "dev-003",
+      "deviceName": "DESKTOP-WIN003",
+      "userPrincipalName": "bob.johnson@contoso.com",
+      "osVersion": "10.0.19045.3803",
+      "lastSyncDateTime": "2026-02-05T14:00:00Z",
+      "updateStatus": "error",
+      "pendingUpdates": 1,
+      "failedUpdates": 2,
+      "updateRing": "Pilot Ring",
+      "featureUpdateVersion": "Windows 10, version 22H2",
+      "errorDetails": "Feature update failed - insufficient disk space"
+    },
+    {
+      "deviceId": "dev-004",
+      "deviceName": "LAPTOP-WIN004",
+      "userPrincipalName": "alice.wilson@contoso.com",
+      "osVersion": "10.0.22631.3007",
+      "lastSyncDateTime": "2026-02-06T07:45:00Z",
+      "updateStatus": "upToDate",
+      "pendingUpdates": 0,
+      "failedUpdates": 0,
+      "updateRing": "IT Test Ring",
+      "featureUpdateVersion": "Windows 11, version 24H2"
+    },
+    {
+      "deviceId": "dev-005",
+      "deviceName": "KIOSK-001",
+      "userPrincipalName": "kiosk@contoso.com",
+      "osVersion": "10.0.22621.2861",
+      "lastSyncDateTime": "2026-02-04T12:00:00Z",
+      "updateStatus": "paused",
+      "pendingUpdates": 5,
+      "failedUpdates": 0,
+      "updateRing": "Kiosk Devices",
+      "featureUpdateVersion": "Windows 11, version 22H2"
+    }
+  ],
   "summary": {
-    "totalRings": 4,
+    "totalRings": 5,
     "totalFeaturePolicies": 2,
-    "devicesUpToDate": 171,
-    "devicesPendingUpdate": 19,
-    "devicesWithErrors": 10
-  }
+    "totalQualityPolicies": 3,
+    "totalDriverUpdates": 4,
+    "totalManagedDevices": 250,
+    "devicesUpToDate": 213,
+    "devicesPendingUpdate": 24,
+    "devicesWithErrors": 13,
+    "complianceRate": 85.2,
+    "expeditedUpdatesActive": 2,
+    "securityUpdates": 3,
+    "pausedRings": 1
+  },
+  "collectionDate": "2026-02-06T12:00:00Z"
 }

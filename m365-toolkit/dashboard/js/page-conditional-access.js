@@ -19,8 +19,14 @@ const PageConditionalAccess = (function() {
     /** Column selector instance */
     var colSelector = null;
 
+    /** Current tab */
+    var currentTab = 'overview';
+
     /** Current breakdown dimension */
     var currentBreakdown = 'policyType';
+
+    /** Cached page state */
+    var caState = null;
 
     /**
      * Applies current filters and re-renders.
@@ -323,7 +329,7 @@ const PageConditionalAccess = (function() {
         return gaps;
     }
 
-    function render(container) {
+    function renderLegacy(container) {
         var policies = DataLoader.getData('conditionalAccess') || [];
 
         var enabledCount = policies.filter(function(p) { return p.state === 'enabled'; }).length;
@@ -581,6 +587,240 @@ const PageConditionalAccess = (function() {
 
         // Initial render
         applyFilters();
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        renderContent();
+    }
+
+    function renderContent() {
+        var container = document.getElementById('ca-content');
+        if (!container || !caState) return;
+
+        switch (currentTab) {
+            case 'overview':
+                renderOverview(container);
+                break;
+            case 'policies':
+                renderPoliciesTab(container);
+                break;
+        }
+    }
+
+    function renderOverview(container) {
+        var html = '';
+
+        if (caState.gapsList.length > 0) {
+            html += '<div class="alert alert-critical" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--critical-bg); border-radius: 6px; border-left: 4px solid var(--critical);">';
+            html += '<h4 style="margin: 0 0 0.5rem 0; color: var(--critical);">Security Gaps Detected</h4>';
+            html += '<ul style="margin: 0; padding-left: 1.25rem;">';
+            caState.gapsList.forEach(function(g) {
+                html += '<li>' + g + '</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        html += '<div class="charts-row" id="ca-charts"></div>';
+
+        html += '<div class="section-header">';
+        html += '<h3>Policy Analysis</h3>';
+        html += '<div id="ca-breakdown-filter"></div>';
+        html += '</div>';
+
+        html += '<div class="focus-breakdown-row">';
+        html += '<div class="table-container" id="ca-focus-table"></div>';
+        html += '<div class="table-container" id="ca-breakdown-table"></div>';
+        html += '</div>';
+
+        container.innerHTML = html;
+
+        if (typeof DashboardCharts !== 'undefined') {
+            var C = DashboardCharts.colors;
+            var policies = caState.policies;
+
+            var enabledCount = caState.enabledCount;
+            var reportOnlyCount = caState.reportOnlyCount;
+            var disabledCount = caState.disabledCount;
+
+            var mfaAllUsers = policies.filter(function(p) {
+                return p.state === 'enabled' && p.requiresMfa && p.includesAllUsers;
+            }).length;
+            var mfaPartial = caState.mfaPolicies - mfaAllUsers;
+            var noMfa = enabledCount - caState.mfaPolicies;
+
+            var chartsRow = document.getElementById('ca-charts');
+            if (chartsRow) {
+                chartsRow.appendChild(DashboardCharts.createChartCard(
+                    'Policy State',
+                    [
+                        { value: enabledCount, label: 'Enabled', color: C.green },
+                        { value: reportOnlyCount, label: 'Report Only', color: C.yellow },
+                        { value: disabledCount, label: 'Disabled', color: C.gray }
+                    ],
+                    String(enabledCount), 'enforcing'
+                ));
+
+                chartsRow.appendChild(DashboardCharts.createChartCard(
+                    'MFA Coverage',
+                    [
+                        { value: mfaAllUsers, label: 'All Users', color: C.green },
+                        { value: mfaPartial, label: 'Partial', color: C.blue },
+                        { value: noMfa, label: 'No MFA', color: C.red }
+                    ],
+                    caState.mfaPolicies > 0 ? String(caState.mfaPolicies) : '0', 'MFA policies'
+                ));
+            }
+        }
+
+        renderFocusBreakdown(caState.policies);
+    }
+
+    function renderPoliciesTab(container) {
+        var html = '<div id="ca-filter"></div>';
+        html += '<div class="table-toolbar">';
+        html += '<div id="ca-col-selector"></div>';
+        html += '<button class="btn btn-secondary btn-sm" id="export-ca-table">Export CSV</button>';
+        html += '</div>';
+        html += '<div class="table-container" id="ca-table"></div>';
+        container.innerHTML = html;
+
+        Filters.createFilterBar({
+            containerId: 'ca-filter',
+            controls: [
+                {
+                    type: 'search',
+                    id: 'ca-search',
+                    label: 'Search',
+                    placeholder: 'Search policies...'
+                },
+                {
+                    type: 'select',
+                    id: 'ca-state',
+                    label: 'State',
+                    options: [
+                        { value: 'all', label: 'All States' },
+                        { value: 'enabled', label: 'Enabled' },
+                        { value: 'enabledForReportingButNotEnforced', label: 'Report Only' },
+                        { value: 'disabled', label: 'Disabled' }
+                    ]
+                },
+                {
+                    type: 'select',
+                    id: 'ca-type',
+                    label: 'Type',
+                    options: [
+                        { value: 'all', label: 'All Types' },
+                        { value: 'mfa', label: 'MFA' },
+                        { value: 'block', label: 'Block' },
+                        { value: 'device-compliance', label: 'Device Compliance' },
+                        { value: 'hybrid-join', label: 'Hybrid Join' },
+                        { value: 'other', label: 'Other' }
+                    ]
+                },
+                {
+                    type: 'checkbox',
+                    id: 'ca-gaps',
+                    label: 'Show only policies with gaps'
+                }
+            ],
+            onFilter: applyFilters
+        });
+
+        // Setup Column Selector
+        if (typeof ColumnSelector !== 'undefined') {
+            colSelector = ColumnSelector.create({
+                containerId: 'ca-col-selector',
+                storageKey: 'ca-columns',
+                allColumns: [
+                    { key: 'displayName', label: 'Policy Name' },
+                    { key: 'state', label: 'State' },
+                    { key: 'policyType', label: 'Type' },
+                    { key: 'riskLevel', label: 'Security Level' },
+                    { key: 'requiresMfa', label: 'Requires MFA' },
+                    { key: 'requiresCompliantDevice', label: 'Compliant Device' },
+                    { key: 'blockAccess', label: 'Blocks Access' },
+                    { key: 'blocksLegacyAuth', label: 'Blocks Legacy' },
+                    { key: 'includesAllUsers', label: 'All Users' },
+                    { key: 'includesAllApps', label: 'All Apps' },
+                    { key: 'excludedUserCount', label: 'Excluded Users' },
+                    { key: 'excludedGroupCount', label: 'Excluded Groups' },
+                    { key: 'hasLocationCondition', label: 'Location' },
+                    { key: 'hasRiskCondition', label: 'Risk-Based' },
+                    { key: 'modifiedDateTime', label: 'Modified' }
+                ],
+                defaultVisible: [
+                    'displayName', 'state', 'policyType', 'requiresMfa', 'blockAccess',
+                    'includesAllUsers', 'excludedUserCount', 'riskLevel'
+                ],
+                onColumnsChanged: applyFilters
+            });
+        }
+
+        Export.bindExportButton('ca-table', 'conditional-access');
+        applyFilters();
+    }
+
+    function render(container) {
+        var policies = DataLoader.getData('conditionalAccess') || [];
+
+        var enabledCount = policies.filter(function(p) { return p.state === 'enabled'; }).length;
+        var reportOnlyCount = policies.filter(function(p) { return p.state === 'enabledForReportingButNotEnforced'; }).length;
+        var disabledCount = policies.filter(function(p) { return p.state === 'disabled'; }).length;
+        var mfaPolicies = policies.filter(function(p) { return p.state === 'enabled' && p.requiresMfa; }).length;
+        var blockPolicies = policies.filter(function(p) { return p.state === 'enabled' && p.blockAccess; }).length;
+        var policiesWithExclusions = policies.filter(function(p) { return p.excludedUserCount > 0 || p.excludedGroupCount > 0; }).length;
+
+        var gaps = analyzeSecurityGaps(policies);
+        var gapsList = [];
+        if (gaps.noMfaPolicies) gapsList.push('No enabled MFA policies found');
+        if (gaps.noLegacyAuthBlock) gapsList.push('Legacy authentication is not blocked');
+        if (gaps.noRiskBasedPolicies) gapsList.push('No risk-based policies enabled');
+        if (gaps.policiesWithExclusions > 0) {
+            gapsList.push(gaps.policiesWithExclusions + ' policies have user/group exclusions (' + gaps.totalExcludedUsers + ' users, ' + gaps.totalExcludedGroups + ' groups excluded)');
+        }
+        if (gaps.reportOnlyPolicies > 0) {
+            gapsList.push(gaps.reportOnlyPolicies + ' policies in report-only mode (not enforcing)');
+        }
+
+        caState = {
+            policies: policies,
+            enabledCount: enabledCount,
+            reportOnlyCount: reportOnlyCount,
+            disabledCount: disabledCount,
+            mfaPolicies: mfaPolicies,
+            blockPolicies: blockPolicies,
+            policiesWithExclusions: policiesWithExclusions,
+            gapsList: gapsList
+        };
+
+        var html = '<div class="page-header"><h2>Conditional Access</h2><p class="page-description">Policy inventory, coverage analysis, and security gap detection</p></div>';
+        html += '<div class="summary-cards">';
+        html += '<div class="summary-card"><div class="summary-value">' + policies.length + '</div><div class="summary-label">Total Policies</div></div>';
+        html += '<div class="summary-card card-success"><div class="summary-value">' + enabledCount + '</div><div class="summary-label">Enabled</div></div>';
+        html += '<div class="summary-card"><div class="summary-value">' + mfaPolicies + '</div><div class="summary-label">MFA Policies</div></div>';
+        html += '<div class="summary-card"><div class="summary-value">' + blockPolicies + '</div><div class="summary-label">Block Policies</div></div>';
+        html += '<div class="summary-card' + (reportOnlyCount > 0 ? ' card-warning' : '') + '"><div class="summary-value">' + reportOnlyCount + '</div><div class="summary-label">Report Only</div></div>';
+        html += '<div class="summary-card' + (policiesWithExclusions > 0 ? ' card-warning' : '') + '"><div class="summary-value">' + policiesWithExclusions + '</div><div class="summary-label">With Exclusions</div><div class="card-change">Potential gaps</div></div>';
+        html += '</div>';
+
+        html += '<div class="tab-bar">';
+        html += '<button class="tab-btn active" data-tab="overview">Overview</button>';
+        html += '<button class="tab-btn" data-tab="policies">Policies (' + policies.length + ')</button>';
+        html += '</div>';
+
+        html += '<div class="content-area" id="ca-content"></div>';
+        container.innerHTML = html;
+
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+        });
+
+        currentTab = 'overview';
+        renderContent();
     }
 
     return {

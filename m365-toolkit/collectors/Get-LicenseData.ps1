@@ -170,14 +170,38 @@ try {
     }
 
     # Build lookup of user license assignments
-    # Key: SKU ID, Value: array of user objects with that license
+    # Key: SKU ID, Value: hashtable with disabled/inactive/enabled user counts
     $skuUserMap = @{}
 
     foreach ($user in $users) {
-        # We need to check the original Graph data for license assignments
-        # Since our users.json only has licenseCount, we'll need to re-query
-        # For efficiency, we'll estimate based on enabled/disabled status
+        if ($user.assignedSkuIds) {
+            foreach ($skuId in $user.assignedSkuIds) {
+                if (-not $skuUserMap.ContainsKey($skuId)) {
+                    $skuUserMap[$skuId] = @{
+                        disabled = 0
+                        inactive = 0
+                        enabled  = 0
+                        total    = 0
+                        users    = @()
+                    }
+                }
+
+                $skuUserMap[$skuId].total++
+
+                if (-not $user.accountEnabled) {
+                    $skuUserMap[$skuId].disabled++
+                }
+                elseif ($user.isInactive) {
+                    $skuUserMap[$skuId].inactive++
+                }
+                else {
+                    $skuUserMap[$skuId].enabled++
+                }
+            }
+        }
     }
+
+    Write-Host "      Built per-SKU user assignment map for accurate waste calculation" -ForegroundColor Gray
 
     # Process each SKU
     $processedSkus = @()
@@ -191,21 +215,25 @@ try {
         $totalAssigned = $sku.ConsumedUnits
         $available = $totalPurchased - $totalAssigned
 
-        # For waste calculation, we need to check each user with this license
-        # Since full cross-reference requires re-querying, we'll use estimation
-        # based on overall tenant disabled/inactive ratios
+        # Use ACTUAL per-SKU waste calculation from user license assignments
+        # This is accurate because we count real users with this specific SKU
         $assignedToEnabled = $totalAssigned
         $assignedToDisabled = 0
         $assignedToInactive = 0
 
-        if ($users.Count -gt 0) {
-            # Calculate tenant-wide ratios
+        if ($skuUserMap.ContainsKey($sku.SkuId)) {
+            # Use actual counts from our per-SKU user map
+            $skuStats = $skuUserMap[$sku.SkuId]
+            $assignedToDisabled = $skuStats.disabled
+            $assignedToInactive = $skuStats.inactive
+            $assignedToEnabled = $skuStats.enabled
+        }
+        elseif ($users.Count -gt 0) {
+            # Fallback to estimation only if no users.json data for this SKU
             $totalUsers = $users.Count
             $disabledCount = ($users | Where-Object { -not $_.accountEnabled }).Count
             $inactiveCount = ($users | Where-Object { $_.isInactive -and $_.accountEnabled }).Count
-            $enabledActiveCount = $totalUsers - $disabledCount - $inactiveCount
 
-            # Apply ratios to estimate waste
             if ($totalUsers -gt 0) {
                 $disabledRatio = $disabledCount / $totalUsers
                 $inactiveRatio = $inactiveCount / $totalUsers
@@ -248,28 +276,70 @@ try {
             $averageCostPerUser = [Math]::Round($estimatedMonthlyCost / $billedUsers)
         }
 
-        # Build output object
+        # Extract service plans included in this SKU
+        $servicePlans = @()
+        if ($sku.ServicePlans) {
+            $servicePlans = @($sku.ServicePlans | ForEach-Object {
+                [PSCustomObject]@{
+                    servicePlanId      = $_.ServicePlanId
+                    servicePlanName    = $_.ServicePlanName
+                    provisioningStatus = $_.ProvisioningStatus
+                    appliesTo          = $_.AppliesTo
+                }
+            })
+        }
+
+        # Annual cost calculations
+        $estimatedAnnualCost = $estimatedMonthlyCost * 12
+        $wasteAnnualCost = $wasteMonthlyCost * 12
+
+        # Build output object with full Graph API properties
         $processedSku = [PSCustomObject]@{
+            # Core identification
             skuId               = $sku.SkuId
             skuName             = $friendlyName
             skuPartNumber       = $sku.SkuPartNumber
+
+            # Subscription status (from Graph API)
+            capabilityStatus    = $sku.CapabilityStatus
+            appliesTo           = $sku.AppliesTo
+
+            # Capacity metrics
             totalPurchased      = $totalPurchased
             totalAssigned       = $totalAssigned
+            available           = [Math]::Max(0, $available)
+
+            # Detailed prepaid units breakdown
+            prepaidEnabled      = $sku.PrepaidUnits.Enabled
+            prepaidWarning      = $sku.PrepaidUnits.Warning
+            prepaidSuspended    = $sku.PrepaidUnits.Suspended
+            prepaidLockedOut    = $sku.PrepaidUnits.LockedOut
+
+            # Waste analysis (now using actual per-SKU data)
             assignedToEnabled   = $assignedToEnabled
             assignedToDisabled  = $assignedToDisabled
             assignedToInactive  = $assignedToInactive
-            available           = [Math]::Max(0, $available)
             wasteCount          = $wasteCount
             utilizationPercent  = $utilizationPercent
+
+            # Cost analysis
             monthlyCostPerLicense = $monthlyCostPerLicense
             estimatedMonthlyCost  = $estimatedMonthlyCost
+            estimatedAnnualCost   = $estimatedAnnualCost
             wasteMonthlyCost      = $wasteMonthlyCost
-            overlapCount          = 0
-            overlapSkuName        = $null
+            wasteAnnualCost       = $wasteAnnualCost
             billedUsers           = $billedUsers
             averageCostPerUser    = $averageCostPerUser
-            potentialSavingsPercent = 0
             currency              = $currencyCode
+
+            # Overlap analysis
+            overlapCount          = 0
+            overlapSkuName        = $null
+            potentialSavingsPercent = 0
+
+            # Service plans included in this SKU
+            servicePlans          = $servicePlans
+            servicePlanCount      = $servicePlans.Count
         }
 
         $processedSkus += $processedSku

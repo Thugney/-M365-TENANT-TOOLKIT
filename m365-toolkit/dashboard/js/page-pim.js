@@ -15,12 +15,15 @@
 const PagePIM = (function() {
     'use strict';
 
+    var currentTab = 'overview';
+    var pimState = null;
+
     /**
      * Renders the PIM activity page content.
      *
      * @param {HTMLElement} container - The page container element
      */
-    function render(container) {
+    function renderLegacy(container) {
         var pimData = DataLoader.getData('pimActivity') || [];
 
         // Split into requests and eligible assignments
@@ -203,15 +206,15 @@ const PagePIM = (function() {
      */
     function createCard(label, value, cardClass, valueClass, changeText) {
         var card = document.createElement('div');
-        card.className = 'card' + (cardClass ? ' ' + cardClass : '');
+        card.className = 'summary-card' + (cardClass ? ' ' + cardClass : '');
 
         var lbl = document.createElement('div');
-        lbl.className = 'card-label';
+        lbl.className = 'summary-label';
         lbl.textContent = label;
         card.appendChild(lbl);
 
         var val = document.createElement('div');
-        val.className = 'card-value' + (valueClass ? ' ' + valueClass : '');
+        val.className = 'summary-value' + (valueClass ? ' ' + valueClass : '');
         val.textContent = value;
         card.appendChild(val);
 
@@ -310,6 +313,197 @@ const PagePIM = (function() {
         body.textContent = '';
         body.appendChild(detailList);
         modal.classList.add('visible');
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        renderContent();
+    }
+
+    function renderContent() {
+        var container = document.getElementById('pim-content');
+        if (!container || !pimState) return;
+
+        switch (currentTab) {
+            case 'overview':
+                renderOverview(container);
+                break;
+            case 'requests':
+                renderRequestsTab(container);
+                break;
+            case 'eligible':
+                renderEligibleTab(container);
+                break;
+        }
+    }
+
+    function renderOverview(container) {
+        container.innerHTML = '<div class="charts-row" id="pim-charts"></div>';
+
+        if (typeof DashboardCharts !== 'undefined') {
+            var C = DashboardCharts.colors;
+            var requests = pimState.requests;
+
+            var selfActivateCount = requests.filter(function(e) { return e.action === 'selfActivate'; }).length;
+            var adminAssignCount = requests.filter(function(e) { return e.action === 'adminAssign'; }).length;
+            var adminRemoveCount = requests.filter(function(e) { return e.action === 'adminRemove'; }).length;
+            var otherActionCount = requests.length - selfActivateCount - adminAssignCount - adminRemoveCount;
+
+            var chartsRow = document.getElementById('pim-charts');
+            if (chartsRow) {
+                chartsRow.appendChild(DashboardCharts.createChartCard(
+                    'Action Distribution',
+                    [
+                        { value: selfActivateCount, label: 'Self Activate', color: C.orange },
+                        { value: adminAssignCount, label: 'Admin Assign', color: C.blue },
+                        { value: adminRemoveCount, label: 'Admin Remove', color: C.red },
+                        { value: otherActionCount, label: 'Other', color: C.gray }
+                    ],
+                    String(requests.length), 'total requests'
+                ));
+
+                var provisionedCount = requests.filter(function(e) { return e.status === 'Provisioned'; }).length;
+                var revokedCount = requests.filter(function(e) { return e.status === 'Revoked'; }).length;
+                var pendingCount = requests.filter(function(e) { return e.status === 'PendingApproval' || e.status === 'PendingAdminDecision'; }).length;
+                var otherStatusCount = requests.length - provisionedCount - revokedCount - pendingCount;
+
+                chartsRow.appendChild(DashboardCharts.createChartCard(
+                    'Request Status',
+                    [
+                        { value: provisionedCount, label: 'Provisioned', color: C.green },
+                        { value: revokedCount, label: 'Revoked', color: C.gray },
+                        { value: pendingCount, label: 'Pending', color: C.yellow },
+                        { value: otherStatusCount, label: 'Other', color: C.purple }
+                    ],
+                    requests.length > 0
+                        ? Math.round((provisionedCount / requests.length) * 100) + '%'
+                        : '0%',
+                    'provisioned'
+                ));
+            }
+        }
+    }
+
+    function renderRequestsTab(container) {
+        container.innerHTML = '<div class="table-container" id="pim-requests-table"></div>';
+
+        Tables.render({
+            containerId: 'pim-requests-table',
+            data: pimState.requests,
+            columns: [
+                { key: 'createdDateTime', label: 'Date', formatter: Tables.formatters.datetime },
+                { key: 'principalDisplayName', label: 'User', filterable: true },
+                { key: 'roleName', label: 'Role', filterable: true },
+                { key: 'action', label: 'Action', filterable: true, formatter: formatAction },
+                { key: 'status', label: 'Status', filterable: true, formatter: formatPimStatus },
+                { key: 'justification', label: 'Justification', className: 'cell-truncate' },
+                { key: 'scheduleEndDateTime', label: 'Expires', formatter: Tables.formatters.datetime }
+            ],
+            pageSize: 15,
+            onRowClick: showPimDetails
+        });
+    }
+
+    function renderEligibleTab(container) {
+        container.innerHTML = '<div class="table-container" id="pim-eligible-table"></div>';
+
+        Tables.render({
+            containerId: 'pim-eligible-table',
+            data: pimState.eligible,
+            columns: [
+                { key: 'principalDisplayName', label: 'User', filterable: true },
+                { key: 'principalUpn', label: 'UPN', className: 'cell-truncate' },
+                { key: 'roleName', label: 'Role', filterable: true },
+                { key: 'status', label: 'Status', filterable: true, formatter: formatPimStatus },
+                { key: 'scheduleStartDateTime', label: 'Start', formatter: Tables.formatters.date },
+                { key: 'scheduleEndDateTime', label: 'Expires', formatter: Tables.formatters.date }
+            ],
+            pageSize: 15,
+            onRowClick: showPimDetails
+        });
+    }
+
+    function render(container) {
+        var pimData = DataLoader.getData('pimActivity') || [];
+
+        var requests = pimData.filter(function(e) { return e.entryType === 'request'; });
+        var eligible = pimData.filter(function(e) { return e.entryType === 'eligible'; });
+
+        var activeActivations = requests.filter(function(e) {
+            return e.action === 'selfActivate' && e.status === 'Provisioned';
+        }).length;
+        var pendingApprovals = requests.filter(function(e) {
+            return e.status === 'PendingApproval';
+        }).length;
+        var eligibleCount = eligible.length;
+
+        var sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        var recentActivity = requests.filter(function(e) {
+            return e.createdDateTime && new Date(e.createdDateTime) > sevenDaysAgo;
+        }).length;
+
+        pimState = {
+            requests: requests,
+            eligible: eligible,
+            activeActivations: activeActivations,
+            pendingApprovals: pendingApprovals,
+            eligibleCount: eligibleCount,
+            recentActivity: recentActivity,
+            totalRequests: requests.length
+        };
+
+        container.textContent = '';
+
+        var header = document.createElement('div');
+        header.className = 'page-header';
+        var h2 = document.createElement('h2');
+        h2.className = 'page-title';
+        h2.textContent = 'Privileged Identity Management';
+        var desc = document.createElement('p');
+        desc.className = 'page-description';
+        desc.textContent = 'PIM role activations, assignments, and eligible roles';
+        header.appendChild(h2);
+        header.appendChild(desc);
+        container.appendChild(header);
+
+        var cardsGrid = document.createElement('div');
+        cardsGrid.className = 'summary-cards';
+
+        cardsGrid.appendChild(createCard('Active Activations', String(activeActivations),
+            activeActivations > 0 ? 'card-warning' : '', activeActivations > 0 ? 'text-warning' : ''));
+        cardsGrid.appendChild(createCard('Pending Approval', String(pendingApprovals),
+            pendingApprovals > 0 ? 'card-danger' : '', pendingApprovals > 0 ? 'text-critical' : 'text-success',
+            pendingApprovals > 0 ? 'Requires attention' : ''));
+        cardsGrid.appendChild(createCard('Eligible Assignments', String(eligibleCount), '', ''));
+        cardsGrid.appendChild(createCard('Recent Activity (7d)', String(recentActivity), '', '',
+            requests.length + ' total requests'));
+
+        container.appendChild(cardsGrid);
+
+        var tabBar = document.createElement('div');
+        tabBar.className = 'tab-bar';
+        tabBar.innerHTML = [
+            '<button class="tab-btn active" data-tab="overview">Overview</button>',
+            '<button class="tab-btn" data-tab="requests">Requests (' + requests.length + ')</button>',
+            '<button class="tab-btn" data-tab="eligible">Eligible (' + eligible.length + ')</button>'
+        ].join('');
+        container.appendChild(tabBar);
+
+        var contentArea = document.createElement('div');
+        contentArea.className = 'content-area';
+        contentArea.id = 'pim-content';
+        container.appendChild(contentArea);
+
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+        });
+
+        currentTab = 'overview';
+        renderContent();
     }
 
     // Public API

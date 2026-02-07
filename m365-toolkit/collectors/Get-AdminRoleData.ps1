@@ -115,33 +115,39 @@ try {
         # Determine if this is a high-privilege role
         $isHighPrivilege = $role.DisplayName -in $highPrivilegeRoles
 
-        # Get role members
+        # Get role members - includes users, service principals, and groups
         $members = @()
+        $userMembers = @()
+        $servicePrincipalMembers = @()
+        $groupMembers = @()
+
         try {
             $roleMembers = Invoke-GraphWithRetry -ScriptBlock {
                 Get-MgDirectoryRoleMember -DirectoryRoleId $role.Id -All
             } -OperationName "Role member retrieval"
 
             foreach ($member in $roleMembers) {
-                # Members can be users, service principals, or groups
-                # We're primarily interested in users
-                if ($member.AdditionalProperties.'@odata.type' -eq '#microsoft.graph.user' -or
-                    $null -eq $member.AdditionalProperties.'@odata.type') {
+                $memberType = $member.AdditionalProperties.'@odata.type'
+                $memberId = $member.Id
+                $memberName = $member.AdditionalProperties.displayName
 
-                    $memberId = $member.Id
+                # Process based on member type - SECURITY CRITICAL: Include ALL principal types
+                if ($memberType -eq '#microsoft.graph.user' -or $null -eq $memberType) {
+                    # User member
                     $memberUpn = $member.AdditionalProperties.userPrincipalName
-                    $memberName = $member.AdditionalProperties.displayName
 
                     # Try to get additional info from user lookup
                     $accountEnabled = $true
                     $isInactive = $false
                     $daysSinceLastSignIn = $null
+                    $mfaRegistered = $null
 
                     if ($userLookup.ContainsKey($memberId)) {
                         $userData = $userLookup[$memberId]
                         $accountEnabled = $userData.accountEnabled
                         $isInactive = $userData.isInactive
                         $daysSinceLastSignIn = $userData.daysSinceLastSignIn
+                        $mfaRegistered = $userData.mfaRegistered
                         if ([string]::IsNullOrEmpty($memberName)) {
                             $memberName = $userData.displayName
                         }
@@ -151,14 +157,62 @@ try {
                     }
 
                     $memberObj = [PSCustomObject]@{
-                        userId              = $memberId
+                        id                  = $memberId
                         displayName         = $memberName
+                        memberType          = "User"
                         userPrincipalName   = $memberUpn
                         accountEnabled      = $accountEnabled
                         isInactive          = $isInactive
                         daysSinceLastSignIn = $daysSinceLastSignIn
+                        mfaRegistered       = $mfaRegistered
                     }
 
+                    $members += $memberObj
+                    $userMembers += $memberObj
+                }
+                elseif ($memberType -eq '#microsoft.graph.servicePrincipal') {
+                    # Service Principal (App) - SECURITY CRITICAL
+                    $appId = $member.AdditionalProperties.appId
+                    $servicePrincipalType = $member.AdditionalProperties.servicePrincipalType
+
+                    $memberObj = [PSCustomObject]@{
+                        id                   = $memberId
+                        displayName          = $memberName
+                        memberType           = "ServicePrincipal"
+                        appId                = $appId
+                        servicePrincipalType = $servicePrincipalType
+                        accountEnabled       = $member.AdditionalProperties.accountEnabled
+                    }
+
+                    $members += $memberObj
+                    $servicePrincipalMembers += $memberObj
+                }
+                elseif ($memberType -eq '#microsoft.graph.group') {
+                    # Group - SECURITY CRITICAL: Role-assignable groups
+                    $groupType = "Security"
+                    if ($member.AdditionalProperties.groupTypes -contains 'Unified') {
+                        $groupType = "Microsoft365"
+                    }
+
+                    $memberObj = [PSCustomObject]@{
+                        id                = $memberId
+                        displayName       = $memberName
+                        memberType        = "Group"
+                        groupType         = $groupType
+                        isRoleAssignable  = $member.AdditionalProperties.isAssignableToRole
+                        securityEnabled   = $member.AdditionalProperties.securityEnabled
+                    }
+
+                    $members += $memberObj
+                    $groupMembers += $memberObj
+                }
+                else {
+                    # Unknown type - log for visibility
+                    $memberObj = [PSCustomObject]@{
+                        id          = $memberId
+                        displayName = $memberName
+                        memberType  = $memberType ?? "Unknown"
+                    }
                     $members += $memberObj
                 }
             }
@@ -168,13 +222,36 @@ try {
             $errors += "Failed to get members for role $($role.DisplayName): $($_.Exception.Message)"
         }
 
-        # Build output object
+        # Security flags for this role
+        $hasServicePrincipals = $servicePrincipalMembers.Count -gt 0
+        $hasGroups = $groupMembers.Count -gt 0
+        $hasInactiveUsers = ($userMembers | Where-Object { $_.isInactive }).Count -gt 0
+        $hasDisabledUsers = ($userMembers | Where-Object { -not $_.accountEnabled }).Count -gt 0
+        $hasUsersWithoutMfa = ($userMembers | Where-Object { $_.mfaRegistered -eq $false }).Count -gt 0
+
+        # Build comprehensive output object
         $processedRole = [PSCustomObject]@{
-            roleId          = $role.Id
-            roleName        = $role.DisplayName
-            isHighPrivilege = $isHighPrivilege
-            members         = $members
-            memberCount     = $members.Count
+            roleId                    = $role.Id
+            roleName                  = $role.DisplayName
+            roleDescription           = $role.Description
+            roleTemplateId            = $role.RoleTemplateId
+            isHighPrivilege           = $isHighPrivilege
+
+            # All members
+            members                   = $members
+            memberCount               = $members.Count
+
+            # Member type breakdown
+            userCount                 = $userMembers.Count
+            servicePrincipalCount     = $servicePrincipalMembers.Count
+            groupCount                = $groupMembers.Count
+
+            # Security flags
+            hasServicePrincipals      = $hasServicePrincipals
+            hasGroups                 = $hasGroups
+            hasInactiveUsers          = $hasInactiveUsers
+            hasDisabledUsers          = $hasDisabledUsers
+            hasUsersWithoutMfa        = $hasUsersWithoutMfa
         }
 
         $processedRoles += $processedRole
