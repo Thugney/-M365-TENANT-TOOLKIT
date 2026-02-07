@@ -8,8 +8,8 @@
  *
  * PAGE: OVERVIEW
  *
- * Renders the overview dashboard with key metric cards, SVG donut charts,
- * license utilization bars, and recent activity panels.
+ * Renders the overview dashboard with unified analytics pattern: donut chart,
+ * analytics grid, insights section, and quick stats.
  */
 
 const PageOverview = (function() {
@@ -17,154 +17,286 @@ const PageOverview = (function() {
 
     var C = DashboardCharts.colors;
 
-    /**
-     * Renders the overview page content.
-     *
-     * @param {HTMLElement} container - The page container element
-     */
-    function render(container) {
-        var summary = DataLoader.getSummary();
+    /** Current tab */
+    var currentTab = 'overview';
 
-        // Recompute summary from department-filtered data if active
-        if (typeof DepartmentFilter !== 'undefined' && DepartmentFilter.getSelected()) {
-            var fUsers = DepartmentFilter.filterData(DataLoader.getData('users'), 'department');
-            var fDevices = DepartmentFilter.filterByUPN(DataLoader.getData('devices'), 'userPrincipalName');
-            var fAlerts = DataLoader.getData('defenderAlerts');
-            var compliant = fDevices.filter(function(d) { return d.complianceState === 'compliant'; }).length;
-            var mfaReg = fUsers.filter(function(u) { return u.mfaRegistered; }).length;
-            summary = Object.assign({}, summary, {
-                totalUsers: fUsers.length,
-                employeeCount: fUsers.filter(function(u) { return u.domain === 'employee'; }).length,
-                studentCount: fUsers.filter(function(u) { return u.domain === 'student'; }).length,
-                otherCount: fUsers.filter(function(u) { return u.domain === 'other'; }).length,
-                mfaRegisteredCount: mfaReg,
-                noMfaUsers: fUsers.length - mfaReg,
-                mfaPct: fUsers.length > 0 ? Math.round((mfaReg / fUsers.length) * 100) : 0,
-                totalDevices: fDevices.length,
-                compliantDevices: compliant,
-                compliancePct: fDevices.length > 0 ? Math.round((compliant / fDevices.length) * 100) : 0
+    /** Cached page state */
+    var overviewState = null;
+
+    /**
+     * Creates an element with className and textContent.
+     */
+    function el(tag, className, textContent) {
+        var elem = document.createElement(tag);
+        if (className) elem.className = className;
+        if (textContent !== undefined) elem.textContent = textContent;
+        return elem;
+    }
+
+    /**
+     * Creates a platform-style analytics card with mini-bars.
+     */
+    function createPlatformCard(title, rows) {
+        var card = el('div', 'analytics-card');
+        card.appendChild(el('h4', null, title));
+        var list = el('div', 'platform-list');
+        rows.forEach(function(row) {
+            var rowDiv = el('div', 'platform-row');
+            rowDiv.appendChild(el('span', 'platform-name', row.name));
+            rowDiv.appendChild(el('span', 'platform-policies', String(row.count)));
+            var miniBar = el('div', 'mini-bar');
+            var fill = el('div', 'mini-bar-fill ' + row.cls);
+            fill.style.width = row.pct + '%';
+            miniBar.appendChild(fill);
+            rowDiv.appendChild(miniBar);
+            rowDiv.appendChild(el('span', 'platform-rate', row.showPct ? (row.pct + '%') : String(row.count)));
+            list.appendChild(rowDiv);
+        });
+        card.appendChild(list);
+        return card;
+    }
+
+    /**
+     * Creates an insight card with badge, description, and action.
+     */
+    function createInsightCard(type, badge, category, description, action, navigateTo) {
+        var card = el('div', 'insight-card insight-' + type);
+        if (navigateTo) {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function() {
+                window.location.hash = navigateTo;
             });
         }
+        var header = el('div', 'insight-header');
+        header.appendChild(el('span', 'badge badge-' + type, badge));
+        header.appendChild(el('span', 'insight-category', category));
+        card.appendChild(header);
+        card.appendChild(el('p', 'insight-description', description));
+        if (action) {
+            var actionP = el('p', 'insight-action');
+            actionP.appendChild(el('strong', null, 'Action: '));
+            actionP.appendChild(document.createTextNode(action));
+            card.appendChild(actionP);
+        }
+        return card;
+    }
 
+    /**
+     * Switches to a different tab.
+     */
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        renderContent();
+    }
+
+    /**
+     * Renders the content for the current tab.
+     */
+    function renderContent() {
+        var container = document.getElementById('overview-content');
+        if (!container || !overviewState) return;
+
+        switch (currentTab) {
+            case 'overview':
+                renderOverviewTab(container);
+                break;
+            case 'stats':
+                renderStatsTab(container);
+                break;
+        }
+    }
+
+    /**
+     * Renders the Overview tab with analytics.
+     */
+    function renderOverviewTab(container) {
+        container.textContent = '';
+        var s = overviewState.summary;
+
+        // Calculate tenant health score (composite)
+        var healthScore = Math.round((s.mfaPct + s.compliancePct + (s.activeAlerts === 0 ? 100 : Math.max(0, 100 - s.activeAlerts * 10))) / 3);
+        var healthyPct = healthScore;
+        var issuesPct = 100 - healthScore;
+
+        // Build analytics section with donut chart
+        var section = el('div', 'analytics-section');
+        section.appendChild(el('h3', null, 'Tenant Health Overview'));
+
+        var complianceOverview = el('div', 'compliance-overview');
+
+        // Donut chart
+        var chartContainer = el('div', 'compliance-chart');
+        var donutDiv = el('div', 'donut-chart');
+
+        var circumference = 2 * Math.PI * 40;
+        var healthyDash = (healthyPct / 100) * circumference;
+        var issuesDash = (issuesPct / 100) * circumference;
+
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('class', 'donut');
+
+        var bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        bgCircle.setAttribute('cx', '50');
+        bgCircle.setAttribute('cy', '50');
+        bgCircle.setAttribute('r', '40');
+        bgCircle.setAttribute('fill', 'none');
+        bgCircle.setAttribute('stroke', 'var(--color-bg-tertiary)');
+        bgCircle.setAttribute('stroke-width', '12');
+        svg.appendChild(bgCircle);
+
+        if (healthyPct > 0) {
+            var healthyCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            healthyCircle.setAttribute('cx', '50');
+            healthyCircle.setAttribute('cy', '50');
+            healthyCircle.setAttribute('r', '40');
+            healthyCircle.setAttribute('fill', 'none');
+            healthyCircle.setAttribute('stroke', 'var(--color-success)');
+            healthyCircle.setAttribute('stroke-width', '12');
+            healthyCircle.setAttribute('stroke-dasharray', healthyDash + ' ' + circumference);
+            healthyCircle.setAttribute('stroke-dashoffset', '0');
+            healthyCircle.setAttribute('transform', 'rotate(-90 50 50)');
+            svg.appendChild(healthyCircle);
+        }
+        if (issuesPct > 0) {
+            var issuesCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            issuesCircle.setAttribute('cx', '50');
+            issuesCircle.setAttribute('cy', '50');
+            issuesCircle.setAttribute('r', '40');
+            issuesCircle.setAttribute('fill', 'none');
+            issuesCircle.setAttribute('stroke', healthScore >= 70 ? 'var(--color-warning)' : 'var(--color-critical)');
+            issuesCircle.setAttribute('stroke-width', '12');
+            issuesCircle.setAttribute('stroke-dasharray', issuesDash + ' ' + circumference);
+            issuesCircle.setAttribute('stroke-dashoffset', String(-healthyDash));
+            issuesCircle.setAttribute('transform', 'rotate(-90 50 50)');
+            svg.appendChild(issuesCircle);
+        }
+
+        donutDiv.appendChild(svg);
+
+        var donutCenter = el('div', 'donut-center');
+        donutCenter.appendChild(el('span', 'donut-value', healthScore + '%'));
+        donutCenter.appendChild(el('span', 'donut-label', 'Health'));
+        donutDiv.appendChild(donutCenter);
+        chartContainer.appendChild(donutDiv);
+        complianceOverview.appendChild(chartContainer);
+
+        // Legend
+        var legend = el('div', 'compliance-legend');
+        var legendItems = [
+            { cls: 'bg-success', label: 'MFA Coverage', value: s.mfaPct + '%' },
+            { cls: 'bg-info', label: 'Device Compliance', value: s.compliancePct + '%' },
+            { cls: s.activeAlerts > 0 ? 'bg-critical' : 'bg-success', label: 'Active Alerts', value: String(s.activeAlerts) },
+            { cls: 'bg-neutral', label: 'Total Users', value: s.totalUsers.toLocaleString() }
+        ];
+        legendItems.forEach(function(item) {
+            var legendItem = el('div', 'legend-item');
+            legendItem.appendChild(el('span', 'legend-dot ' + item.cls));
+            legendItem.appendChild(document.createTextNode(' ' + item.label + ': '));
+            legendItem.appendChild(el('strong', null, item.value));
+            legend.appendChild(legendItem);
+        });
+        complianceOverview.appendChild(legend);
+        section.appendChild(complianceOverview);
+        container.appendChild(section);
+
+        // Analytics grid
+        var analyticsGrid = el('div', 'analytics-grid');
+
+        // Users card
+        var maxUsers = Math.max(s.employeeCount, s.studentCount, s.guestCount, 1);
+        analyticsGrid.appendChild(createPlatformCard('User Composition', [
+            { name: 'Employees', count: s.employeeCount, pct: Math.round((s.employeeCount / maxUsers) * 100), cls: 'bg-info', showPct: false },
+            { name: 'Students', count: s.studentCount, pct: Math.round((s.studentCount / maxUsers) * 100), cls: 'bg-success', showPct: false },
+            { name: 'Guests', count: s.guestCount, pct: Math.round((s.guestCount / maxUsers) * 100), cls: 'bg-purple', showPct: false },
+            { name: 'Other', count: s.otherCount, pct: Math.round((s.otherCount / maxUsers) * 100), cls: 'bg-neutral', showPct: false }
+        ]));
+
+        // Security card
+        analyticsGrid.appendChild(createPlatformCard('Security Status', [
+            { name: 'MFA Enrolled', count: s.mfaRegisteredCount, pct: s.mfaPct, cls: 'bg-success', showPct: true },
+            { name: 'Without MFA', count: s.noMfaUsers, pct: 100 - s.mfaPct, cls: 'bg-warning', showPct: true },
+            { name: 'Active Alerts', count: s.activeAlerts, pct: Math.min(s.activeAlerts * 20, 100), cls: s.activeAlerts > 0 ? 'bg-critical' : 'bg-success', showPct: false }
+        ]));
+
+        // Devices card
+        analyticsGrid.appendChild(createPlatformCard('Device Status', [
+            { name: 'Compliant', count: s.compliantDevices, pct: s.compliancePct, cls: 'bg-success', showPct: true },
+            { name: 'Non-Compliant', count: s.nonCompliantDevices, pct: s.totalDevices > 0 ? Math.round((s.nonCompliantDevices / s.totalDevices) * 100) : 0, cls: 'bg-critical', showPct: true },
+            { name: 'Unknown', count: s.unknownDevices, pct: s.totalDevices > 0 ? Math.round((s.unknownDevices / s.totalDevices) * 100) : 0, cls: 'bg-neutral', showPct: true }
+        ]));
+
+        // Licenses card
+        var licenseData = overviewState.licenseStats;
+        analyticsGrid.appendChild(createPlatformCard('License Status', [
+            { name: 'Total SKUs', count: licenseData.totalSkus, pct: 100, cls: 'bg-info', showPct: false },
+            { name: 'Avg Utilization', count: licenseData.avgUtilization + '%', pct: licenseData.avgUtilization, cls: licenseData.avgUtilization >= 70 ? 'bg-success' : 'bg-warning', showPct: false },
+            { name: 'Total Waste', count: licenseData.totalWaste, pct: licenseData.wastePct, cls: licenseData.totalWaste > 0 ? 'bg-critical' : 'bg-success', showPct: false }
+        ]));
+
+        container.appendChild(analyticsGrid);
+
+        // Insights section
+        var insightsList = el('div', 'insights-list');
+
+        // Generate insights based on data
+        if (s.mfaPct < 90) {
+            insightsList.appendChild(createInsightCard('warning', 'MFA', 'Security Gap',
+                (100 - s.mfaPct) + '% of users (' + s.noMfaUsers + ') are not enrolled in MFA.',
+                'Enable MFA for all users to prevent account compromise.', 'security'));
+        }
+
+        if (s.compliancePct < 80) {
+            insightsList.appendChild(createInsightCard('warning', 'COMPLIANCE', 'Device Risk',
+                s.nonCompliantDevices + ' devices (' + (100 - s.compliancePct) + '%) are non-compliant.',
+                'Review and remediate non-compliant devices.', 'devices'));
+        }
+
+        if (s.activeAlerts > 0) {
+            insightsList.appendChild(createInsightCard('critical', 'ALERTS', 'Active Threats',
+                s.activeAlerts + ' security alert' + (s.activeAlerts !== 1 ? 's' : '') + ' require attention.',
+                'Investigate and resolve active security alerts immediately.', 'security'));
+        }
+
+        if (licenseData.totalWaste > 0) {
+            insightsList.appendChild(createInsightCard('info', 'COST', 'License Waste',
+                licenseData.totalWaste + ' licenses are assigned to disabled or inactive users.',
+                'Review license assignments to reduce costs.', 'licenses'));
+        }
+
+        // Secure Score insight
+        var secureScore = overviewState.secureScore;
+        if (secureScore && secureScore.scorePct < 70) {
+            insightsList.appendChild(createInsightCard('info', 'SCORE', 'Secure Score',
+                'Microsoft Secure Score is ' + secureScore.scorePct + '%. Consider implementing recommended actions.',
+                'Review and complete improvement actions.', 'security'));
+        }
+
+        // Healthy state
+        if (healthScore >= 90 && s.activeAlerts === 0) {
+            insightsList.appendChild(createInsightCard('success', 'HEALTHY', 'Tenant Health',
+                'Your tenant is in good health with ' + healthScore + '% overall score.',
+                null, null));
+        }
+
+        container.appendChild(insightsList);
+    }
+
+    /**
+     * Renders the Quick Stats tab.
+     */
+    function renderStatsTab(container) {
         container.textContent = '';
 
-        // Page header
-        var header = document.createElement('div');
-        header.className = 'page-header';
-        var h2 = document.createElement('h2');
-        h2.className = 'page-title';
-        h2.textContent = 'Overview';
-        var desc = document.createElement('p');
-        desc.className = 'page-description';
-        desc.textContent = 'Summary of your Microsoft 365 tenant health and status';
-        header.appendChild(h2);
-        header.appendChild(desc);
-        container.appendChild(header);
+        // Donut charts row
+        var chartsGrid = el('div', 'overview-charts-grid');
+        var s = overviewState.summary;
 
-        // Row 1: Key metric cards
-        renderKeyMetrics(container, summary);
-
-        // Row 2: Donut charts
-        renderCharts(container, summary);
-
-        // Row 3: License utilization
-        renderLicenseUtilization(container);
-
-        // Row 4: Recent activity
-        renderRecentActivity(container);
-
-        // Card navigation click handlers
-        var cards = container.querySelectorAll('.card[data-navigate]');
-        cards.forEach(function(card) {
-            card.addEventListener('click', function() {
-                var page = card.dataset.navigate;
-                window.location.hash = page;
-            });
-        });
-    }
-
-    /**
-     * Renders the 4 key metric cards.
-     */
-    function renderKeyMetrics(container, s) {
-        var grid = document.createElement('div');
-        grid.className = 'cards-grid';
-
-        // Total Users
-        var userCard = createCard('Total Users', String(s.totalUsers), '', '');
-        userCard.dataset.navigate = 'users';
-        var userChange = document.createElement('div');
-        userChange.className = 'card-change';
-        userChange.textContent = s.employeeCount + ' employees, ' + s.studentCount + ' students';
-        userCard.appendChild(userChange);
-        grid.appendChild(userCard);
-
-        // MFA Coverage
-        var mfaClass = s.mfaPct >= 90 ? 'card-success' : (s.mfaPct >= 70 ? 'card-warning' : 'card-critical');
-        var mfaValClass = s.mfaPct >= 90 ? 'success' : (s.mfaPct >= 70 ? 'warning' : 'critical');
-        var mfaCard = createCard('MFA Coverage', s.mfaPct + '%', mfaClass, mfaValClass);
-        mfaCard.dataset.navigate = 'security';
-        var mfaChange = document.createElement('div');
-        mfaChange.className = 'card-change';
-        mfaChange.textContent = s.noMfaUsers + ' users without MFA';
-        mfaCard.appendChild(mfaChange);
-        grid.appendChild(mfaCard);
-
-        // Device Compliance
-        var compClass = s.compliancePct >= 90 ? 'card-success' : (s.compliancePct >= 70 ? 'card-warning' : 'card-critical');
-        var compValClass = s.compliancePct >= 90 ? 'success' : (s.compliancePct >= 70 ? 'warning' : 'critical');
-        var compCard = createCard('Device Compliance', s.compliancePct + '%', compClass, compValClass);
-        compCard.dataset.navigate = 'devices';
-        var compChange = document.createElement('div');
-        compChange.className = 'card-change';
-        compChange.textContent = s.compliantDevices + ' of ' + s.totalDevices + ' devices';
-        compCard.appendChild(compChange);
-        grid.appendChild(compCard);
-
-        // Active Alerts
-        var alertClass = s.activeAlerts > 0 ? 'card-critical' : 'card-success';
-        var alertValClass = s.activeAlerts > 0 ? 'critical' : 'success';
-        var alertCard = createCard('Active Alerts', String(s.activeAlerts), alertClass, alertValClass);
-        alertCard.dataset.navigate = 'security';
-        var alertChange = document.createElement('div');
-        alertChange.className = 'card-change';
-        alertChange.textContent = s.activeAlerts > 0 ? 'Requires attention' : 'All clear';
-        alertCard.appendChild(alertChange);
-        grid.appendChild(alertCard);
-
-        container.appendChild(grid);
-
-        // Add trend indicators if history is available
-        if (typeof TrendHelper !== 'undefined') {
-            var history = DataLoader.getData('trendHistory');
-            if (history && history.length > 0) {
-                var trendMetrics = [
-                    { card: userCard, key: 'totalUsers', value: s.totalUsers },
-                    { card: mfaCard, key: 'mfaPct', value: s.mfaPct },
-                    { card: compCard, key: 'compliancePct', value: s.compliancePct },
-                    { card: alertCard, key: 'activeAlerts', value: s.activeAlerts }
-                ];
-                trendMetrics.forEach(function(m) {
-                    var trend = TrendHelper.getTrend(m.value, history, m.key);
-                    if (trend) {
-                        var indicator = TrendHelper.createIndicator(trend);
-                        var valEl = m.card.querySelector('.card-value');
-                        if (valEl) valEl.appendChild(indicator);
-                    }
-                });
-            }
-        }
-    }
-
-    /**
-     * Renders the 3 donut charts row.
-     */
-    function renderCharts(container, s) {
-        var grid = document.createElement('div');
-        grid.className = 'overview-charts-grid';
-
-        // Secure Score donut (first chart)
-        var secureScore = DataLoader.getData('secureScore');
+        // Secure Score donut
+        var secureScore = overviewState.secureScore;
         if (secureScore && secureScore.scorePct !== undefined) {
             var pct = secureScore.scorePct;
             var scoreColor = pct >= 70 ? C.green : (pct >= 40 ? C.yellow : C.red);
@@ -177,20 +309,16 @@ const PageOverview = (function() {
                 pct + '%', 'of 100'
             );
 
-            // Add top improvement actions below chart
             if (secureScore.controlScores && secureScore.controlScores.length > 0) {
-                var list = document.createElement('ul');
-                list.className = 'secure-score-actions';
+                var list = el('ul', 'secure-score-actions');
                 var top3 = secureScore.controlScores.slice(0, 3);
                 for (var i = 0; i < top3.length; i++) {
-                    var li = document.createElement('li');
-                    li.textContent = top3[i].description;
+                    var li = el('li', null, top3[i].description);
                     list.appendChild(li);
                 }
                 scoreCard.appendChild(list);
             }
-
-            grid.appendChild(scoreCard);
+            chartsGrid.appendChild(scoreCard);
         }
 
         // User Composition donut
@@ -200,7 +328,7 @@ const PageOverview = (function() {
             { value: s.guestCount, label: 'Guests', color: C.purple },
             { value: s.otherCount, label: 'Other', color: C.gray }
         ];
-        grid.appendChild(DashboardCharts.createChartCard(
+        chartsGrid.appendChild(DashboardCharts.createChartCard(
             'User Composition', userSegments,
             String(s.totalUsers), 'total users'
         ));
@@ -210,7 +338,7 @@ const PageOverview = (function() {
             { value: s.mfaRegisteredCount, label: 'Enrolled', color: C.green },
             { value: s.noMfaUsers, label: 'Not Enrolled', color: C.red }
         ];
-        grid.appendChild(DashboardCharts.createChartCard(
+        chartsGrid.appendChild(DashboardCharts.createChartCard(
             'MFA Status', mfaSegments,
             s.mfaPct + '%', 'coverage'
         ));
@@ -221,12 +349,18 @@ const PageOverview = (function() {
             { value: s.nonCompliantDevices, label: 'Non-Compliant', color: C.red },
             { value: s.unknownDevices, label: 'Unknown', color: C.gray }
         ];
-        grid.appendChild(DashboardCharts.createChartCard(
+        chartsGrid.appendChild(DashboardCharts.createChartCard(
             'Device Compliance', deviceSegments,
             s.compliancePct + '%', 'compliant'
         ));
 
-        container.appendChild(grid);
+        container.appendChild(chartsGrid);
+
+        // License utilization section
+        renderLicenseUtilization(container);
+
+        // Recent activity section
+        renderRecentActivity(container);
     }
 
     /**
@@ -236,24 +370,16 @@ const PageOverview = (function() {
         var licenses = DataLoader.getData('licenseSkus');
         if (!licenses || licenses.length === 0) return;
 
-        // Sort by utilization descending
         var sorted = licenses.slice().sort(function(a, b) {
             return (b.utilizationPercent || 0) - (a.utilizationPercent || 0);
         });
 
-        var panel = document.createElement('div');
-        panel.className = 'license-grid';
+        var panel = el('div', 'license-grid');
+        panel.appendChild(el('div', 'license-grid-title', 'License Utilization'));
 
-        var title = document.createElement('div');
-        title.className = 'license-grid-title';
-        title.textContent = 'License Utilization';
-        panel.appendChild(title);
-
-        // Waste cost callout
-        var summary = DataLoader.getSummary();
+        var summary = overviewState.summary;
         if (summary.totalWasteMonthlyCost > 0) {
-            var costCallout = document.createElement('div');
-            costCallout.className = 'license-waste-callout';
+            var costCallout = el('div', 'license-waste-callout');
             var sym = summary.currency === 'NOK' ? 'kr' : summary.currency === 'USD' ? '$' : '';
             costCallout.textContent = sym + ' ' + summary.totalWasteMonthlyCost.toLocaleString() + '/mo wasted';
             panel.appendChild(costCallout);
@@ -263,24 +389,15 @@ const PageOverview = (function() {
             var sku = sorted[i];
             var pct = sku.utilizationPercent || 0;
 
-            var row = document.createElement('div');
-            row.className = 'license-row';
+            var row = el('div', 'license-row');
 
-            // Name
-            var name = document.createElement('div');
-            name.className = 'license-name';
-            name.textContent = sku.skuName;
+            var name = el('div', 'license-name', sku.skuName);
             name.title = sku.skuName;
             row.appendChild(name);
 
-            // Progress bar
-            var barWrap = document.createElement('div');
-            barWrap.className = 'license-bar';
-
-            var bar = document.createElement('div');
-            bar.className = 'progress-bar';
-            var fill = document.createElement('div');
-            fill.className = 'progress-fill';
+            var barWrap = el('div', 'license-bar');
+            var bar = el('div', 'progress-bar');
+            var fill = el('div', 'progress-fill');
             if (pct >= 80) fill.className += ' success';
             else if (pct >= 40) fill.className += ' warning';
             else fill.className += ' critical';
@@ -289,13 +406,8 @@ const PageOverview = (function() {
             barWrap.appendChild(bar);
             row.appendChild(barWrap);
 
-            // Stats
-            var stats = document.createElement('div');
-            stats.className = 'license-stats';
-            stats.textContent = sku.totalAssigned + ' / ' + sku.totalPurchased;
-
-            var pctSpan = document.createElement('span');
-            pctSpan.className = 'license-pct';
+            var stats = el('div', 'license-stats', sku.totalAssigned + ' / ' + sku.totalPurchased);
+            var pctSpan = el('span', 'license-pct');
             if (pct >= 80) pctSpan.className += ' text-success';
             else if (pct >= 40) pctSpan.className += ' text-warning';
             else pctSpan.className += ' text-critical';
@@ -310,159 +422,103 @@ const PageOverview = (function() {
     }
 
     /**
-     * Renders the recent activity panels (PIM + Alerts).
+     * Renders the recent activity panels.
      */
     function renderRecentActivity(container) {
-        var grid = document.createElement('div');
-        grid.className = 'activity-grid';
+        var grid = el('div', 'activity-grid');
 
         // PIM Activity panel
         var pimData = DataLoader.getData('pimActivity');
         var requests = pimData.filter(function(e) { return e.entryType === 'request'; });
         var recentPim = requests.slice(0, 5);
 
-        var pimPanel = document.createElement('div');
-        pimPanel.className = 'activity-panel';
-
-        var pimTitle = document.createElement('div');
-        pimTitle.className = 'activity-panel-title';
-        pimTitle.textContent = 'Recent PIM Activity';
-        pimPanel.appendChild(pimTitle);
+        var pimPanel = el('div', 'activity-panel');
+        pimPanel.appendChild(el('div', 'activity-panel-title', 'Recent PIM Activity'));
 
         if (recentPim.length > 0) {
-            var pimTable = document.createElement('table');
-            pimTable.className = 'activity-table';
-
-            var pimHead = document.createElement('thead');
-            var pimHeadRow = document.createElement('tr');
+            var pimTable = el('table', 'activity-table');
+            var pimHead = el('thead');
+            var pimHeadRow = el('tr');
             ['User', 'Role', 'Action', 'Status'].forEach(function(h) {
-                var th = document.createElement('th');
-                th.textContent = h;
-                pimHeadRow.appendChild(th);
+                pimHeadRow.appendChild(el('th', null, h));
             });
             pimHead.appendChild(pimHeadRow);
             pimTable.appendChild(pimHead);
 
-            var pimBody = document.createElement('tbody');
+            var pimBody = el('tbody');
             recentPim.forEach(function(entry) {
-                var tr = document.createElement('tr');
-                var tdUser = document.createElement('td');
-                tdUser.textContent = entry.principalDisplayName || '--';
-                tr.appendChild(tdUser);
-
-                var tdRole = document.createElement('td');
-                tdRole.textContent = entry.roleName || '--';
-                tr.appendChild(tdRole);
-
-                var tdAction = document.createElement('td');
-                tdAction.textContent = formatActionLabel(entry.action);
-                tr.appendChild(tdAction);
-
-                var tdStatus = document.createElement('td');
-                tdStatus.textContent = entry.status || '--';
-                tr.appendChild(tdStatus);
-
+                var tr = el('tr');
+                tr.appendChild(el('td', null, entry.principalDisplayName || '--'));
+                tr.appendChild(el('td', null, entry.roleName || '--'));
+                tr.appendChild(el('td', null, formatActionLabel(entry.action)));
+                tr.appendChild(el('td', null, entry.status || '--'));
                 pimBody.appendChild(tr);
             });
             pimTable.appendChild(pimBody);
             pimPanel.appendChild(pimTable);
         } else {
-            var emptyPim = document.createElement('div');
-            emptyPim.className = 'text-muted';
+            var emptyPim = el('div', 'text-muted', 'No recent PIM activity');
             emptyPim.style.fontSize = 'var(--font-size-xs)';
-            emptyPim.textContent = 'No recent PIM activity';
             pimPanel.appendChild(emptyPim);
         }
 
-        var pimLink = document.createElement('a');
-        pimLink.className = 'activity-link';
-        pimLink.textContent = 'View all PIM activity';
+        var pimLink = el('a', 'activity-link', 'View all PIM activity');
         pimLink.addEventListener('click', function() { window.location.hash = 'pim'; });
         pimPanel.appendChild(pimLink);
-
         grid.appendChild(pimPanel);
 
         // Security Alerts panel
         var alerts = DataLoader.getData('defenderAlerts');
         var recentAlerts = alerts.slice(0, 5);
 
-        var alertPanel = document.createElement('div');
-        alertPanel.className = 'activity-panel';
-
-        var alertTitle = document.createElement('div');
-        alertTitle.className = 'activity-panel-title';
-        alertTitle.textContent = 'Recent Security Alerts';
-        alertPanel.appendChild(alertTitle);
+        var alertPanel = el('div', 'activity-panel');
+        alertPanel.appendChild(el('div', 'activity-panel-title', 'Recent Security Alerts'));
 
         if (recentAlerts.length > 0) {
-            var alertTable = document.createElement('table');
-            alertTable.className = 'activity-table';
-
-            var alertHead = document.createElement('thead');
-            var alertHeadRow = document.createElement('tr');
+            var alertTable = el('table', 'activity-table');
+            var alertHead = el('thead');
+            var alertHeadRow = el('tr');
             ['Title', 'Severity', 'Status'].forEach(function(h) {
-                var th = document.createElement('th');
-                th.textContent = h;
-                alertHeadRow.appendChild(th);
+                alertHeadRow.appendChild(el('th', null, h));
             });
             alertHead.appendChild(alertHeadRow);
             alertTable.appendChild(alertHead);
 
-            var alertBody = document.createElement('tbody');
+            var alertBody = el('tbody');
             recentAlerts.forEach(function(alert) {
-                var tr = document.createElement('tr');
-                var tdTitle = document.createElement('td');
-                tdTitle.textContent = alert.title || alert.alertDisplayName || '--';
-                tr.appendChild(tdTitle);
-
-                var tdSev = document.createElement('td');
-                tdSev.textContent = alert.severity || '--';
-                tr.appendChild(tdSev);
-
-                var tdStat = document.createElement('td');
-                tdStat.textContent = alert.status || '--';
-                tr.appendChild(tdStat);
-
+                var tr = el('tr');
+                tr.appendChild(el('td', null, alert.title || alert.alertDisplayName || '--'));
+                tr.appendChild(el('td', null, alert.severity || '--'));
+                tr.appendChild(el('td', null, alert.status || '--'));
                 alertBody.appendChild(tr);
             });
             alertTable.appendChild(alertBody);
             alertPanel.appendChild(alertTable);
         } else {
-            var emptyAlert = document.createElement('div');
-            emptyAlert.className = 'text-muted';
+            var emptyAlert = el('div', 'text-muted', 'No recent alerts');
             emptyAlert.style.fontSize = 'var(--font-size-xs)';
-            emptyAlert.textContent = 'No recent alerts';
             alertPanel.appendChild(emptyAlert);
         }
 
-        var alertLink = document.createElement('a');
-        alertLink.className = 'activity-link';
-        alertLink.textContent = 'View all security details';
+        var alertLink = el('a', 'activity-link', 'View all security details');
         alertLink.addEventListener('click', function() { window.location.hash = 'security'; });
         alertPanel.appendChild(alertLink);
-
         grid.appendChild(alertPanel);
+
         container.appendChild(grid);
     }
 
     /**
-     * Creates a summary card DOM element.
+     * Creates a summary card.
      */
-    function createCard(label, value, cardClass, valueClass) {
-        var card = document.createElement('div');
-        card.className = 'card' + (cardClass ? ' ' + cardClass : '');
-        card.style.cursor = 'pointer';
-
-        var lbl = document.createElement('div');
-        lbl.className = 'card-label';
-        lbl.textContent = label;
-        card.appendChild(lbl);
-
-        var val = document.createElement('div');
-        val.className = 'card-value' + (valueClass ? ' ' + valueClass : '');
-        val.textContent = value;
-        card.appendChild(val);
-
+    function createSummaryCard(label, value, valueClass, cardClass, navigateTo) {
+        var card = el('div', 'card' + (cardClass ? ' ' + cardClass : ''));
+        if (navigateTo) {
+            card.dataset.navigate = navigateTo;
+            card.style.cursor = 'pointer';
+        }
+        card.appendChild(el('div', 'card-label', label));
+        card.appendChild(el('div', 'card-value' + (valueClass ? ' ' + valueClass : ''), String(value)));
         return card;
     }
 
@@ -481,6 +537,147 @@ const PageOverview = (function() {
             'adminRenew': 'Admin Renew'
         };
         return labels[action] || action || '--';
+    }
+
+    /**
+     * Renders the overview page content.
+     */
+    function render(container) {
+        var summary = DataLoader.getSummary();
+
+        // Recompute summary from department-filtered data if active
+        if (typeof DepartmentFilter !== 'undefined' && DepartmentFilter.getSelected()) {
+            var fUsers = DepartmentFilter.filterData(DataLoader.getData('users'), 'department');
+            var fDevices = DepartmentFilter.filterByUPN(DataLoader.getData('devices'), 'userPrincipalName');
+            var compliant = fDevices.filter(function(d) { return d.complianceState === 'compliant'; }).length;
+            var mfaReg = fUsers.filter(function(u) { return u.mfaRegistered; }).length;
+            summary = Object.assign({}, summary, {
+                totalUsers: fUsers.length,
+                employeeCount: fUsers.filter(function(u) { return u.domain === 'employee'; }).length,
+                studentCount: fUsers.filter(function(u) { return u.domain === 'student'; }).length,
+                otherCount: fUsers.filter(function(u) { return u.domain === 'other'; }).length,
+                mfaRegisteredCount: mfaReg,
+                noMfaUsers: fUsers.length - mfaReg,
+                mfaPct: fUsers.length > 0 ? Math.round((mfaReg / fUsers.length) * 100) : 0,
+                totalDevices: fDevices.length,
+                compliantDevices: compliant,
+                compliancePct: fDevices.length > 0 ? Math.round((compliant / fDevices.length) * 100) : 0
+            });
+        }
+
+        // License stats
+        var licenses = DataLoader.getData('licenseSkus') || [];
+        var licenseStats = {
+            totalSkus: licenses.length,
+            avgUtilization: licenses.length > 0 ? Math.round(licenses.reduce(function(s, l) { return s + (l.utilizationPercent || 0); }, 0) / licenses.length) : 0,
+            totalWaste: licenses.reduce(function(s, l) { return s + (l.wasteCount || 0); }, 0),
+            wastePct: 0
+        };
+        var totalAssigned = licenses.reduce(function(s, l) { return s + (l.totalAssigned || 0); }, 0);
+        if (totalAssigned > 0) {
+            licenseStats.wastePct = Math.round((licenseStats.totalWaste / totalAssigned) * 100);
+        }
+
+        // Cache state
+        overviewState = {
+            summary: summary,
+            licenseStats: licenseStats,
+            secureScore: DataLoader.getData('secureScore')
+        };
+
+        container.textContent = '';
+
+        // Page header
+        var header = el('div', 'page-header');
+        header.appendChild(el('h2', 'page-title', 'Overview'));
+        header.appendChild(el('p', 'page-description', 'Summary of your Microsoft 365 tenant health and status'));
+        container.appendChild(header);
+
+        // Summary cards
+        var cardsGrid = el('div', 'summary-cards');
+
+        var userCard = createSummaryCard('Total Users', summary.totalUsers, null, null, 'users');
+        var userChange = el('div', 'card-change', summary.employeeCount + ' employees, ' + summary.studentCount + ' students');
+        userCard.appendChild(userChange);
+        cardsGrid.appendChild(userCard);
+
+        var mfaClass = summary.mfaPct >= 90 ? 'card-success' : (summary.mfaPct >= 70 ? 'card-warning' : 'card-critical');
+        var mfaValClass = summary.mfaPct >= 90 ? 'success' : (summary.mfaPct >= 70 ? 'warning' : 'critical');
+        var mfaCard = createSummaryCard('MFA Coverage', summary.mfaPct + '%', mfaValClass, mfaClass, 'security');
+        mfaCard.appendChild(el('div', 'card-change', summary.noMfaUsers + ' users without MFA'));
+        cardsGrid.appendChild(mfaCard);
+
+        var compClass = summary.compliancePct >= 90 ? 'card-success' : (summary.compliancePct >= 70 ? 'card-warning' : 'card-critical');
+        var compValClass = summary.compliancePct >= 90 ? 'success' : (summary.compliancePct >= 70 ? 'warning' : 'critical');
+        var compCard = createSummaryCard('Device Compliance', summary.compliancePct + '%', compValClass, compClass, 'devices');
+        compCard.appendChild(el('div', 'card-change', summary.compliantDevices + ' of ' + summary.totalDevices + ' devices'));
+        cardsGrid.appendChild(compCard);
+
+        var alertClass = summary.activeAlerts > 0 ? 'card-critical' : 'card-success';
+        var alertValClass = summary.activeAlerts > 0 ? 'critical' : 'success';
+        var alertCard = createSummaryCard('Active Alerts', summary.activeAlerts, alertValClass, alertClass, 'security');
+        alertCard.appendChild(el('div', 'card-change', summary.activeAlerts > 0 ? 'Requires attention' : 'All clear'));
+        cardsGrid.appendChild(alertCard);
+
+        container.appendChild(cardsGrid);
+
+        // Add trend indicators if available
+        if (typeof TrendHelper !== 'undefined') {
+            var history = DataLoader.getData('trendHistory');
+            if (history && history.length > 0) {
+                var cards = container.querySelectorAll('.card[data-navigate]');
+                var trendMetrics = [
+                    { key: 'totalUsers', value: summary.totalUsers },
+                    { key: 'mfaPct', value: summary.mfaPct },
+                    { key: 'compliancePct', value: summary.compliancePct },
+                    { key: 'activeAlerts', value: summary.activeAlerts }
+                ];
+                cards.forEach(function(card, idx) {
+                    if (trendMetrics[idx]) {
+                        var trend = TrendHelper.getTrend(trendMetrics[idx].value, history, trendMetrics[idx].key);
+                        if (trend) {
+                            var indicator = TrendHelper.createIndicator(trend);
+                            var valEl = card.querySelector('.card-value');
+                            if (valEl) valEl.appendChild(indicator);
+                        }
+                    }
+                });
+            }
+        }
+
+        // Tab bar
+        var tabBar = el('div', 'tab-bar');
+        var tabs = [
+            { id: 'overview', label: 'Overview' },
+            { id: 'stats', label: 'Quick Stats' }
+        ];
+        tabs.forEach(function(t) {
+            var btn = el('button', 'tab-btn' + (t.id === 'overview' ? ' active' : ''));
+            btn.dataset.tab = t.id;
+            btn.textContent = t.label;
+            tabBar.appendChild(btn);
+        });
+        container.appendChild(tabBar);
+
+        // Content area
+        var contentArea = el('div', 'content-area');
+        contentArea.id = 'overview-content';
+        container.appendChild(contentArea);
+
+        // Tab handlers
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchTab(btn.dataset.tab); });
+        });
+
+        // Card navigation
+        container.querySelectorAll('.card[data-navigate]').forEach(function(card) {
+            card.addEventListener('click', function() {
+                window.location.hash = card.dataset.navigate;
+            });
+        });
+
+        currentTab = 'overview';
+        renderContent();
     }
 
     // Public API
