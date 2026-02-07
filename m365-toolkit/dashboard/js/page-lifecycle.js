@@ -26,6 +26,12 @@ const PageLifecycle = (function() {
     /** Cached page state */
     var lifecycleState = null;
 
+    /** All issues combined for unified table */
+    var allIssues = [];
+
+    /** Column selector instance */
+    var colSelector = null;
+
     /**
      * Creates an element with className and textContent.
      */
@@ -285,132 +291,466 @@ const PageLifecycle = (function() {
     }
 
     /**
-     * Renders the Issues tab with all detail sections.
+     * Builds the unified issues list from all issue types.
      */
-    function renderIssuesTab(container) {
-        container.textContent = '';
-        var data = lifecycleState;
+    function buildIssuesList(data) {
+        var issues = [];
 
-        // Offboarding Issues Section
-        container.appendChild(createSection('Offboarding Issues', 'Disabled accounts that still have licenses or admin roles assigned', [
-            { title: 'Disabled Accounts with Licenses', count: data.disabledWithLicenses.length, tableId: 'offboarding-licenses-table', isFirst: true },
-            { title: 'Inactive Users Still Enabled', count: data.inactiveStillEnabled.length, tableId: 'offboarding-inactive-table' }
-        ]));
+        // Offboarding - Disabled with Licenses
+        data.disabledWithLicenses.forEach(function(u) {
+            issues.push({
+                category: 'Offboarding',
+                issueType: 'Disabled with Licenses',
+                severity: 'warning',
+                entityType: 'User',
+                displayName: u.displayName,
+                identifier: u.userPrincipalName,
+                department: u.department || '',
+                detail1: u.licenseCount + ' licenses',
+                detail2: '',
+                daysInactive: u.daysSinceLastSignIn || 0,
+                lastActivity: u.lastSignIn,
+                createdDate: u.createdDateTime,
+                _original: u
+            });
+        });
 
-        // Onboarding Gaps Section
-        container.appendChild(createSection('Onboarding Gaps', 'New users (last 30 days) missing required setup', [
-            { title: 'New Users Never Signed In', count: data.newUsersNoSignIn.length, tableId: 'onboarding-nosignin-table', isFirst: true },
-            { title: 'New Users Without MFA', count: data.newUsersNoMfa.length, tableId: 'onboarding-nomfa-table' }
-        ]));
+        // Offboarding - Inactive Still Enabled
+        data.inactiveStillEnabled.forEach(function(u) {
+            issues.push({
+                category: 'Offboarding',
+                issueType: 'Inactive Still Enabled',
+                severity: 'warning',
+                entityType: 'User',
+                displayName: u.displayName,
+                identifier: u.userPrincipalName,
+                department: u.department || '',
+                detail1: u.licenseCount + ' licenses',
+                detail2: '',
+                daysInactive: u.daysSinceLastSignIn || 0,
+                lastActivity: u.lastSignIn,
+                createdDate: u.createdDateTime,
+                _original: u
+            });
+        });
 
-        // Role Hygiene Section
-        container.appendChild(createSection('Role Hygiene', 'Admin accounts with security concerns', [
-            { title: 'Inactive Admins', count: data.inactiveAdmins.length, tableId: 'role-inactive-table', isFirst: true },
-            { title: 'Admins Without MFA', count: data.adminsNoMfa.length, tableId: 'role-nomfa-table' }
-        ]));
+        // Onboarding - Never Signed In
+        data.newUsersNoSignIn.forEach(function(u) {
+            issues.push({
+                category: 'Onboarding',
+                issueType: 'Never Signed In',
+                severity: 'info',
+                entityType: 'User',
+                displayName: u.displayName,
+                identifier: u.userPrincipalName,
+                department: u.department || '',
+                detail1: 'New user',
+                detail2: '',
+                daysInactive: 0,
+                lastActivity: null,
+                createdDate: u.createdDateTime,
+                _original: u
+            });
+        });
 
-        // Guest Cleanup Section
-        container.appendChild(createSection('Guest Cleanup', 'External users requiring review or removal', [
-            { title: 'Stale Guests', count: data.staleGuests.length, tableId: 'guest-stale-table', isFirst: true },
-            { title: 'Pending Invitations', count: data.pendingGuests.length, tableId: 'guest-pending-table' }
-        ]));
+        // Onboarding - No MFA
+        data.newUsersNoMfa.forEach(function(u) {
+            issues.push({
+                category: 'Onboarding',
+                issueType: 'No MFA Registered',
+                severity: 'warning',
+                entityType: 'User',
+                displayName: u.displayName,
+                identifier: u.userPrincipalName,
+                department: u.department || '',
+                detail1: 'MFA not set up',
+                detail2: '',
+                daysInactive: u.daysSinceLastSignIn || 0,
+                lastActivity: u.lastSignIn,
+                createdDate: u.createdDateTime,
+                _original: u
+            });
+        });
 
-        // Teams Governance Section
-        container.appendChild(createSection('Teams Governance', 'Teams requiring ownership or access review', [
-            { title: 'Ownerless Teams', count: data.ownerlessTeams.length, tableId: 'teams-ownerless-table', isFirst: true },
-            { title: 'Inactive Teams with Guest Access', count: data.inactiveTeamsWithGuests.length, tableId: 'teams-inactive-guests-table' }
-        ]));
+        // Role Hygiene - Inactive Admins
+        data.inactiveAdmins.forEach(function(u) {
+            issues.push({
+                category: 'Role Hygiene',
+                issueType: 'Inactive Admin',
+                severity: 'critical',
+                entityType: 'Admin',
+                displayName: u.displayName,
+                identifier: u.userPrincipalName,
+                department: u.roleName || '',
+                detail1: u.roleName || '',
+                detail2: '',
+                daysInactive: u.daysSinceLastSignIn || 0,
+                lastActivity: u.lastSignIn,
+                createdDate: null,
+                _original: u
+            });
+        });
 
-        // SharePoint Governance Section
-        container.appendChild(createSection('SharePoint Governance', 'Sites with sharing exposure, missing labels, or inactive external access', [
-            { title: 'Sites with Anonymous Links', count: data.sitesWithAnonymousLinks.length, tableId: 'sp-anon-links-table', isFirst: true },
-            { title: 'Inactive Sites with External Sharing', count: data.externalInactiveSites.length, tableId: 'sp-external-inactive-table' },
-            { title: 'Sites Without Sensitivity Labels', count: data.sitesWithoutLabels.length, tableId: 'sp-no-labels-table' }
-        ]));
+        // Role Hygiene - Admins No MFA
+        data.adminsNoMfa.forEach(function(u) {
+            issues.push({
+                category: 'Role Hygiene',
+                issueType: 'Admin Without MFA',
+                severity: 'critical',
+                entityType: 'Admin',
+                displayName: u.displayName,
+                identifier: u.userPrincipalName,
+                department: u.roleName || '',
+                detail1: u.roleName || '',
+                detail2: 'No MFA',
+                daysInactive: u.daysSinceLastSignIn || 0,
+                lastActivity: u.lastSignIn,
+                createdDate: null,
+                _original: u
+            });
+        });
 
-        // Render all tables
-        renderAllTables(data);
+        // Guest Cleanup - Stale Guests
+        data.staleGuests.forEach(function(g) {
+            issues.push({
+                category: 'Guest Cleanup',
+                issueType: 'Stale Guest',
+                severity: 'warning',
+                entityType: 'Guest',
+                displayName: g.displayName,
+                identifier: g.mail || g.userPrincipalName,
+                department: g.sourceDomain || '',
+                detail1: g.sourceDomain || '',
+                detail2: '',
+                daysInactive: g.daysSinceLastSignIn || 0,
+                lastActivity: g.lastSignIn,
+                createdDate: g.createdDateTime,
+                _original: g
+            });
+        });
+
+        // Guest Cleanup - Pending Invites
+        data.pendingGuests.forEach(function(g) {
+            issues.push({
+                category: 'Guest Cleanup',
+                issueType: 'Pending Invitation',
+                severity: 'info',
+                entityType: 'Guest',
+                displayName: g.displayName,
+                identifier: g.mail || g.userPrincipalName,
+                department: g.sourceDomain || '',
+                detail1: g.sourceDomain || '',
+                detail2: 'Pending',
+                daysInactive: 0,
+                lastActivity: null,
+                createdDate: g.createdDateTime,
+                _original: g
+            });
+        });
+
+        // Teams - Ownerless
+        data.ownerlessTeams.forEach(function(t) {
+            issues.push({
+                category: 'Teams',
+                issueType: 'Ownerless Team',
+                severity: 'warning',
+                entityType: 'Team',
+                displayName: t.displayName,
+                identifier: t.mail || '',
+                department: t.visibility || '',
+                detail1: t.memberCount + ' members',
+                detail2: t.visibility,
+                daysInactive: t.daysSinceActivity || 0,
+                lastActivity: t.lastActivityDate,
+                createdDate: t.createdDateTime,
+                _original: t
+            });
+        });
+
+        // Teams - Inactive with Guests
+        data.inactiveTeamsWithGuests.forEach(function(t) {
+            issues.push({
+                category: 'Teams',
+                issueType: 'Inactive with Guests',
+                severity: 'warning',
+                entityType: 'Team',
+                displayName: t.displayName,
+                identifier: t.mail || '',
+                department: t.visibility || '',
+                detail1: t.guestCount + ' guests',
+                detail2: t.memberCount + ' members',
+                daysInactive: t.daysSinceActivity || 0,
+                lastActivity: t.lastActivityDate,
+                createdDate: t.createdDateTime,
+                _original: t
+            });
+        });
+
+        // SharePoint - Anonymous Links
+        data.sitesWithAnonymousLinks.forEach(function(s) {
+            issues.push({
+                category: 'SharePoint',
+                issueType: 'Anonymous Links',
+                severity: 'critical',
+                entityType: 'Site',
+                displayName: s.displayName,
+                identifier: s.webUrl || '',
+                department: s.ownerDisplayName || '',
+                detail1: s.anonymousLinkCount + ' anon links',
+                detail2: s.guestLinkCount + ' guest links',
+                daysInactive: s.daysSinceActivity || 0,
+                lastActivity: s.lastActivityDate,
+                createdDate: s.createdDateTime,
+                _original: s
+            });
+        });
+
+        // SharePoint - Inactive External
+        data.externalInactiveSites.forEach(function(s) {
+            issues.push({
+                category: 'SharePoint',
+                issueType: 'Inactive External Sharing',
+                severity: 'warning',
+                entityType: 'Site',
+                displayName: s.displayName,
+                identifier: s.webUrl || '',
+                department: s.ownerDisplayName || '',
+                detail1: s.externalSharing,
+                detail2: s.totalSharingLinks + ' links',
+                daysInactive: s.daysSinceActivity || 0,
+                lastActivity: s.lastActivityDate,
+                createdDate: s.createdDateTime,
+                _original: s
+            });
+        });
+
+        // SharePoint - No Labels
+        data.sitesWithoutLabels.forEach(function(s) {
+            issues.push({
+                category: 'SharePoint',
+                issueType: 'No Sensitivity Label',
+                severity: 'info',
+                entityType: 'Site',
+                displayName: s.displayName,
+                identifier: s.webUrl || '',
+                department: s.ownerDisplayName || '',
+                detail1: s.template || '',
+                detail2: s.fileCount + ' files',
+                daysInactive: s.daysSinceActivity || 0,
+                lastActivity: s.lastActivityDate,
+                createdDate: s.createdDateTime,
+                _original: s
+            });
+        });
+
+        return issues;
     }
 
     /**
-     * Renders all issue detail tables.
+     * Applies filters and renders the issues table.
      */
-    function renderAllTables(data) {
-        Tables.render({ containerId: 'offboarding-licenses-table', data: data.disabledWithLicenses, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-            { key: 'department', label: 'Department' }, { key: 'licenseCount', label: 'Licenses' },
-            { key: 'lastSignIn', label: 'Last Sign-In', formatter: Tables.formatters.date }
-        ], pageSize: 10 });
+    function applyIssuesFilters() {
+        var filtered = allIssues.slice();
 
-        Tables.render({ containerId: 'offboarding-inactive-table', data: data.inactiveStillEnabled, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-            { key: 'department', label: 'Department' }, { key: 'daysSinceLastSignIn', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays },
-            { key: 'licenseCount', label: 'Licenses' }
-        ], pageSize: 10 });
+        // Search filter
+        var search = Filters.getValue('lifecycle-search');
+        if (search) {
+            var term = search.toLowerCase();
+            filtered = filtered.filter(function(i) {
+                return (i.displayName && i.displayName.toLowerCase().indexOf(term) !== -1) ||
+                       (i.identifier && i.identifier.toLowerCase().indexOf(term) !== -1) ||
+                       (i.department && i.department.toLowerCase().indexOf(term) !== -1);
+            });
+        }
 
-        Tables.render({ containerId: 'onboarding-nosignin-table', data: data.newUsersNoSignIn, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-            { key: 'createdDateTime', label: 'Created', formatter: Tables.formatters.date }, { key: 'department', label: 'Department' }
-        ], pageSize: 10 });
+        // Category filter
+        var category = Filters.getValue('lifecycle-category');
+        if (category && category !== 'all') {
+            filtered = filtered.filter(function(i) { return i.category === category; });
+        }
 
-        Tables.render({ containerId: 'onboarding-nomfa-table', data: data.newUsersNoMfa, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-            { key: 'createdDateTime', label: 'Created', formatter: Tables.formatters.date },
-            { key: 'lastSignIn', label: 'Last Sign-In', formatter: Tables.formatters.date }
-        ], pageSize: 10 });
+        // Severity filter
+        var severity = Filters.getValue('lifecycle-severity');
+        if (severity && severity !== 'all') {
+            filtered = filtered.filter(function(i) { return i.severity === severity; });
+        }
 
-        Tables.render({ containerId: 'role-inactive-table', data: data.inactiveAdmins, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-            { key: 'roleName', label: 'Role' }, { key: 'daysSinceLastSignIn', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-        ], pageSize: 10 });
+        // Entity type filter
+        var entityType = Filters.getValue('lifecycle-entity');
+        if (entityType && entityType !== 'all') {
+            filtered = filtered.filter(function(i) { return i.entityType === entityType; });
+        }
 
-        Tables.render({ containerId: 'role-nomfa-table', data: data.adminsNoMfa, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-            { key: 'roleName', label: 'Role' }, { key: 'accountEnabled', label: 'Enabled' }
-        ], pageSize: 10 });
+        renderIssuesTable(filtered);
+    }
 
-        Tables.render({ containerId: 'guest-stale-table', data: data.staleGuests, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'mail', label: 'Email', className: 'cell-truncate' },
-            { key: 'sourceDomain', label: 'Source' }, { key: 'daysSinceLastSignIn', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-        ], pageSize: 10 });
+    /**
+     * Renders the unified issues table.
+     */
+    function renderIssuesTable(data) {
+        var visible = colSelector ? colSelector.getVisible() : [
+            'category', 'issueType', 'severity', 'displayName', 'identifier', 'detail1', 'daysInactive'
+        ];
 
-        Tables.render({ containerId: 'guest-pending-table', data: data.pendingGuests, columns: [
-            { key: 'displayName', label: 'Name' }, { key: 'mail', label: 'Email', className: 'cell-truncate' },
-            { key: 'sourceDomain', label: 'Source' }, { key: 'createdDateTime', label: 'Invited', formatter: Tables.formatters.date }
-        ], pageSize: 10 });
+        var allDefs = [
+            { key: 'category', label: 'Category', formatter: formatCategory },
+            { key: 'issueType', label: 'Issue Type' },
+            { key: 'severity', label: 'Severity', formatter: formatSeverity },
+            { key: 'entityType', label: 'Entity Type', formatter: formatEntityType },
+            { key: 'displayName', label: 'Name' },
+            { key: 'identifier', label: 'Identifier', className: 'cell-truncate' },
+            { key: 'department', label: 'Dept/Role/Owner' },
+            { key: 'detail1', label: 'Detail' },
+            { key: 'detail2', label: 'Additional' },
+            { key: 'daysInactive', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays, className: 'cell-right' },
+            { key: 'lastActivity', label: 'Last Activity', formatter: Tables.formatters.date },
+            { key: 'createdDate', label: 'Created', formatter: Tables.formatters.date }
+        ];
 
-        Tables.render({ containerId: 'teams-ownerless-table', data: data.ownerlessTeams, columns: [
-            { key: 'displayName', label: 'Team Name' }, { key: 'visibility', label: 'Visibility' },
-            { key: 'memberCount', label: 'Members', className: 'cell-right' },
-            { key: 'lastActivityDate', label: 'Last Activity', formatter: Tables.formatters.date },
-            { key: 'daysSinceActivity', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-        ], pageSize: 10 });
+        var columns = allDefs.filter(function(col) {
+            return visible.indexOf(col.key) !== -1;
+        });
 
-        Tables.render({ containerId: 'teams-inactive-guests-table', data: data.inactiveTeamsWithGuests, columns: [
-            { key: 'displayName', label: 'Team Name' }, { key: 'guestCount', label: 'Guests', className: 'cell-right' },
-            { key: 'memberCount', label: 'Members', className: 'cell-right' },
-            { key: 'lastActivityDate', label: 'Last Activity', formatter: Tables.formatters.date },
-            { key: 'daysSinceActivity', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-        ], pageSize: 10 });
+        Tables.render({
+            containerId: 'lifecycle-issues-table',
+            data: data,
+            columns: columns,
+            pageSize: 25,
+            getRowClass: function(row) {
+                if (row.severity === 'critical') return 'row-critical';
+                if (row.severity === 'warning') return 'row-warning';
+                return '';
+            }
+        });
+    }
 
-        Tables.render({ containerId: 'sp-anon-links-table', data: data.sitesWithAnonymousLinks, columns: [
-            { key: 'displayName', label: 'Site Name' }, { key: 'anonymousLinkCount', label: 'Anonymous Links', className: 'cell-right' },
-            { key: 'guestLinkCount', label: 'Guest Links', className: 'cell-right' },
-            { key: 'ownerDisplayName', label: 'Owner' }, { key: 'storageUsedGB', label: 'Storage (GB)', className: 'cell-right' }
-        ], pageSize: 10 });
+    function formatCategory(value) {
+        var colors = {
+            'Offboarding': 'badge-warning',
+            'Onboarding': 'badge-info',
+            'Role Hygiene': 'badge-critical',
+            'Guest Cleanup': 'badge-warning',
+            'Teams': 'badge-purple',
+            'SharePoint': 'badge-neutral'
+        };
+        return '<span class="badge ' + (colors[value] || 'badge-neutral') + '">' + value + '</span>';
+    }
 
-        Tables.render({ containerId: 'sp-external-inactive-table', data: data.externalInactiveSites, columns: [
-            { key: 'displayName', label: 'Site Name' }, { key: 'externalSharing', label: 'Sharing Policy' },
-            { key: 'totalSharingLinks', label: 'Total Links', className: 'cell-right' },
-            { key: 'daysSinceActivity', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays },
-            { key: 'storageUsedGB', label: 'Storage (GB)', className: 'cell-right' }
-        ], pageSize: 10 });
+    function formatSeverity(value) {
+        var badges = {
+            'critical': 'badge-critical',
+            'warning': 'badge-warning',
+            'info': 'badge-info'
+        };
+        return '<span class="badge ' + (badges[value] || 'badge-neutral') + '">' + value.charAt(0).toUpperCase() + value.slice(1) + '</span>';
+    }
 
-        Tables.render({ containerId: 'sp-no-labels-table', data: data.sitesWithoutLabels, columns: [
-            { key: 'displayName', label: 'Site Name' }, { key: 'template', label: 'Template' },
-            { key: 'ownerDisplayName', label: 'Owner' }, { key: 'externalSharing', label: 'Sharing Policy' },
-            { key: 'fileCount', label: 'Files', className: 'cell-right' }
-        ], pageSize: 10 });
+    function formatEntityType(value) {
+        var badges = {
+            'User': 'badge-info',
+            'Admin': 'badge-critical',
+            'Guest': 'badge-warning',
+            'Team': 'badge-purple',
+            'Site': 'badge-neutral'
+        };
+        return '<span class="badge ' + (badges[value] || 'badge-neutral') + '">' + value + '</span>';
+    }
+
+    /**
+     * Renders the Issues tab with unified filterable table.
+     */
+    function renderIssuesTab(container) {
+        container.textContent = '';
+
+        // Build unified issues list
+        allIssues = buildIssuesList(lifecycleState);
+
+        // Get unique categories for filter
+        var categories = ['Offboarding', 'Onboarding', 'Role Hygiene', 'Guest Cleanup', 'Teams', 'SharePoint'];
+
+        // Filters
+        var filterDiv = el('div');
+        filterDiv.id = 'lifecycle-filter';
+        container.appendChild(filterDiv);
+
+        // Table toolbar
+        var toolbar = el('div', 'table-toolbar');
+        var colSelectorDiv = el('div');
+        colSelectorDiv.id = 'lifecycle-col-selector';
+        toolbar.appendChild(colSelectorDiv);
+        var exportBtn = el('button', 'btn btn-secondary btn-sm', 'Export CSV');
+        exportBtn.id = 'export-lifecycle-table';
+        toolbar.appendChild(exportBtn);
+        container.appendChild(toolbar);
+
+        // Issues count
+        var countDiv = el('div', 'table-count');
+        countDiv.id = 'lifecycle-count';
+        countDiv.textContent = allIssues.length + ' issues found';
+        container.appendChild(countDiv);
+
+        // Data table
+        var tableDiv = el('div');
+        tableDiv.id = 'lifecycle-issues-table';
+        container.appendChild(tableDiv);
+
+        // Create filter bar
+        Filters.createFilterBar({
+            containerId: 'lifecycle-filter',
+            controls: [
+                { type: 'search', id: 'lifecycle-search', label: 'Search', placeholder: 'Search issues...' },
+                { type: 'select', id: 'lifecycle-category', label: 'Category', options: [
+                    { value: 'all', label: 'All Categories' }
+                ].concat(categories.map(function(c) { return { value: c, label: c }; })) },
+                { type: 'select', id: 'lifecycle-severity', label: 'Severity', options: [
+                    { value: 'all', label: 'All Severities' },
+                    { value: 'critical', label: 'Critical' },
+                    { value: 'warning', label: 'Warning' },
+                    { value: 'info', label: 'Info' }
+                ]},
+                { type: 'select', id: 'lifecycle-entity', label: 'Entity', options: [
+                    { value: 'all', label: 'All Entities' },
+                    { value: 'User', label: 'Users' },
+                    { value: 'Admin', label: 'Admins' },
+                    { value: 'Guest', label: 'Guests' },
+                    { value: 'Team', label: 'Teams' },
+                    { value: 'Site', label: 'Sites' }
+                ]}
+            ],
+            onFilter: applyIssuesFilters
+        });
+
+        // Setup Column Selector
+        if (typeof ColumnSelector !== 'undefined') {
+            colSelector = ColumnSelector.create({
+                containerId: 'lifecycle-col-selector',
+                storageKey: 'lifecycle-columns',
+                allColumns: [
+                    { key: 'category', label: 'Category' },
+                    { key: 'issueType', label: 'Issue Type' },
+                    { key: 'severity', label: 'Severity' },
+                    { key: 'entityType', label: 'Entity Type' },
+                    { key: 'displayName', label: 'Name' },
+                    { key: 'identifier', label: 'Identifier' },
+                    { key: 'department', label: 'Dept/Role/Owner' },
+                    { key: 'detail1', label: 'Detail' },
+                    { key: 'detail2', label: 'Additional' },
+                    { key: 'daysInactive', label: 'Days Inactive' },
+                    { key: 'lastActivity', label: 'Last Activity' },
+                    { key: 'createdDate', label: 'Created' }
+                ],
+                defaultVisible: [
+                    'category', 'issueType', 'severity', 'displayName', 'identifier', 'detail1', 'daysInactive'
+                ],
+                onColumnsChanged: applyIssuesFilters
+            });
+        }
+
+        // Bind export button
+        Export.bindExportButton('lifecycle-issues-table', 'lifecycle-issues');
+
+        // Initial render
+        applyIssuesFilters();
     }
 
     /**
@@ -421,29 +761,6 @@ const PageLifecycle = (function() {
         card.appendChild(el('div', 'card-label', label));
         card.appendChild(el('div', 'card-value' + (valueClass ? ' ' + valueClass : ''), String(value)));
         return card;
-    }
-
-    /**
-     * Creates a section with header and table container.
-     */
-    function createSection(title, subtitle, subsections) {
-        var section = el('div', 'section');
-        var header = el('div', 'section-header');
-        var headerInner = el('div');
-        headerInner.appendChild(el('h3', 'section-title', title));
-        headerInner.appendChild(el('p', 'section-subtitle', subtitle));
-        header.appendChild(headerInner);
-        section.appendChild(header);
-
-        subsections.forEach(function(sub) {
-            var h4 = el('h4', sub.isFirst ? 'mb-sm' : 'mb-sm mt-lg', sub.title + ' (' + sub.count + ')');
-            section.appendChild(h4);
-            var tableDiv = el('div');
-            tableDiv.id = sub.tableId;
-            section.appendChild(tableDiv);
-        });
-
-        return section;
     }
 
     /**
@@ -605,215 +922,6 @@ const PageLifecycle = (function() {
 
         currentTab = 'overview';
         renderContent();
-    }
-
-    // Remove old code - the tab functions handle rendering now
-    function legacyCode() {
-        // Offboarding Issues Section
-        container.appendChild(createSection('Offboarding Issues', 'Disabled accounts that still have licenses or admin roles assigned', [
-            { title: 'Disabled Accounts with Licenses', count: disabledWithLicenses.length, tableId: 'offboarding-licenses-table', isFirst: true },
-            { title: 'Inactive Users Still Enabled', count: inactiveStillEnabled.length, tableId: 'offboarding-inactive-table' }
-        ]));
-
-        // Onboarding Gaps Section
-        container.appendChild(createSection('Onboarding Gaps', 'New users (last 30 days) missing required setup', [
-            { title: 'New Users Never Signed In', count: newUsersNoSignIn.length, tableId: 'onboarding-nosignin-table', isFirst: true },
-            { title: 'New Users Without MFA', count: newUsersNoMfa.length, tableId: 'onboarding-nomfa-table' }
-        ]));
-
-        // Role Hygiene Section
-        container.appendChild(createSection('Role Hygiene', 'Admin accounts with security concerns', [
-            { title: 'Inactive Admins', count: inactiveAdmins.length, tableId: 'role-inactive-table', isFirst: true },
-            { title: 'Admins Without MFA', count: adminsNoMfa.length, tableId: 'role-nomfa-table' }
-        ]));
-
-        // Guest Cleanup Section
-        container.appendChild(createSection('Guest Cleanup', 'External users requiring review or removal', [
-            { title: 'Stale Guests', count: staleGuests.length, tableId: 'guest-stale-table', isFirst: true },
-            { title: 'Pending Invitations', count: pendingGuests.length, tableId: 'guest-pending-table' }
-        ]));
-
-        // Teams Governance Section
-        container.appendChild(createSection('Teams Governance', 'Teams requiring ownership or access review', [
-            { title: 'Ownerless Teams', count: ownerlessTeams.length, tableId: 'teams-ownerless-table', isFirst: true },
-            { title: 'Inactive Teams with Guest Access', count: inactiveTeamsWithGuests.length, tableId: 'teams-inactive-guests-table' }
-        ]));
-
-        // SharePoint Governance Section
-        container.appendChild(createSection('SharePoint Governance', 'Sites with sharing exposure, missing labels, or inactive external access', [
-            { title: 'Sites with Anonymous Links', count: sitesWithAnonymousLinks.length, tableId: 'sp-anon-links-table', isFirst: true },
-            { title: 'Inactive Sites with External Sharing', count: externalInactiveSites.length, tableId: 'sp-external-inactive-table' },
-            { title: 'Sites Without Sensitivity Labels', count: sitesWithoutLabels.length, tableId: 'sp-no-labels-table' }
-        ]));
-
-        // Render offboarding tables
-        Tables.render({
-            containerId: 'offboarding-licenses-table',
-            data: disabledWithLicenses,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-                { key: 'department', label: 'Department' },
-                { key: 'licenseCount', label: 'Licenses' },
-                { key: 'lastSignIn', label: 'Last Sign-In', formatter: Tables.formatters.date }
-            ],
-            pageSize: 10
-        });
-
-        Tables.render({
-            containerId: 'offboarding-inactive-table',
-            data: inactiveStillEnabled,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-                { key: 'department', label: 'Department' },
-                { key: 'daysSinceLastSignIn', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays },
-                { key: 'licenseCount', label: 'Licenses' }
-            ],
-            pageSize: 10
-        });
-
-        // Render onboarding tables
-        Tables.render({
-            containerId: 'onboarding-nosignin-table',
-            data: newUsersNoSignIn,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-                { key: 'createdDateTime', label: 'Created', formatter: Tables.formatters.date },
-                { key: 'department', label: 'Department' }
-            ],
-            pageSize: 10
-        });
-
-        Tables.render({
-            containerId: 'onboarding-nomfa-table',
-            data: newUsersNoMfa,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-                { key: 'createdDateTime', label: 'Created', formatter: Tables.formatters.date },
-                { key: 'lastSignIn', label: 'Last Sign-In', formatter: Tables.formatters.date }
-            ],
-            pageSize: 10
-        });
-
-        // Render role hygiene tables
-        Tables.render({
-            containerId: 'role-inactive-table',
-            data: inactiveAdmins,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-                { key: 'roleName', label: 'Role' },
-                { key: 'daysSinceLastSignIn', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-            ],
-            pageSize: 10
-        });
-
-        Tables.render({
-            containerId: 'role-nomfa-table',
-            data: adminsNoMfa,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'userPrincipalName', label: 'UPN', className: 'cell-truncate' },
-                { key: 'roleName', label: 'Role' },
-                { key: 'accountEnabled', label: 'Enabled' }
-            ],
-            pageSize: 10
-        });
-
-        // Render guest cleanup tables
-        Tables.render({
-            containerId: 'guest-stale-table',
-            data: staleGuests,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'mail', label: 'Email', className: 'cell-truncate' },
-                { key: 'sourceDomain', label: 'Source' },
-                { key: 'daysSinceLastSignIn', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-            ],
-            pageSize: 10
-        });
-
-        Tables.render({
-            containerId: 'guest-pending-table',
-            data: pendingGuests,
-            columns: [
-                { key: 'displayName', label: 'Name' },
-                { key: 'mail', label: 'Email', className: 'cell-truncate' },
-                { key: 'sourceDomain', label: 'Source' },
-                { key: 'createdDateTime', label: 'Invited', formatter: Tables.formatters.date }
-            ],
-            pageSize: 10
-        });
-
-        // Render teams governance tables
-        Tables.render({
-            containerId: 'teams-ownerless-table',
-            data: ownerlessTeams,
-            columns: [
-                { key: 'displayName', label: 'Team Name' },
-                { key: 'visibility', label: 'Visibility' },
-                { key: 'memberCount', label: 'Members', className: 'cell-right' },
-                { key: 'lastActivityDate', label: 'Last Activity', formatter: Tables.formatters.date },
-                { key: 'daysSinceActivity', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-            ],
-            pageSize: 10
-        });
-
-        Tables.render({
-            containerId: 'teams-inactive-guests-table',
-            data: inactiveTeamsWithGuests,
-            columns: [
-                { key: 'displayName', label: 'Team Name' },
-                { key: 'guestCount', label: 'Guests', className: 'cell-right' },
-                { key: 'memberCount', label: 'Members', className: 'cell-right' },
-                { key: 'lastActivityDate', label: 'Last Activity', formatter: Tables.formatters.date },
-                { key: 'daysSinceActivity', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays }
-            ],
-            pageSize: 10
-        });
-
-        // Render SharePoint governance tables
-        Tables.render({
-            containerId: 'sp-anon-links-table',
-            data: sitesWithAnonymousLinks,
-            columns: [
-                { key: 'displayName', label: 'Site Name' },
-                { key: 'anonymousLinkCount', label: 'Anonymous Links', className: 'cell-right' },
-                { key: 'guestLinkCount', label: 'Guest Links', className: 'cell-right' },
-                { key: 'externalSharing', label: 'Sharing Policy' },
-                { key: 'lastActivityDate', label: 'Last Activity', formatter: Tables.formatters.date }
-            ],
-            pageSize: 10
-        });
-
-        Tables.render({
-            containerId: 'sp-external-inactive-table',
-            data: externalInactiveSites,
-            columns: [
-                { key: 'displayName', label: 'Site Name' },
-                { key: 'externalSharing', label: 'Sharing Policy' },
-                { key: 'totalSharingLinks', label: 'Total Links', className: 'cell-right' },
-                { key: 'daysSinceActivity', label: 'Days Inactive', formatter: Tables.formatters.inactiveDays },
-                { key: 'storageUsedGB', label: 'Storage (GB)', className: 'cell-right' }
-            ],
-            pageSize: 10
-        });
-
-        Tables.render({
-            containerId: 'sp-no-labels-table',
-            data: sitesWithoutLabels,
-            columns: [
-                { key: 'displayName', label: 'Site Name' },
-                { key: 'template', label: 'Template' },
-                { key: 'ownerDisplayName', label: 'Owner' },
-                { key: 'externalSharing', label: 'Sharing Policy' },
-                { key: 'fileCount', label: 'Files', className: 'cell-right' }
-            ],
-            pageSize: 10
-        });
     }
 
     // Public API
