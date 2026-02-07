@@ -2,545 +2,195 @@
 
 ## Overview
 
-TenantScope is a PowerShell-based data collection and dashboard system for Microsoft 365 tenant security and lifecycle management. The architecture follows a modular, local-first approach with clear separation between data collection, processing, and presentation layers.
+TenantScope is a PowerShell-based data collection and dashboard system for Microsoft 365 tenant security, governance, and lifecycle visibility. The architecture follows a modular, local-first approach: collectors pull data from Microsoft Graph, store it locally as JSON, and a static dashboard renders insights without any server-side dependencies.
+
+Key characteristics:
+- Local-first: data stays in `data/` and is never sent to external services.
+- Read-only: collectors only query Microsoft Graph.
+- Modular: each collector is independent and returns structured JSON.
+- Resilient: failures are isolated per collector and do not halt the pipeline.
+
+For detailed collector behavior, see `COLLECTOR_BREAKDOWN.md`. For dashboard
+alignment and gap reviews, see the per-collector files in `reviews/`.
 
 ## System Architecture
 
 ### High-Level Data Flow
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    DATA COLLECTION LAYER                     │
-│  PowerShell Scripts (Microsoft Graph API)                    │
-│                                                              │
-│  Invoke-DataCollection.ps1 (Orchestrator)                    │
-│       │                                                     │
-│       ├─ Get-UserData.ps1                                   │
-│       ├─ Get-LicenseData.ps1                                │
-│       ├─ Get-GuestData.ps1                                  │
-│       ├─ Get-MFAData.ps1                                    │
-│       ├─ Get-AdminRoleData.ps1                              │
-│       ├─ Get-SignInData.ps1                                 │
-│       ├─ Get-DeviceData.ps1                                 │
-│       ├─ Get-AutopilotData.ps1                              │
-│       ├─ Get-DefenderData.ps1                               │
-│       ├─ Get-EnterpriseAppData.ps1                          │
-│       ├─ Get-AuditLogData.ps1                               │
-│       ├─ Get-PIMData.ps1                                    │
-│       ├─ Get-TeamsData.ps1                                  │
-│       ├─ Get-SharePointData.ps1                             │
-│       ├─ Get-SecureScoreData.ps1                            │
-│       ├─ Get-AppSignInData.ps1                              │
-│       └─ Get-ConditionalAccessData.ps1                      │
-│                                                              │
-│  Output: JSON files in data/ directory                       │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          DATA COLLECTION LAYER                           │
+│  PowerShell Collectors (Microsoft Graph API)                             │
+│                                                                          │
+│  Invoke-DataCollection.ps1 (Orchestrator)                                │
+│    ├─ Identity & Access: Users, Guests, MFA, Admin Roles, Deleted Users  │
+│    ├─ Security & Risk: Sign-ins, Risk, Defender, Secure Score, CA, ASR   │
+│    ├─ Device Mgmt: Devices, Autopilot, Compliance, Config, Updates, BL   │
+│    ├─ Apps & Governance: Enterprise Apps, Secrets, App Deployments       │
+│    └─ Collaboration: Teams, SharePoint                                  │
+│                                                                          │
+│  Output: JSON files in data/                                             │
+└─────────────────────────────────────────────────────────────────────────┘
                                │
                                ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    DATA PROCESSING LAYER                     │
-│  Cross-referencing and Metadata Generation                   │
-│                                                              │
-│  • MFA status merged into user records                      │
-│  • Admin role flags added to users                          │
-│  • Collection metadata generated                            │
-│  • Summary statistics computed                              │
-│  • License overlap analysis                                 │
-│  • Security gap detection                                   │
-│                                                              │
-│  Output: Enhanced JSON files + collection-metadata.json      │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          DATA PROCESSING LAYER                           │
+│  Cross-referencing + Metadata                                            │
+│                                                                          │
+│  • MFA status merged into users                                          │
+│  • Admin role flags added to users                                       │
+│  • Summary statistics computed                                           │
+│  • Trend history snapshot appended                                       │
+│  • Collection metadata written                                           │
+└─────────────────────────────────────────────────────────────────────────┘
                                │
                                ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    PRESENTATION LAYER                        │
-│  Static HTML Dashboard (Vanilla JavaScript)                  │
-│                                                              │
-│  • Single-page application with hash routing                │
-│  • Central data store (DataLoader module)                   │
-│  • Page-based architecture (18 pages)                       │
-│  • Pure SVG charts (no external dependencies)               │
-│  • CSV export functionality                                 │
-│  • Responsive design with CSS custom properties             │
-│  • Column selector and focus/breakdown analysis             │
-│  • Business intelligence features                           │
-│                                                              │
-│  Build process: scripts/Build-Dashboard.ps1                  │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          PRESENTATION LAYER                              │
+│  Static HTML Dashboard (Vanilla JS)                                      │
+│                                                                          │
+│  • Hash-based routing                                                    │
+│  • Central data loader                                                   │
+│  • Pure SVG charts (no external libs)                                    │
+│  • CSV export, filters, and insights                                     │
+│                                                                          │
+│  Build: scripts/Build-Dashboard.ps1                                      │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Component Details
+## Core Components
 
-### 1. Orchestrator Script (`Invoke-DataCollection.ps1`)
+### 1. Orchestrator (`Invoke-DataCollection.ps1`)
 
-**Purpose**: Main entry point that coordinates the entire data collection process.
+Responsibilities:
+- Loads and validates `config.json`
+- Connects to Microsoft Graph with required scopes
+- Runs collectors sequentially with a brief delay to avoid throttling
+- Cross-references MFA and admin flags into `users.json`
+- Generates `collection-metadata.json` and `trend-history.json`
+- Builds the dashboard bundle
 
-**Key Functions**:
-- Configuration loading and validation
-- Microsoft Graph authentication with delegated permissions
-- Collector script orchestration (sequential execution)
-- Cross-referencing data (MFA → users, admin roles → users)
-- Metadata generation and summary statistics
-- Error handling and retry logic
+Notable behaviors:
+- Collector failures do not halt execution.
+- Empty JSON outputs are written on failure to avoid dashboard errors.
+- Summary statistics are computed from collected JSON files.
 
-**Authentication Flow**:
-1. Loads `config.json` with tenant ID
-2. Connects to Microsoft Graph with required scopes (delegated permissions)
-3. Uses interactive sign-in for security
-4. Validates connection and permissions
+### 2. Collector Library (`lib/CollectorBase.ps1`)
 
-**Error Handling**:
-- Individual collector failures don't break entire pipeline
-- Exponential backoff retry for Graph API throttling (5 retries, 60s base)
-- Graceful degradation when data sources unavailable
+Shared utilities used by all collectors:
+- `Invoke-GraphWithRetry` for throttling backoff
+- Date helpers (`Get-DaysSinceDate`, `Get-DaysUntilDate`, `Format-IsoDate`)
+- Domain classification (`Get-DomainClassification`, `Get-SourceDomain`)
+- Status helpers (`Get-ActivityStatus`, `Get-CertificateStatus`)
+- Standardized output helpers (`New-CollectorResult`, `Save-CollectorData`)
 
-### 2. Collector Scripts (`collectors/*.ps1`)
+### 3. Collector Inventory (27 Scripts)
 
-**Common Pattern**: All collectors follow the same structure:
-1. Accept `-Config` and `-OutputPath` parameters
-2. Use `Invoke-GraphWithRetry` helper for API calls
-3. Transform Graph API responses to standardized JSON schema
-4. Return success/failure status with count and errors
+Each collector takes `-Config` and `-OutputPath`, calls Graph, normalizes data, and writes a JSON file. Some collectors use Microsoft Graph beta endpoints or report CSV downloads; these are called out in `COLLECTOR_BREAKDOWN.md`.
 
-**Data Types Collected**:
+| Collector Script | Output File | Category | Notes |
+|---|---|---|---|
+| `Get-UserData.ps1` | `users.json` | Identity | Includes manager expansion and license assignments |
+| `Get-LicenseData.ps1` | `license-skus.json` | Identity | Waste/overlap calculations from `users.json` |
+| `Get-GuestData.ps1` | `guests.json` | Identity | Membership counts via `/memberOf` |
+| `Get-MFAData.ps1` | `mfa-status.json` | Identity | Reports API with fallback to direct Graph |
+| `Get-AdminRoleData.ps1` | `admin-roles.json` | Identity | Role membership analysis |
+| `Get-DeletedUsers.ps1` | `deleted-users.json` | Identity | Recycle bin visibility |
+| `Get-SignInData.ps1` | `risky-signins.json` | Security | Risk detections (P2) |
+| `Get-SignInLogs.ps1` | `signin-logs.json` | Security | Detailed sign-ins with summaries |
+| `Get-DefenderData.ps1` | `defender-alerts.json` | Security | Uses alerts_v2 with fallback |
+| `Get-SecureScoreData.ps1` | `secure-score.json` | Security | Latest secure score + actions |
+| `Get-ConditionalAccessData.ps1` | `conditional-access.json` | Security | Policy classification |
+| `Get-ASRRules.ps1` | `asr-rules.json` | Security | Uses beta Intune endpoints |
+| `Get-DeviceData.ps1` | `devices.json` | Device Mgmt | Detailed device inventory + insights |
+| `Get-AutopilotData.ps1` | `autopilot.json` | Device Mgmt | Autopilot identities |
+| `Get-CompliancePolicies.ps1` | `compliance-policies.json` | Device Mgmt | Compliance policy health |
+| `Get-ConfigurationProfiles.ps1` | `configuration-profiles.json` | Device Mgmt | Legacy + settings catalog |
+| `Get-WindowsUpdateStatus.ps1` | `windows-update-status.json` | Device Mgmt | Rings, policies, and compliance |
+| `Get-BitLockerStatus.ps1` | `bitlocker-status.json` | Device Mgmt | Encryption + key escrow |
+| `Get-AppDeployments.ps1` | `app-deployments.json` | Device Mgmt | App install status |
+| `Get-EndpointAnalytics.ps1` | `endpoint-analytics.json` | Device Mgmt | Endpoint analytics (beta) |
+| `Get-EnterpriseAppData.ps1` | `enterprise-apps.json` | Apps | Credential expiry + owners |
+| `Get-ServicePrincipalSecrets.ps1` | `service-principal-secrets.json` | Apps | App registration credentials |
+| `Get-AuditLogData.ps1` | `audit-logs.json` | Governance | Directory audit logs |
+| `Get-PIMData.ps1` | `pim-activity.json` | Governance | PIM requests + eligibility |
+| `Get-AppSignInData.ps1` | `app-signins.json` | Governance | App usage via sign-ins |
+| `Get-TeamsData.ps1` | `teams.json` | Collaboration | Teams activity report |
+| `Get-SharePointData.ps1` | `sharepoint-sites.json` | Collaboration | SharePoint usage report |
 
-| Collector | Graph API Endpoints | Key Data Collected |
-|-----------|-------------------|-------------------|
-| Get-UserData | `/users` | User profiles, sign-in activity, licenses |
-| Get-LicenseData | `/subscribedSkus` | SKU details, assigned counts |
-| Get-GuestData | `/users` (filtered) | External users, invitation status |
-| Get-MFAData | Reports API | MFA registration status |
-| Get-AdminRoleData | `/directoryRoles` | Role definitions and members |
-| Get-SignInData | `/auditLogs/signIns` | Risky sign-ins, risk detections |
-| Get-DeviceData | `/deviceManagement/managedDevices` | Intune devices, compliance |
-| Get-AutopilotData | `/deviceManagement/windowsAutopilotDeviceIdentities` | Autopilot enrollment |
-| Get-DefenderData | Security API | Security alerts, incidents |
-| Get-EnterpriseAppData | `/servicePrincipals` | Application permissions, usage |
-| Get-AuditLogData | `/auditLogs/directoryAudits` | Administrative activity |
-| Get-PIMData | `/roleManagement/directory` | PIM activations, assignments |
-| Get-TeamsData | `/groups` (filtered) | Microsoft Teams, membership |
-| Get-SharePointData | `/sites` | SharePoint sites, storage, activity |
-| Get-SecureScoreData | `/security/secureScores` | Microsoft Secure Score, improvement actions |
-| Get-AppSignInData | `/auditLogs/signIns` | Application sign-in data, usage analytics |
-| Get-ConditionalAccessData | `/identity/conditionalAccess/policies` | Conditional Access policies, security gap analysis |
+### 4. Configuration (`config.json`)
 
-### 3. Configuration System (`config.json`)
+Key configuration sections:
+- `tenantId`: Target tenant GUID
+- `domains`: Domain mappings for employee vs student classification
+- `thresholds`: Inactivity thresholds used by multiple collectors
+- `collection`: Time windows for logs and alerts
+- `licensePricing` and `licenseOverlapRules`: Used by `Get-LicenseData.ps1`
+- `dashboard`: Title/subtitle for the UI
 
-**Structure**:
-```json
-{
-  "tenantId": "guid",
-  "domains": {
-    "employees": "@company.com",
-    "students": "@students.company.com"
-  },
-  "thresholds": {
-    "inactiveDays": 90,
-    "staleGuestDays": 60,
-    "staleDeviceDays": 90,
-    "inactiveTeamDays": 90,
-    "inactiveSiteDays": 90,
-    "highStorageThresholdGB": 20
-  },
-  "collection": {
-    "signInLogDays": 30,
-    "defenderAlertDays": 30,
-    "auditLogDays": 30,
-    "pimActivityDays": 30
-  },
-  "currency": {
-    "code": "NOK",
-    "symbol": "kr",
-    "locale": "nb-NO"
-  },
-  "licensePricing": {
-    "SPE_E3": 350,
-    "SPE_E5": 580,
-    "M365EDU_A3_FACULTY": 70,
-    "M365EDU_A1": 0,
-    "M365EDU_A3_STUUSEBNFT": 30,
-    "ENTERPRISEPACK": 270,
-    "EXCHANGESTANDARD": 55,
-    "POWER_BI_PRO": 105,
-    "INTUNE_A": 90,
-    "AAD_PREMIUM": 65,
-    "AAD_PREMIUM_P2": 100,
-    "VISIOCLIENT": 165,
-    "PROJECTPREMIUM": 520,
-    "TEAMS_EXPLORATORY": 0,
-    "FLOW_FREE": 0,
-    "POWERAPPS_VIRAL": 0,
-    "STREAM": 0,
-    "POWER_BI_STANDARD": 0
-  },
-  "licenseOverlapRules": [
-    { "name": "E3 + E5", "higherSku": "SPE_E5", "lowerSku": "SPE_E3", "description": "E5 includes all E3 capabilities" },
-    { "name": "A3 Faculty + E3", "higherSku": "SPE_E3", "lowerSku": "M365EDU_A3_FACULTY", "description": "E3 includes overlapping functionality" }
-  ],
-  "dashboard": {
-    "title": "TenantScope",
-    "subtitle": "M365 Tenant Dashboard"
-  }
-}
-```
+Note: `pimActivityDays` exists in `config.sample.json` but is not currently used by the PIM collector.
 
-**Validation**: All required fields are validated before collection begins.
+### 5. Data Storage (`data/`)
 
-### 4. Data Storage Format
+Primary outputs (one per collector) plus metadata:
+- `users.json`, `guests.json`, `deleted-users.json`
+- `license-skus.json`, `mfa-status.json`, `admin-roles.json`
+- `risky-signins.json`, `signin-logs.json`, `app-signins.json`
+- `defender-alerts.json`, `secure-score.json`, `conditional-access.json`, `asr-rules.json`
+- `devices.json`, `autopilot.json`, `compliance-policies.json`, `configuration-profiles.json`
+- `windows-update-status.json`, `bitlocker-status.json`, `app-deployments.json`, `endpoint-analytics.json`
+- `enterprise-apps.json`, `service-principal-secrets.json`
+- `audit-logs.json`, `pim-activity.json`
+- `teams.json`, `sharepoint-sites.json`
+- `collection-metadata.json`, `trend-history.json`
 
-**Location**: `data/` directory (gitignored for security)
+### 6. Dashboard (`dashboard/`)
 
-**File Structure**:
-- `users.json` - Array of user objects with standardized schema
-- `license-skus.json` - SKU allocation data
-- `guests.json` - External user accounts
-- `mfa-status.json` - MFA registration status
-- `admin-roles.json` - Directory role assignments
-- `risky-signins.json` - Sign-in risk events
-- `devices.json` - Intune device inventory
-- `autopilot.json` - Windows Autopilot devices
-- `defender-alerts.json` - Security alerts
-- `enterprise-apps.json` - Service principal data
-- `audit-logs.json` - Directory audit logs
-- `pim-activity.json` - Privileged Identity Management activity
-- `teams.json` - Microsoft Teams data
-- `sharepoint-sites.json` - SharePoint site inventory
-- `secure-score.json` - Microsoft Secure Score and improvement actions
-- `app-signins.json` - Application sign-in data and usage analytics
-- `conditional-access.json` - Conditional Access policies and security gaps
-- `collection-metadata.json` - Collection metadata and summary
+Technology:
+- Static HTML + CSS + vanilla JS
+- Hash-based routing (`#overview`, `#users`, ...)
+- Central `DataLoader` with bundle or fetch fallback
+- `DataLoader` unwraps nested structures where needed (e.g., `teams.json`)
+- SVG charts, filters, and CSV export
 
-**Schema Consistency**: All data files use consistent field naming (camelCase) and ISO 8601 date formatting.
-
-### 5. Dashboard Architecture (`dashboard/`)
-
-**Technology Stack**:
-- **HTML5**: Semantic markup, accessibility features
-- **CSS3**: CSS Custom Properties (design tokens), responsive grid
-- **Vanilla JavaScript**: No frameworks, module pattern with IIFE
-- **SVG**: Pure SVG charts (no external charting libraries)
-- **System Font Stack**: No external font dependencies
-
-**Module Structure**:
-
-| File | Purpose |
-|------|---------|
-| `index.html` | Main HTML with navigation structure |
-| `css/style.css` | Single stylesheet with design tokens |
-| `js/app.js` | Application controller, routing |
-| `js/data-loader.js` | Central data store, loading logic |
-| `js/dashboard-charts.js` | SVG donut chart renderer |
-| `js/filters.js` | Table filtering utilities |
-| `js/tables.js` | Table rendering and sorting |
-| `js/export.js` | CSV export functionality |
-| `js/page-*.js` | Page-specific rendering (18 pages) |
-
-**Data Loading Strategy**:
-1. **Bundled Data**: `data-bundle.js` generated by `Build-Dashboard.ps1` (bypasses CORS)
-2. **HTTP Fallback**: Individual JSON file fetching for HTTP servers
-3. **Central Store**: `DataLoader` module provides unified data access
-
-**Routing**: Hash-based routing (`#overview`, `#users`, etc.) with page registry system.
-
-### 6. Build System (`scripts/Build-Dashboard.ps1`)
-
-**Functions**:
-1. Copies JSON data files to `dashboard/data/`
-2. Generates `data-bundle.js` with all data embedded
-3. Optionally opens dashboard in browser
-4. Supports sample data mode for testing
-
-**Data Bundle Generation**:
-```javascript
-// data-bundle.js
-window.__M365_DATA = {
-  users: [...],
-  devices: [...],
-  // ... all data types
-};
-```
+Build flow:
+- `scripts/Build-Dashboard.ps1` copies JSON files to `dashboard/data/`
+- Generates `data-bundle.js` for CORS-safe local viewing
 
 ### 7. Utility Scripts
 
-**`Install-Prerequisites.ps1`**:
-- Installs Microsoft Graph PowerShell SDK modules
-- Creates required directories
-- Verifies PowerShell version (7.0+)
-
-**`Schedule-Collection.ps1`**:
-- Creates Windows Scheduled Tasks for automated collection
-- Supports daily/weekly schedules
-- Configurable execution time
-
-**`tools/Invoke-DeviceReport.ps1`**:
-- Generates per-device HTML reports
-- Operational tool for helpdesk scenarios
+- `Install-Prerequisites.ps1`: Graph module setup and checks
+- `scripts/Schedule-Collection.ps1`: Scheduled task creation
+- `tools/Invoke-DeviceReport.ps1`: Per-device HTML report generation
 
 ## Design Principles
 
-### 1. Local-First Architecture
-- All data stored locally as JSON files
-- No cloud dependencies for dashboard
-- No external services or APIs required
+- Local-first and read-only
+- Config-driven behavior
+- Graceful degradation on partial failures
+- Framework-free dashboard for portability
 
-### 2. Security by Design
-- Delegated permissions only (no application permissions)
-- Data stays on-premises (`data/` gitignored)
-- All operations are read-only
-- No secrets in configuration
+## Error Handling and Resilience
 
-### 3. Graceful Degradation
-- Individual collector failures don't break pipeline
-- Missing licensing features handled gracefully
-- Empty JSON files created for failed collectors
-- Dashboard works with partial data
-
-### 4. Config-Driven Behavior
-- All tenant-specific settings in `config.json`
-- No hardcoded values in collector scripts
-- Thresholds configurable per deployment
-
-### 5. Framework-Free Dashboard
-- No npm/node_modules dependencies
-- Pure vanilla JavaScript
-- System font stack for performance
-- SVG charts instead of charting libraries
-
-## Data Flow Details
-
-### Collection Phase
-1. **Configuration**: Load and validate `config.json`
-2. **Authentication**: Connect to Microsoft Graph with delegated permissions
-3. **Parallel Collection**: Run collectors sequentially (with 5s pauses)
-4. **Data Transformation**: Convert Graph API responses to standardized JSON
-5. **Cross-Referencing**: Merge MFA and admin flags into user records
-6. **Metadata Generation**: Create `collection-metadata.json` with summary stats
-
-### Processing Phase
-1. **Data Copying**: `Build-Dashboard.ps1` copies JSON files to dashboard directory
-2. **Bundle Generation**: Create `data-bundle.js` with embedded data
-3. **CORS Bypass**: Bundle approach avoids file:// CORS restrictions
-
-### Presentation Phase
-1. **Initialization**: `DataLoader.loadAll()` loads data from bundle or HTTP
-2. **Routing**: Hash change detection loads appropriate page module
-3. **Rendering**: Page module renders tables, charts, metrics
-4. **Interactivity**: Filtering, sorting, export functionality
-
-## Error Handling Strategy
-
-### PowerShell Layer
-- `try/catch` blocks around all Graph API calls
-- `Invoke-GraphWithRetry` with exponential backoff
-- Collector status tracking in metadata
-- Empty JSON files created on failure
-
-### JavaScript Layer
-- `try/catch` around data loading
-- Graceful fallback messages
-- Data validation before rendering
-- Console logging for debugging
-
-### User Experience
-- Loading overlay during data fetch
-- Error states with recovery instructions
-- Partial data rendering when possible
+- Collectors use retry logic and handle throttling
+- Failures write empty JSON structures to keep UI stable
+- Detailed errors stored in `collection-metadata.json`
 
 ## Performance Considerations
 
-### Collection Optimization
-- Graph API property selection (only needed fields)
-- Pagination handling with `-All` parameter
+- Use of Graph `-All` and pagination handling
 - 5-second pauses between collectors
-- Exponential backoff for throttling
-
-### Dashboard Performance
-- Central data store (single load)
-- Virtual DOM pattern for table updates
-- Debounced filtering
-- SVG charts (lightweight, no dependencies)
-
-### Memory Management
-- JSON streaming for large datasets
-- Progressive rendering for tables
-- Cleanup of event listeners
+- Report-based endpoints to avoid N+1 calls where possible
+- Dashboard loads all data once and renders from memory
 
 ## Extension Points
 
-### Adding New Collectors
-1. Create new `.ps1` file in `collectors/` directory
-2. Follow established pattern (parameters, return format)
-3. Add to collector list in `Invoke-DataCollection.ps1`
-4. Add data type to `DataLoader` module
-5. Create page module if new dashboard page needed
+To add a new collector:
+1. Create `collectors/Get-*.ps1` using shared helpers.
+2. Add it to the collector list in `Invoke-DataCollection.ps1`.
+3. Add a new data type to the dashboard loader and page modules.
 
-### Customizing Dashboard
-1. Modify `config.json` for tenant-specific settings
-2. Update `css/style.css` for branding
-3. Add new page modules following established pattern
-4. Extend `DataLoader` for new data types
+## Last Updated
 
-### Integration Opportunities
-1. **Web Server**: Host dashboard on IIS/Apache
-2. **Data Pipeline**: Process JSON files with other tools
-3. **Monitoring**: Integrate with SIEM/SOAR platforms
-4. **Reporting**: Generate PDF reports from data
-
-## Deployment Scenarios
-
-### Single Administrator
-- Local execution on admin workstation
-- Manual or scheduled collection
-- Dashboard opened locally
-
-### Team Deployment
-- Central data collection server
-- Shared dashboard via web server
-- Role-based access control at web server level
-
-### Enterprise Integration
-- Data exported to data warehouse
-- Integration with existing monitoring tools
-- Automated alerting based on thresholds
-
-## Security Considerations
-
-### Authentication & Authorization
-- Delegated permissions (user context)
-- Requires admin account with appropriate roles
-- No persistent credentials stored
-
-### Data Protection
-- Data stored locally only
-- `data/` directory excluded from version control
-- No sensitive data in dashboard (only metadata)
-
-### Operational Security
-- All operations are read-only
-- No modification of tenant configuration
-- Audit logging of collection activities
-
-## Licensing Requirements
-
-### Microsoft 365 Licenses
-- **Entra ID P1/P2**: Required for sign-in activity and risk detections
-- **Microsoft Defender**: Required for security alerts
-- **Intune**: Required for device management data
-- **Azure AD Premium**: Required for PIM activity
-
-### Feature Availability
-| Feature | Minimum License |
-|---------|----------------|
-| User sign-in activity | Entra ID P1 |
-| Risk detections | Entra ID P2 |
-| MFA registration reports | Entra ID P1 |
-| Device compliance | Intune |
-| Security alerts | Microsoft Defender |
-| PIM activity | Azure AD Premium P2 |
-
-## Troubleshooting Architecture
-
-### Common Issues
-1. **Authentication Failures**: Verify admin roles and permissions
-2. **Missing Data**: Check licensing requirements
-3. **Throttling**: Automatic retry handles most cases
-4. **Dashboard Errors**: Check browser console for details
-
-### Diagnostic Tools
-- `collection-metadata.json`: Detailed collection results
-- Console logs: JavaScript debugging information
-- PowerShell transcript: Enable with `Start-Transcript`
-
-### Recovery Procedures
-1. **Partial Failure**: Individual collectors can be re-run
-2. **Data Corruption**: Delete `data/` directory and re-collect
-3. **Dashboard Issues**: Re-run `Build-Dashboard.ps1`
-
-## Future Architecture Considerations
-
-### Scalability
-- Support for multi-tenant collection
-- Database backend for large datasets
-- API-based data access
-
-### Enhanced Features
-- Real-time data updates via Graph webhooks
-- Advanced analytics and machine learning
-- Integration with ITSM platforms
-
-### Platform Expansion
-- macOS/Linux support for collection
-- Mobile-responsive dashboard enhancements
-- Progressive Web App capabilities
-
- Data Flow Architecture
-
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  1. COLLECTION (PowerShell)                                     │
-  ├─────────────────────────────────────────────────────────────────┤
-  │                                                                 │
-  │  config.json → Invoke-DataCollection.ps1 → Microsoft Graph API │
-  │                        │                                        │
-  │                        ├── Get-UserData.ps1      → users.json   │
-  │                        ├── Get-LicenseData.ps1   → license-skus.json │
-  │                        ├── Get-GuestData.ps1     → guests.json  │
-  │                        ├── Get-MFAData.ps1       → mfa-status.json │
-  │                        ├── Get-DeviceData.ps1    → devices.json │
-  │                        └── ... (17 collectors total)            │
-  │                                                                 │
-  │                        ↓ Cross-reference                        │
-  │                        Merge MFA + Admin flags into users.json  │
-  └─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  2. STORAGE (JSON Files in /data/)                              │
-  ├─────────────────────────────────────────────────────────────────┤
-  │  users.json, devices.json, guests.json, mfa-status.json,       │
-  │  admin-roles.json, enterprise-apps.json, teams.json,           │
-  │  sharepoint-sites.json, secure-score.json, ...                 │
-  │  collection-metadata.json (summary stats)                       │
-  └─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-  ┌─────────────────────────────────────────────────────────────────┐
-  │  3. DASHBOARD (Static HTML + Vanilla JS)                        │
-  ├─────────────────────────────────────────────────────────────────┤
-  │  index.html → app.js → data-loader.js (fetches all JSON)       │
-  │                   │                                             │
-  │                   └── Hash routing (#users, #devices, etc.)     │
-  │                          │                                      │
-  │                          ├── page-overview.js  → Summary cards  │
-  │                          ├── page-users.js     → Users table    │
-  │                          ├── page-devices.js   → Devices table  │
-  │                          └── page-*.js (18 pages)               │
-  └─────────────────────────────────────────────────────────────────┘
-
-  Key Files
-  ┌──────────────┬─────────────────────────────┬────────────────────────────────────────────────┐
-  │    Layer     │            File             │                    Purpose                     │
-  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
-  │ Orchestrator │ Invoke-DataCollection.ps1   │ Runs all collectors, handles cross-referencing │
-  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
-  │ Shared Utils │ lib/CollectorBase.ps1       │ Retry logic, date utils, status helpers        │
-  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
-  │ Collectors   │ collectors/Get-*.ps1        │ 17 scripts, each calls Graph API → writes JSON │
-  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
-  │ Data Store   │ data/*.json                 │ 18 JSON files with tenant data                 │
-  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
-  │ Dashboard    │ dashboard/js/data-loader.js │ Fetches all JSON into memory                   │
-  ├──────────────┼─────────────────────────────┼────────────────────────────────────────────────┤
-  │ Pages        │ dashboard/js/page-*.js      │ Renders each dashboard view                    │
-  └──────────────┴─────────────────────────────┴────────────────────────────────────────────────┘
-  Flow Summary
-
-  1. Collect: PowerShell calls Microsoft Graph API → transforms data → writes JSON files
-  2. Store: All data persisted as JSON in /data/ directory
-  3. Render: Dashboard fetches JSON on load → JavaScript renders tables/charts
-
-  The dashboard is a static SPA with hash-based routing - no backend needed after collection.
-
----
-
-*Last Updated: February 2026*
-*Architecture Version: 1.2*
+Architecture Version: 1.3  
+Last Updated: February 7, 2026

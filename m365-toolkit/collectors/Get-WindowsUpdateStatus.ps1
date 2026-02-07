@@ -81,8 +81,11 @@ try {
             expeditedUpdatesActive = 0
             securityUpdates = 0
             pausedRings = 0
+            driversNeedingReview = 0
         }
     }
+
+    $groupNameCache = @{}
 
     # ========================================
     # Collect Windows Update Rings
@@ -119,13 +122,8 @@ try {
                     -OutputType PSObject
 
                 foreach ($assignment in $assignmentResponse.value) {
-                    $targetType = $assignment.target.'@odata.type'
-                    if ($targetType -eq "#microsoft.graph.allDevicesAssignmentTarget") {
-                        $assignedGroups += "All Devices"
-                    }
-                    elseif ($targetType -eq "#microsoft.graph.groupAssignmentTarget") {
-                        $assignedGroups += "Group: $($assignment.target.groupId)"
-                    }
+                    $target = Resolve-AssignmentTarget -Assignment $assignment -GroupNameCache $groupNameCache -GroupPrefix "Group: "
+                    $assignedGroups += $target.name
                 }
             }
             catch { }
@@ -171,6 +169,10 @@ try {
         }
 
         $updateData.summary.totalRings = $updateData.updateRings.Count
+        $ringTotalDevices = ($updateData.updateRings | Measure-Object -Property totalDevices -Sum).Sum
+        if ($ringTotalDevices) {
+            $updateData.summary.totalManagedDevices = $ringTotalDevices
+        }
         Write-Host "      Retrieved $($updateData.updateRings.Count) update rings" -ForegroundColor Gray
     }
     catch {
@@ -213,13 +215,8 @@ try {
                     -OutputType PSObject
 
                 foreach ($assignment in $assignmentResponse.value) {
-                    $targetType = $assignment.target.'@odata.type'
-                    if ($targetType -eq "#microsoft.graph.allDevicesAssignmentTarget") {
-                        $assignedGroups += "All Devices"
-                    }
-                    elseif ($targetType -eq "#microsoft.graph.groupAssignmentTarget") {
-                        $assignedGroups += "Group: $($assignment.target.groupId)"
-                    }
+                    $target = Resolve-AssignmentTarget -Assignment $assignment -GroupNameCache $groupNameCache -GroupPrefix "Group: "
+                    $assignedGroups += $target.name
                 }
             }
             catch { }
@@ -318,13 +315,9 @@ try {
                     -OutputType PSObject
 
                 foreach ($assignment in $qAssignments.value) {
-                    $targetType = $assignment.target.'@odata.type'
-                    if ($targetType -eq "#microsoft.graph.allDevicesAssignmentTarget") {
-                        $assignedGroups += "All Managed Devices"
-                    }
-                    elseif ($targetType -eq "#microsoft.graph.groupAssignmentTarget") {
-                        $assignedGroups += "Group: $($assignment.target.groupId)"
-                    }
+                    $target = Resolve-AssignmentTarget -Assignment $assignment -GroupNameCache $groupNameCache -GroupPrefix "Group: "
+                    $label = if ($target.type -eq "AllDevices") { "All Managed Devices" } else { $target.name }
+                    $assignedGroups += $label
                 }
             }
             catch { }
@@ -422,6 +415,7 @@ try {
         }
 
         $updateData.summary.totalDriverUpdates = $updateData.driverUpdates.Count
+        $updateData.summary.driversNeedingReview = ($updateData.driverUpdates | Where-Object { $_.approvalStatus -eq "needs_review" }).Count
         Write-Host "      Retrieved $($updateData.driverUpdates.Count) driver updates" -ForegroundColor Gray
     }
     catch {
@@ -528,6 +522,9 @@ try {
         # Update summary with device compliance stats
         $updateData.summary.totalManagedDevices = $allDevices.Count
         if ($allDevices.Count -gt 0) {
+            $updateData.summary.devicesUpToDate = $upToDateCount
+            $updateData.summary.devicesPendingUpdate = $pendingCount
+            $updateData.summary.devicesWithErrors = $errorCount
             $updateData.summary.complianceRate = [Math]::Round(($upToDateCount / $allDevices.Count) * 100, 1)
         }
 
@@ -563,7 +560,21 @@ catch {
         qualityUpdates = @()
         driverUpdates = @()
         deviceCompliance = @()
-        summary = @{}
+        summary = @{
+            totalRings = 0
+            totalFeaturePolicies = 0
+            totalQualityPolicies = 0
+            totalDriverUpdates = 0
+            totalManagedDevices = 0
+            devicesUpToDate = 0
+            devicesPendingUpdate = 0
+            devicesWithErrors = 0
+            complianceRate = 0
+            expeditedUpdatesActive = 0
+            securityUpdates = 0
+            pausedRings = 0
+            driversNeedingReview = 0
+        }
         collectionDate = (Get-Date).ToString("o")
     } -OutputPath $OutputPath | Out-Null
 

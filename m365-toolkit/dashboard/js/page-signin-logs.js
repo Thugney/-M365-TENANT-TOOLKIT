@@ -17,15 +17,19 @@ const PageSignInLogs = (function() {
         } else if (rawData && rawData.signIns) {
             signIns = rawData.signIns;
         }
-        // Map and normalize field names for display
+        // Normalize to UI-friendly fields while trusting collector outputs
         return signIns.map(function(s) {
             // Normalize status to lowercase for filter matching
-            var status = (s.status || '').toLowerCase();
-            if (status === 'interrupted') status = 'interrupted';
-            else if (status === 'success' || s.errorCode === 0) status = 'success';
-            else if (status === 'failed' || status === 'failure' || s.errorCode > 0) status = 'failure';
+            var statusRaw = s.status || '';
+            var status = statusRaw.toLowerCase();
+            if (status === 'failed') status = 'failure';
+            if (!status) {
+                if (s.errorCode === 0) status = 'success';
+                else if (s.errorCode > 0) status = 'failure';
+            }
+            if (status === 'failure' && s.errorCode === 0) status = 'success';
 
-            // Build location string from city and country
+            // Build location string from city and country when missing
             var location = s.location;
             if (!location && (s.city || s.country)) {
                 location = [s.city, s.country].filter(Boolean).join(', ');
@@ -39,9 +43,9 @@ const PageSignInLogs = (function() {
 
             // Map CA status
             var caStatus = s.caStatus || s.conditionalAccessStatus;
-            if (caStatus === 'success') caStatus = 'success';
-            else if (caStatus === 'failure') caStatus = 'failure';
-            else if (caStatus === 'notApplied') caStatus = 'notApplied';
+
+            // Normalize risk level
+            var riskLevel = (s.riskLevel || 'none').toLowerCase();
 
             return {
                 id: s.id,
@@ -56,7 +60,7 @@ const PageSignInLogs = (function() {
                 caStatus: caStatus,
                 location: location,
                 ipAddress: s.ipAddress,
-                riskLevel: (s.riskLevel || 'none').toLowerCase(),
+                riskLevel: riskLevel,
                 riskState: s.riskState,
                 clientAppUsed: s.clientAppUsed,
                 deviceDetail: s.deviceDetail,

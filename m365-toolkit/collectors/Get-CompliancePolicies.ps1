@@ -79,42 +79,6 @@ function Get-PolicyPlatform {
     }
 }
 
-function Get-AssignmentTarget {
-    <#
-    .SYNOPSIS
-        Parses assignment target into readable format.
-    #>
-    param($Assignment)
-
-    $targetType = $Assignment.target.'@odata.type'
-
-    switch ($targetType) {
-        "#microsoft.graph.allDevicesAssignmentTarget" {
-            return @{ type = "AllDevices"; name = "All Devices" }
-        }
-        "#microsoft.graph.allLicensedUsersAssignmentTarget" {
-            return @{ type = "AllUsers"; name = "All Users" }
-        }
-        "#microsoft.graph.groupAssignmentTarget" {
-            return @{
-                type = "Group"
-                groupId = $Assignment.target.groupId
-                name = "Group: $($Assignment.target.groupId)"
-            }
-        }
-        "#microsoft.graph.exclusionGroupAssignmentTarget" {
-            return @{
-                type = "ExcludeGroup"
-                groupId = $Assignment.target.groupId
-                name = "Exclude: $($Assignment.target.groupId)"
-            }
-        }
-        default {
-            return @{ type = "Unknown"; name = "Unknown" }
-        }
-    }
-}
-
 # ============================================================================
 # MAIN COLLECTION LOGIC
 # ============================================================================
@@ -162,6 +126,7 @@ try {
     Write-Host "      Retrieved $($allPolicies.Count) compliance policies" -ForegroundColor Gray
 
     $processedPolicies = @()
+    $groupNameCache = @{}
     $allNonCompliantDevices = @{}
 
     foreach ($policy in $allPolicies) {
@@ -174,7 +139,7 @@ try {
                     -OutputType PSObject
 
                 foreach ($assignment in $assignmentResponse.value) {
-                    $target = Get-AssignmentTarget -Assignment $assignment
+                    $target = Resolve-AssignmentTarget -Assignment $assignment -GroupNameCache $groupNameCache -GroupPrefix "Group: " -ExcludePrefix "Exclude: "
                     $assignments += $target
                 }
             }

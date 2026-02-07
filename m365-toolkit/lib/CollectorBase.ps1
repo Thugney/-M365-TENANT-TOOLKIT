@@ -114,6 +114,225 @@ function Invoke-GraphWithRetry {
 }
 
 # ============================================================================
+# GRAPH HELPERS
+# ============================================================================
+
+function Get-GraphPropertyValue {
+    <#
+    .SYNOPSIS
+        Safely retrieves a property value from Graph responses with mixed casing.
+
+    .PARAMETER Object
+        The Graph response object.
+
+    .PARAMETER PropertyNames
+        One or more property names to try (case-insensitive).
+
+    .OUTPUTS
+        The property value if found, otherwise $null.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Object,
+
+        [Parameter(Mandatory)]
+        [string[]]$PropertyNames
+    )
+
+    if ($null -eq $Object) { return $null }
+
+    foreach ($name in $PropertyNames) {
+        $prop = $Object.PSObject.Properties[$name]
+        if ($prop) { return $prop.Value }
+    }
+
+    return $null
+}
+
+function Get-GroupDisplayName {
+    <#
+    .SYNOPSIS
+        Resolves group display name with optional caching.
+
+    .PARAMETER GroupId
+        Group object id.
+
+    .PARAMETER Cache
+        Hashtable cache for group id -> name.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$GroupId,
+
+        [Parameter()]
+        [hashtable]$Cache
+    )
+
+    if ($Cache -and $Cache.ContainsKey($GroupId)) {
+        return $Cache[$GroupId]
+    }
+
+    $groupName = $GroupId
+    try {
+        $groupInfo = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/groups/$GroupId`?`$select=displayName" -OutputType PSObject
+        if ($groupInfo.displayName) {
+            $groupName = $groupInfo.displayName
+        }
+    }
+    catch {
+        # Keep fallback to GroupId
+    }
+
+    if ($Cache) {
+        $Cache[$GroupId] = $groupName
+    }
+
+    return $groupName
+}
+
+function Resolve-AssignmentTarget {
+    <#
+    .SYNOPSIS
+        Parses assignment target into a standard structure.
+
+    .PARAMETER Assignment
+        Assignment object from Graph API.
+
+    .PARAMETER GroupNameCache
+        Optional cache for group name lookup.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        $Assignment,
+
+        [Parameter()]
+        [hashtable]$GroupNameCache,
+
+        [Parameter()]
+        [string]$GroupPrefix = "",
+
+        [Parameter()]
+        [string]$ExcludePrefix = "",
+
+        [Parameter()]
+        [string]$ExcludeSuffix = ""
+    )
+
+    $targetType = $Assignment.target.'@odata.type'
+
+    switch ($targetType) {
+        "#microsoft.graph.allDevicesAssignmentTarget" {
+            return @{ type = "AllDevices"; targetType = $targetType; name = "All Devices"; groupId = $null }
+        }
+        "#microsoft.graph.allLicensedUsersAssignmentTarget" {
+            return @{ type = "AllUsers"; targetType = $targetType; name = "All Users"; groupId = $null }
+        }
+        "#microsoft.graph.groupAssignmentTarget" {
+            $groupId = $Assignment.target.groupId
+            $groupName = Get-GroupDisplayName -GroupId $groupId -Cache $GroupNameCache
+            return @{ type = "Group"; targetType = $targetType; groupId = $groupId; name = "$GroupPrefix$groupName" }
+        }
+        "#microsoft.graph.exclusionGroupAssignmentTarget" {
+            $groupId = $Assignment.target.groupId
+            $groupName = Get-GroupDisplayName -GroupId $groupId -Cache $GroupNameCache
+            return @{ type = "ExcludeGroup"; targetType = $targetType; groupId = $groupId; name = "$ExcludePrefix$groupName$ExcludeSuffix" }
+        }
+        default {
+            return @{ type = "Unknown"; targetType = $targetType; name = "Unknown"; groupId = $null }
+        }
+    }
+}
+
+function Get-ReportCsvData {
+    <#
+    .SYNOPSIS
+        Downloads a Graph report CSV to a temp file and returns parsed rows.
+
+    .PARAMETER Uri
+        Report endpoint URI.
+
+    .PARAMETER OperationName
+        Name used for logging.
+
+    .PARAMETER TempPrefix
+        Prefix for the temp CSV filename.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Uri,
+
+        [Parameter()]
+        [string]$OperationName = "Report download",
+
+        [Parameter()]
+        [string]$TempPrefix = "report"
+    )
+
+    $tempCsvPath = Join-Path ([System.IO.Path]::GetTempPath()) "$TempPrefix-$((Get-Date).ToString('yyyyMMddHHmmss')).csv"
+
+    Invoke-GraphWithRetry -ScriptBlock {
+        Invoke-MgGraphRequest -Method GET -Uri $Uri -OutputFilePath $tempCsvPath
+    } -OperationName $OperationName
+
+    if (-not (Test-Path $tempCsvPath)) {
+        throw "Report was not downloaded"
+    }
+
+    try {
+        return Import-Csv -Path $tempCsvPath
+    }
+    finally {
+        Remove-Item -Path $tempCsvPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Get-ReportPeriod {
+    <#
+    .SYNOPSIS
+        Maps a day threshold to a supported report period (D7/D30/D90/D180).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [int]$Days = 30
+    )
+
+    if ($Days -le 0) { $Days = 30 }
+
+    if ($Days -le 7) { return "D7" }
+    if ($Days -le 30) { return "D30" }
+    if ($Days -le 90) { return "D90" }
+    return "D180"
+}
+
+function Get-CredentialStatus {
+    <#
+    .SYNOPSIS
+        Determines credential status based on expiry.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        $DaysUntilExpiry,
+
+        [Parameter()]
+        [string]$NullStatus = "no-credentials"
+    )
+
+    if ($null -eq $DaysUntilExpiry) { return $NullStatus }
+    if ($DaysUntilExpiry -lt 0) { return "expired" }
+    if ($DaysUntilExpiry -le 7) { return "critical" }
+    if ($DaysUntilExpiry -le 30) { return "warning" }
+    if ($DaysUntilExpiry -le 90) { return "attention" }
+    return "healthy"
+}
+
+# ============================================================================
 # DATE UTILITIES
 # ============================================================================
 

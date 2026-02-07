@@ -281,6 +281,9 @@ try {
         $activityStatus = Get-ActivityStatus -DaysSinceActivity $daysSinceSync -InactiveThreshold $staleThreshold
         $isStale = $activityStatus.isInactive
 
+        $encValue = Get-GraphPropertyValue -Object $device -PropertyNames @("isEncrypted", "IsEncrypted")
+        $isEncryptedValue = if ($null -eq $encValue) { $null } else { [bool]$encValue }
+
         # Map compliance state
         $complianceState = Get-ComplianceState -IntuneState $device.ComplianceState
 
@@ -377,7 +380,7 @@ try {
             physicalMemoryGB       = $physicalMemoryGB
 
             # ===== SECURITY =====
-            isEncrypted            = [bool]$device.IsEncrypted
+            isEncrypted            = $isEncryptedValue
             jailBroken             = $device.JailBroken
             isSupervised           = if ($null -ne $device.IsSupervised) { [bool]$device.IsSupervised } else { $null }
             partnerThreatState     = $device.PartnerReportedThreatState
@@ -466,6 +469,7 @@ try {
     # Encryption counts
     $encryptedCount = ($processedDevices | Where-Object { $_.isEncrypted -eq $true }).Count
     $notEncryptedCount = ($processedDevices | Where-Object { $_.isEncrypted -eq $false }).Count
+    $unknownEncryptedCount = ($processedDevices | Where-Object { $null -eq $_.isEncrypted }).Count
 
     # Stale device counts
     $staleCount = ($processedDevices | Where-Object { $_.isStale -eq $true }).Count
@@ -605,21 +609,35 @@ try {
     }
 
     # Build summary object
+    $complianceRate = if ($deviceCount -gt 0) {
+        [Math]::Round(($compliantCount / $deviceCount) * 100, 1)
+    } else { 0 }
+
     $summary = [PSCustomObject]@{
         # Core counts
         totalDevices           = $deviceCount
         compliant              = $compliantCount
         noncompliant           = $noncompliantCount
         unknown                = $unknownCount
+        compliantDevices       = $compliantCount
+        noncompliantDevices    = $noncompliantCount
+        unknownDevices         = $unknownCount
+        complianceRate         = $complianceRate
         inGracePeriod          = $inGracePeriodCount
 
         # Encryption
         encrypted              = $encryptedCount
         notEncrypted           = $notEncryptedCount
+        unknownEncrypted       = $unknownEncryptedCount
+        encryptedDevices       = $encryptedCount
+        notEncryptedDevices    = $notEncryptedCount
+        unknownEncryptedDevices = $unknownEncryptedCount
 
         # Activity
         stale                  = $staleCount
         active                 = $activeCount
+        staleDevices           = $staleCount
+        activeDevices          = $activeCount
 
         # Certificates
         certExpired            = $certExpiredCount
@@ -633,10 +651,16 @@ try {
         windows10              = $windows10Count
         windowsSupported       = $windowsSupportedCount
         windowsUnsupported     = $windowsUnsupportedCount
+        win11Count             = $windows11Count
+        win10Count             = $windows10Count
+        winSupportedCount      = $windowsSupportedCount
+        winUnsupportedCount    = $windowsUnsupportedCount
 
         # Ownership
         corporate              = $corporateCount
         personal               = $personalCount
+        corporateDevices       = $corporateCount
+        personalDevices        = $personalCount
 
         # Enrollment
         autopilotEnrolled      = $autopilotCount
@@ -651,8 +675,10 @@ try {
         compromised            = $compromisedCount
 
         # Breakdowns
-        osBreakdown             = $osBreakdownArray
-        manufacturerBreakdown   = $manufacturerBreakdownArray
+        osBreakdown             = $osBreakdown
+        osBreakdownArray        = $osBreakdownArray
+        manufacturerBreakdown   = $manufacturerBreakdown
+        manufacturerBreakdownArray = $manufacturerBreakdownArray
         modelBreakdown          = $modelBreakdownArray
         windowsReleaseBreakdown = $windowsReleaseArray
         enrollmentTypeBreakdown = $enrollmentTypeArray
@@ -898,10 +924,21 @@ catch {
             compliant = 0
             noncompliant = 0
             unknown = 0
+            compliantDevices = 0
+            noncompliantDevices = 0
+            unknownDevices = 0
+            complianceRate = 0
+            inGracePeriod = 0
             encrypted = 0
             notEncrypted = 0
+            unknownEncrypted = 0
+            encryptedDevices = 0
+            notEncryptedDevices = 0
+            unknownEncryptedDevices = 0
             stale = 0
             active = 0
+            staleDevices = 0
+            activeDevices = 0
             certExpired = 0
             certCritical = 0
             certWarning = 0
@@ -911,12 +948,20 @@ catch {
             windows10 = 0
             windowsSupported = 0
             windowsUnsupported = 0
+            win11Count = 0
+            win10Count = 0
+            winSupportedCount = 0
+            winUnsupportedCount = 0
             corporate = 0
             personal = 0
+            corporateDevices = 0
+            personalDevices = 0
             autopilotEnrolled = 0
             notAutopilotEnrolled = 0
-            osBreakdown = @()
-            manufacturerBreakdown = @()
+            osBreakdown = @{}
+            osBreakdownArray = @()
+            manufacturerBreakdown = @{}
+            manufacturerBreakdownArray = @()
             modelBreakdown = @()
             windowsReleaseBreakdown = @()
         }

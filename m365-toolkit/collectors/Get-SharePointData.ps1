@@ -134,20 +134,9 @@ try {
 
     Write-Host "      Fetching SharePoint site usage report..." -ForegroundColor Gray
 
-    $tempCsvPath = Join-Path ([System.IO.Path]::GetTempPath()) "sp-usage-$((Get-Date).ToString('yyyyMMddHHmmss')).csv"
-
-    Invoke-GraphWithRetry -ScriptBlock {
-        Invoke-MgGraphRequest -Method GET `
-            -Uri "https://graph.microsoft.com/beta/reports/getSharePointSiteUsageDetail(period='D30')" `
-            -OutputFilePath $tempCsvPath
-    } -OperationName "SharePoint usage report"
-
-    if (-not (Test-Path $tempCsvPath)) {
-        throw "SharePoint usage report was not downloaded"
-    }
-
-    $reportData = Import-Csv -Path $tempCsvPath
-    Write-Host "      Report contains $($reportData.Count) sites" -ForegroundColor Gray
+    $reportPeriod = Get-ReportPeriod -Days $inactiveThreshold
+    $reportData = Get-ReportCsvData -Uri "https://graph.microsoft.com/beta/reports/getSharePointSiteUsageDetail(period='$reportPeriod')" -OperationName "SharePoint usage report" -TempPrefix "sp-usage"
+    Write-Host "      Report ($reportPeriod) contains $($reportData.Count) sites" -ForegroundColor Gray
 
     # ========================================================================
     # Check if URLs are concealed (privacy settings enabled)
@@ -367,9 +356,6 @@ try {
         }
     }
 
-    # Clean up temp file
-    Remove-Item -Path $tempCsvPath -Force -ErrorAction SilentlyContinue
-
     # Sort by: high storage first, then inactive, then by storage descending
     if ($processedSites.Count -gt 0) {
         $processedSites = $processedSites | Sort-Object -Property @{
@@ -400,11 +386,6 @@ catch {
     }
 
     Write-Host "    [X] Failed: $errorMessage" -ForegroundColor Red
-
-    # Clean up temp file if it exists
-    if ($tempCsvPath -and (Test-Path $tempCsvPath)) {
-        Remove-Item -Path $tempCsvPath -Force -ErrorAction SilentlyContinue
-    }
 
     # Write empty array to prevent dashboard errors
     Save-CollectorData -Data @() -OutputPath $OutputPath | Out-Null

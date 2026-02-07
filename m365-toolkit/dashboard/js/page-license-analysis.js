@@ -15,7 +15,7 @@
 const PageLicenseAnalysis = (function() {
     'use strict';
 
-    // Known overlap rules: higher tier includes lower tier
+    // Default overlap rules: higher tier includes lower tier
     var OVERLAP_RULES = [
         { name: 'E3 + E5', higherSku: 'SPE_E5', lowerSku: 'SPE_E3', higherName: 'Microsoft 365 E5', lowerName: 'Microsoft 365 E3' },
         { name: 'E3 + E1', higherSku: 'SPE_E3', lowerSku: 'SPE_E1', higherName: 'Microsoft 365 E3', lowerName: 'Microsoft 365 E1' },
@@ -86,10 +86,35 @@ const PageLicenseAnalysis = (function() {
         return card;
     }
 
+    function getOverlapRules(licenses) {
+        var meta = (window.DataLoader && typeof DataLoader.getMetadata === 'function') ? DataLoader.getMetadata() : null;
+        var rules = (meta && Array.isArray(meta.licenseOverlapRules) && meta.licenseOverlapRules.length > 0)
+            ? meta.licenseOverlapRules
+            : OVERLAP_RULES;
+
+        var skuNameMap = {};
+        licenses.forEach(function(lic) {
+            if (lic && lic.skuPartNumber) {
+                skuNameMap[lic.skuPartNumber] = lic.skuName || lic.skuPartNumber;
+            }
+        });
+
+        return rules.map(function(r) {
+            return {
+                name: r.name || (r.higherSku + ' + ' + r.lowerSku),
+                higherSku: r.higherSku,
+                lowerSku: r.lowerSku,
+                higherName: r.higherName || skuNameMap[r.higherSku] || r.higherSku,
+                lowerName: r.lowerName || skuNameMap[r.lowerSku] || r.lowerSku,
+                description: r.description
+            };
+        }).filter(function(r) { return r.higherSku && r.lowerSku; });
+    }
+
     /**
      * Analyzes license overlaps at user level.
      */
-    function analyzeOverlaps(users, licenses) {
+    function analyzeOverlaps(users, licenses, overlapRules) {
         var skuMap = {};
         licenses.forEach(function(lic) {
             skuMap[lic.skuId] = lic;
@@ -98,7 +123,7 @@ const PageLicenseAnalysis = (function() {
 
         var overlapUsers = [];
         var ruleStats = {};
-        OVERLAP_RULES.forEach(function(r) { ruleStats[r.name] = { count: 0, users: [], monthlyCost: 0 }; });
+        overlapRules.forEach(function(r) { ruleStats[r.name] = { count: 0, users: [], monthlyCost: 0 }; });
 
         users.forEach(function(user) {
             if (!user.assignedSkuIds || !Array.isArray(user.assignedSkuIds) || user.assignedSkuIds.length < 2) return;
@@ -108,7 +133,7 @@ const PageLicenseAnalysis = (function() {
                 return lic ? lic.skuPartNumber : id;
             });
 
-            OVERLAP_RULES.forEach(function(rule) {
+            overlapRules.forEach(function(rule) {
                 var hasHigher = userSkuPartNumbers.indexOf(rule.higherSku) !== -1;
                 var hasLower = userSkuPartNumbers.indexOf(rule.lowerSku) !== -1;
 
@@ -331,7 +356,7 @@ const PageLicenseAnalysis = (function() {
         ]));
 
         // Overlap Rules Checked card
-        var rulesChecked = OVERLAP_RULES.length;
+        var rulesChecked = (data.overlapRules && data.overlapRules.length) ? data.overlapRules.length : OVERLAP_RULES.length;
         var rulesTriggered = Object.keys(data.analysis.ruleStats).filter(function(r) { return data.analysis.ruleStats[r].count > 0; }).length;
         analyticsGrid.appendChild(createPlatformCard('Rules Analysis', [
             { name: 'Rules Checked', count: rulesChecked, pct: 100, cls: 'bg-info', showCount: true },
@@ -583,14 +608,16 @@ const PageLicenseAnalysis = (function() {
             users = DepartmentFilter.filterData(users, 'department');
         }
 
-        var analysis = analyzeOverlaps(users, licenses);
+        var overlapRules = getOverlapRules(licenses);
+        var analysis = analyzeOverlaps(users, licenses, overlapRules);
         var currency = licenses.length > 0 && licenses[0].currency ? licenses[0].currency : 'USD';
 
         // Cache state
         analysisState = {
             analysis: analysis,
             currency: currency,
-            totalUsers: users.length
+            totalUsers: users.length,
+            overlapRules: overlapRules
         };
 
         container.textContent = '';
@@ -606,7 +633,7 @@ const PageLicenseAnalysis = (function() {
         cards.appendChild(createSummaryCard('Users with Overlaps', analysis.totalOverlapCount, analysis.totalOverlapCount > 0 ? 'warning' : 'success', analysis.totalOverlapCount > 0 ? 'card-warning' : 'card-success'));
         cards.appendChild(createSummaryCard('Monthly Waste', formatCurrency(analysis.totalMonthlyWaste, currency), analysis.totalMonthlyWaste > 0 ? 'critical' : null, analysis.totalMonthlyWaste > 0 ? 'card-critical' : null));
         cards.appendChild(createSummaryCard('Annual Waste', formatCurrency(analysis.totalAnnualWaste, currency), analysis.totalAnnualWaste > 0 ? 'critical' : null, analysis.totalAnnualWaste > 0 ? 'card-critical' : null));
-        cards.appendChild(createSummaryCard('Rules Checked', OVERLAP_RULES.length, null, null));
+        cards.appendChild(createSummaryCard('Rules Checked', overlapRules.length, null, null));
         container.appendChild(cards);
 
         // Tab bar

@@ -119,6 +119,7 @@ $dataFiles = @(
     "guests.json",
     "mfa-status.json",
     "admin-roles.json",
+    "deleted-users.json",
     # Security & risk
     "risky-signins.json",
     "signin-logs.json",
@@ -213,6 +214,7 @@ $bundleMap = @{
     "guests"                  = "guests.json"
     "mfaStatus"               = "mfa-status.json"
     "adminRoles"              = "admin-roles.json"
+    "deletedUsers"            = "deleted-users.json"
     # Security & risk
     "riskySignins"            = "risky-signins.json"
     "signinLogs"              = "signin-logs.json"

@@ -283,50 +283,8 @@ try {
                 $assignmentResponse = Invoke-MgGraphRequest -Method GET -Uri $assignmentUri -OutputType PSObject
 
                 foreach ($assignment in $assignmentResponse.value) {
-                    $targetType = $assignment.target.'@odata.type'
-                    if ($targetType -eq "#microsoft.graph.allDevicesAssignmentTarget") {
-                        $assignments += @{ type = "AllDevices"; name = "All Devices" }
-                    }
-                    elseif ($targetType -eq "#microsoft.graph.allLicensedUsersAssignmentTarget") {
-                        $assignments += @{ type = "AllUsers"; name = "All Users" }
-                    }
-                    elseif ($targetType -eq "#microsoft.graph.groupAssignmentTarget") {
-                        $groupId = $assignment.target.groupId
-                        $groupName = $groupId
-
-                        # Try to resolve group name from cache or API
-                        if ($groupNameCache.ContainsKey($groupId)) {
-                            $groupName = $groupNameCache[$groupId]
-                        } else {
-                            try {
-                                $groupInfo = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/groups/$groupId`?`$select=displayName" -OutputType PSObject
-                                $groupName = $groupInfo.displayName
-                                $groupNameCache[$groupId] = $groupName
-                            } catch {
-                                $groupNameCache[$groupId] = $groupId
-                            }
-                        }
-
-                        $assignments += @{ type = "Group"; groupId = $groupId; name = $groupName }
-                    }
-                    elseif ($targetType -eq "#microsoft.graph.exclusionGroupAssignmentTarget") {
-                        $groupId = $assignment.target.groupId
-                        $groupName = $groupId
-
-                        if ($groupNameCache.ContainsKey($groupId)) {
-                            $groupName = $groupNameCache[$groupId]
-                        } else {
-                            try {
-                                $groupInfo = Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/groups/$groupId`?`$select=displayName" -OutputType PSObject
-                                $groupName = $groupInfo.displayName
-                                $groupNameCache[$groupId] = $groupName
-                            } catch {
-                                $groupNameCache[$groupId] = $groupId
-                            }
-                        }
-
-                        $assignments += @{ type = "ExcludeGroup"; groupId = $groupId; name = "$groupName (Excluded)" }
-                    }
+                    $target = Resolve-AssignmentTarget -Assignment $assignment -GroupNameCache $groupNameCache -ExcludeSuffix " (Excluded)"
+                    $assignments += $target
                 }
             }
             catch { }

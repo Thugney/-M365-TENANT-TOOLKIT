@@ -19,6 +19,33 @@
 const PageSharePoint = (function() {
     'use strict';
 
+    function getThresholds() {
+        if (window.DataLoader && typeof DataLoader.getMetadata === 'function') {
+            var meta = DataLoader.getMetadata();
+            if (meta && meta.thresholds) return meta.thresholds;
+        }
+        return {};
+    }
+
+    function getHighStorageThreshold() {
+        var thresholds = getThresholds();
+        return (typeof thresholds.highStorageThresholdGB === 'number' && thresholds.highStorageThresholdGB > 0)
+            ? thresholds.highStorageThresholdGB
+            : 20;
+    }
+
+    function getInactiveThreshold() {
+        var thresholds = getThresholds();
+        return (typeof thresholds.inactiveSiteDays === 'number' && thresholds.inactiveSiteDays > 0)
+            ? thresholds.inactiveSiteDays
+            : 90;
+    }
+
+    function isHighStorageSite(site, threshold) {
+        if (site.flags && site.flags.indexOf('high-storage') !== -1) return true;
+        return (site.storageUsedGB || 0) >= threshold;
+    }
+
     /**
      * Applies current filters and re-renders the table.
      */
@@ -82,6 +109,7 @@ const PageSharePoint = (function() {
      * @param {Array} data - Filtered site data
      */
     function renderTable(data) {
+        var highStorageThreshold = getHighStorageThreshold();
         Tables.render({
             containerId: 'sp-table',
             data: data,
@@ -103,7 +131,7 @@ const PageSharePoint = (function() {
             onRowClick: showSiteDetails,
             getRowClass: function(row) {
                 if (row.isInactive) return 'row-muted';
-                if ((row.storageUsedGB || 0) >= 20) return 'row-warning';
+                if (isHighStorageSite(row, highStorageThreshold)) return 'row-warning';
                 return '';
             }
         });
@@ -127,12 +155,13 @@ const PageSharePoint = (function() {
      * Formats storage with color coding.
      */
     function formatStorage(value) {
+        var highStorageThreshold = getHighStorageThreshold();
         if (value === null || value === undefined) {
             return '<span class="text-muted">--</span>';
         }
         var colorClass = '';
-        if (value >= 20) colorClass = 'text-critical font-bold';
-        else if (value >= 10) colorClass = 'text-warning';
+        if (value >= highStorageThreshold) colorClass = 'text-critical font-bold';
+        else if (value >= Math.max(10, Math.round(highStorageThreshold / 2))) colorClass = 'text-warning';
         return '<span class="' + colorClass + '">' + value + '</span>';
     }
 
@@ -181,6 +210,7 @@ const PageSharePoint = (function() {
         var modal = document.getElementById('modal-overlay');
         var title = document.getElementById('modal-title');
         var body = document.getElementById('modal-body');
+        var highStorageThreshold = getHighStorageThreshold();
 
         title.textContent = site.displayName;
 
@@ -212,7 +242,7 @@ const PageSharePoint = (function() {
             '<h4 class="mt-lg mb-sm">Storage</h4>',
             '<div class="detail-list">',
             '    <span class="detail-label">Storage Used:</span>',
-            '    <span class="detail-value' + ((site.storageUsedGB || 0) >= 20 ? ' text-critical font-bold' : '') + '">' + site.storageUsedGB + ' GB</span>',
+            '    <span class="detail-value' + (isHighStorageSite(site, highStorageThreshold) ? ' text-critical font-bold' : '') + '">' + site.storageUsedGB + ' GB</span>',
             '',
             '    <span class="detail-label">Storage Allocated:</span>',
             '    <span class="detail-value">' + site.storageAllocatedGB + ' GB</span>',
@@ -296,13 +326,15 @@ const PageSharePoint = (function() {
             ? DepartmentFilter.filterByUPN(allSites, 'ownerPrincipalName')
             : allSites;
         var nonPersonal = sites.filter(function(s) { return !s.isPersonalSite; });
+        var highStorageThreshold = getHighStorageThreshold();
+        var inactiveThreshold = getInactiveThreshold();
 
         // Calculate stats
         var totalStorageGB = Math.round(nonPersonal.reduce(function(s, site) { return s + (site.storageUsedGB || 0); }, 0) * 10) / 10;
         var activeSites = nonPersonal.filter(function(s) { return !s.isInactive; }).length;
         var inactiveSites = nonPersonal.filter(function(s) { return s.isInactive; }).length;
         var groupConnected = nonPersonal.filter(function(s) { return s.isGroupConnected; }).length;
-        var highStorage = nonPersonal.filter(function(s) { return (s.storageUsedGB || 0) >= 20; }).length;
+        var highStorage = nonPersonal.filter(function(s) { return isHighStorageSite(s, highStorageThreshold); }).length;
 
         // Template counts
         var groupCount = nonPersonal.filter(function(s) { return s.template === 'Group'; }).length;
@@ -337,12 +369,12 @@ const PageSharePoint = (function() {
             '    <div class="card ' + (inactiveSites > 0 ? 'card-warning' : '') + '">',
             '        <div class="card-label">Inactive Sites</div>',
             '        <div class="card-value ' + (inactiveSites > 0 ? 'warning' : '') + '">' + inactiveSites + '</div>',
-            '        <div class="card-change">90+ days no activity</div>',
+            '        <div class="card-change">' + inactiveThreshold + '+ days no activity</div>',
             '    </div>',
             '    <div class="card ' + (highStorage > 0 ? 'card-warning' : '') + '">',
             '        <div class="card-label">High Storage</div>',
             '        <div class="card-value ' + (highStorage > 0 ? 'warning' : '') + '">' + highStorage + '</div>',
-            '        <div class="card-change">20+ GB used</div>',
+            '        <div class="card-change">' + highStorageThreshold + '+ GB used</div>',
             '    </div>',
             '    <div class="card ' + (externalSharingSites > 0 ? 'card-warning' : '') + '">',
             '        <div class="card-label">Externally Shared</div>',

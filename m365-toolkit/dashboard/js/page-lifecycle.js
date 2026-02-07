@@ -194,7 +194,8 @@ const PageLifecycle = (function() {
         analyticsGrid.appendChild(createPlatformCard('Offboarding Details', [
             { name: 'Disabled w/ Licenses', count: stats.disabledWithLicenses, pct: stats.offboardingCount > 0 ? Math.round((stats.disabledWithLicenses / stats.offboardingCount) * 100) : 0, cls: 'bg-warning', showCount: true },
             { name: 'Disabled Admins', count: stats.disabledAdmins, pct: stats.offboardingCount > 0 ? Math.round((stats.disabledAdmins / stats.offboardingCount) * 100) : 0, cls: 'bg-critical', showCount: true },
-            { name: 'Inactive Still Enabled', count: stats.inactiveEnabled, pct: stats.offboardingCount > 0 ? Math.round((stats.inactiveEnabled / stats.offboardingCount) * 100) : 0, cls: 'bg-info', showCount: true }
+            { name: 'Inactive Still Enabled', count: stats.inactiveEnabled, pct: stats.offboardingCount > 0 ? Math.round((stats.inactiveEnabled / stats.offboardingCount) * 100) : 0, cls: 'bg-info', showCount: true },
+            { name: 'Deleted Pending Purge', count: stats.deletedUsers, pct: stats.offboardingCount > 0 ? Math.round((stats.deletedUsers / stats.offboardingCount) * 100) : 0, cls: 'bg-orange', showCount: true }
         ]));
 
         // Guest Status card
@@ -219,8 +220,16 @@ const PageLifecycle = (function() {
         // Offboarding insight
         if (stats.offboardingCount > 0) {
             insightsList.appendChild(createInsightCard('warning', 'CLEANUP', 'Offboarding Issues',
-                stats.offboardingCount + ' offboarding issue' + (stats.offboardingCount !== 1 ? 's' : '') + ' detected. Disabled accounts with licenses or admin roles need attention.',
-                'Remove licenses from disabled accounts and revoke admin roles to reduce costs and security exposure.'));
+                stats.offboardingCount + ' offboarding issue' + (stats.offboardingCount !== 1 ? 's' : '') + ' detected. Disabled accounts, risky admin roles, and pending deletions need attention.',
+                'Remove licenses from disabled accounts, revoke admin roles, and review deleted users before permanent purge.'));
+        }
+
+        // Deleted users insight (purge window)
+        if (stats.deletedCritical > 0 || stats.deletedHigh > 0) {
+            var urgencyCount = stats.deletedCritical + stats.deletedHigh;
+            insightsList.appendChild(createInsightCard('critical', 'URGENT', 'Deleted Users',
+                urgencyCount + ' deleted user' + (urgencyCount !== 1 ? 's' : '') + ' will be permanently removed within 7 days.',
+                'Review and restore any accounts that should not be permanently deleted.'));
         }
 
         // Role hygiene insight
@@ -330,6 +339,33 @@ const PageLifecycle = (function() {
                 daysInactive: u.daysSinceLastSignIn || 0,
                 lastActivity: u.lastSignIn,
                 createdDate: u.createdDateTime,
+                _original: u
+            });
+        });
+
+        // Offboarding - Deleted Users Pending Purge
+        data.deletedUsers.forEach(function(u) {
+            var severity = 'info';
+            if (u.urgency === 'Critical') severity = 'critical';
+            else if (u.urgency === 'High' || u.urgency === 'Medium') severity = 'warning';
+
+            var purgeDetail = (u.daysUntilPermanentDeletion !== null && u.daysUntilPermanentDeletion !== undefined)
+                ? ('Purge in ' + u.daysUntilPermanentDeletion + ' days')
+                : 'Purge date unknown';
+
+            issues.push({
+                category: 'Offboarding',
+                issueType: 'Deleted User Pending Purge',
+                severity: severity,
+                entityType: 'User',
+                displayName: u.displayName,
+                identifier: u.userPrincipalName,
+                department: u.department || '',
+                detail1: purgeDetail,
+                detail2: 'Urgency: ' + (u.urgency || 'Normal'),
+                daysInactive: u.daysSinceDeletion || 0,
+                lastActivity: u.deletedDateTime,
+                createdDate: u.permanentDeletionDate,
                 _original: u
             });
         });
@@ -777,6 +813,7 @@ const PageLifecycle = (function() {
         var adminRoles = DataLoader.getData('adminRoles');
         var teams = DataLoader.getData('teams');
         var spSites = DataLoader.getData('sharepointSites');
+        var deletedUsers = DataLoader.getData('deletedUsers');
 
         // Calculate offboarding issues
         var disabledWithLicenses = users.filter(function(u) { return !u.accountEnabled && u.licenseCount > 0; });
@@ -827,6 +864,12 @@ const PageLifecycle = (function() {
         var pendingGuests = guests.filter(function(g) { return g.invitationState === 'PendingAcceptance'; });
         var neverSignedInGuests = guests.filter(function(g) { return g.neverSignedIn && g.invitationState === 'Accepted'; });
 
+        // Calculate deleted user risk
+        var deletedCritical = deletedUsers.filter(function(u) { return u.urgency === 'Critical'; });
+        var deletedHigh = deletedUsers.filter(function(u) { return u.urgency === 'High'; });
+        var deletedMedium = deletedUsers.filter(function(u) { return u.urgency === 'Medium'; });
+        var deletedNormal = deletedUsers.filter(function(u) { return u.urgency === 'Normal'; });
+
         // Calculate teams governance issues
         var ownerlessTeams = teams.filter(function(t) { return t.hasNoOwner; });
         var inactiveTeamsWithGuests = teams.filter(function(t) { return t.isInactive && t.hasGuests; });
@@ -840,7 +883,7 @@ const PageLifecycle = (function() {
         var spGovernanceCount = sitesWithAnonymousLinks.length + externalInactiveSites.length + sitesWithoutLabels.length;
 
         // Calculate total issues
-        var offboardingCount = disabledWithLicenses.length + disabledAdmins.length + inactiveStillEnabled.length;
+        var offboardingCount = disabledWithLicenses.length + disabledAdmins.length + inactiveStillEnabled.length + deletedUsers.length;
         var onboardingCount = newUsersNoSignIn.length + newUsersNoMfa.length;
         var roleCount = inactiveAdmins.length + adminsNoMfa.length;
         var guestCount = staleGuests.length + pendingGuests.length + neverSignedInGuests.length;
@@ -864,7 +907,7 @@ const PageLifecycle = (function() {
         lifecycleState = {
             stats: {
             totalIssues: totalIssues,
-            totalEntities: users.length + guests.length + teams.length + spNonPersonal.length,
+            totalEntities: users.length + guests.length + teams.length + spNonPersonal.length + deletedUsers.length,
             offboardingCount: offboardingCount,
             onboardingCount: onboardingCount,
             roleCount: roleCount,
@@ -874,6 +917,10 @@ const PageLifecycle = (function() {
             disabledWithLicenses: disabledWithLicenses.length,
             disabledAdmins: disabledAdmins.length,
             inactiveEnabled: inactiveStillEnabled.length,
+            deletedUsers: deletedUsers.length,
+            deletedCritical: deletedCritical.length,
+            deletedHigh: deletedHigh.length,
+            deletedMedium: deletedMedium.length,
             staleGuests: staleGuests.length,
             pendingGuests: pendingGuests.length,
             neverSignedIn: neverSignedInGuests.length,
@@ -883,6 +930,11 @@ const PageLifecycle = (function() {
             },
             disabledWithLicenses: disabledWithLicenses,
             inactiveStillEnabled: inactiveStillEnabled,
+            deletedUsers: deletedUsers,
+            deletedCritical: deletedCritical,
+            deletedHigh: deletedHigh,
+            deletedMedium: deletedMedium,
+            deletedNormal: deletedNormal,
             newUsersNoSignIn: newUsersNoSignIn,
             newUsersNoMfa: newUsersNoMfa,
             inactiveAdmins: inactiveAdmins,

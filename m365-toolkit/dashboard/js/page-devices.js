@@ -12,23 +12,25 @@ const PageDevices = (function() {
 
     // Extract data from both array and object formats
     function extractData(rawData) {
+        var devices;
+        var summary;
+        var insights;
         if (Array.isArray(rawData)) {
-            return {
-                devices: rawData,
-                summary: computeSummary(rawData),
-                insights: []
-            };
+            devices = rawData;
+            summary = computeSummary(rawData);
+            insights = [];
+        } else {
+            devices = rawData.devices || [];
+            summary = rawData.summary || computeSummary(rawData.devices || []);
+            insights = rawData.insights || [];
         }
-        return {
-            devices: rawData.devices || [],
-            summary: rawData.summary || computeSummary(rawData.devices || []),
-            insights: rawData.insights || []
-        };
+        summary = normalizeSummary(summary, devices);
+        return { devices: devices, summary: summary, insights: insights };
     }
 
     function computeSummary(devices) {
         var compliant = 0, noncompliant = 0, unknown = 0;
-        var encrypted = 0, notEncrypted = 0;
+        var encrypted = 0, notEncrypted = 0, unknownEncrypted = 0;
         var stale = 0;
         var certExpired = 0, certCritical = 0, certWarning = 0, certHealthy = 0, certUnknown = 0;
         var win10 = 0, win11 = 0, winSupported = 0, winUnsupported = 0;
@@ -42,9 +44,10 @@ const PageDevices = (function() {
             else if (d.complianceState === 'noncompliant') noncompliant++;
             else unknown++;
 
-            // Encryption
-            if (d.isEncrypted) encrypted++;
-            else notEncrypted++;
+            // Encryption (treat null/undefined as unknown)
+            if (d.isEncrypted === true) encrypted++;
+            else if (d.isEncrypted === false) notEncrypted++;
+            else unknownEncrypted++;
 
             // Stale
             if (d.isStale) stale++;
@@ -88,6 +91,7 @@ const PageDevices = (function() {
             complianceRate: total > 0 ? Math.round((compliant / total) * 100 * 10) / 10 : 0,
             encryptedDevices: encrypted,
             notEncryptedDevices: notEncrypted,
+            unknownEncryptedDevices: unknownEncrypted,
             staleDevices: stale,
             certExpired: certExpired,
             certCritical: certCritical,
@@ -103,6 +107,62 @@ const PageDevices = (function() {
             osBreakdown: osBreakdown,
             manufacturerBreakdown: manufacturerBreakdown
         };
+    }
+
+    function normalizeSummary(summary, devices) {
+        var normalized = summary || {};
+
+        // Core counts (legacy collector keys)
+        if (normalized.totalDevices === undefined) normalized.totalDevices = Array.isArray(devices) ? devices.length : 0;
+        if (normalized.compliantDevices === undefined) normalized.compliantDevices = normalized.compliant || 0;
+        if (normalized.noncompliantDevices === undefined) normalized.noncompliantDevices = normalized.noncompliant || 0;
+        if (normalized.unknownDevices === undefined) normalized.unknownDevices = normalized.unknown || 0;
+
+        if (normalized.complianceRate === undefined) {
+            var total = normalized.totalDevices || 0;
+            normalized.complianceRate = total > 0 ? Math.round((normalized.compliantDevices / total) * 100 * 10) / 10 : 0;
+        }
+
+        // Encryption
+        if (normalized.encryptedDevices === undefined) normalized.encryptedDevices = normalized.encrypted || 0;
+        if (normalized.notEncryptedDevices === undefined) normalized.notEncryptedDevices = normalized.notEncrypted || 0;
+        if (normalized.unknownEncryptedDevices === undefined) normalized.unknownEncryptedDevices = normalized.unknownEncrypted || 0;
+
+        // Activity
+        if (normalized.staleDevices === undefined) normalized.staleDevices = normalized.stale || 0;
+
+        // Windows
+        if (normalized.win10Count === undefined) normalized.win10Count = normalized.windows10 || 0;
+        if (normalized.win11Count === undefined) normalized.win11Count = normalized.windows11 || 0;
+        if (normalized.winSupportedCount === undefined) normalized.winSupportedCount = normalized.windowsSupported || 0;
+        if (normalized.winUnsupportedCount === undefined) normalized.winUnsupportedCount = normalized.windowsUnsupported || 0;
+
+        // Ownership
+        if (normalized.corporateDevices === undefined) normalized.corporateDevices = normalized.corporate || 0;
+        if (normalized.personalDevices === undefined) normalized.personalDevices = normalized.personal || 0;
+
+        // Breakdowns: convert arrays to maps when needed
+        if (Array.isArray(normalized.osBreakdown)) {
+            var osMap = {};
+            normalized.osBreakdown.forEach(function(item) {
+                if (item && item.name !== undefined) osMap[item.name] = item.count || 0;
+            });
+            normalized.osBreakdown = osMap;
+        } else if (!normalized.osBreakdown) {
+            normalized.osBreakdown = {};
+        }
+
+        if (Array.isArray(normalized.manufacturerBreakdown)) {
+            var mfrMap = {};
+            normalized.manufacturerBreakdown.forEach(function(item) {
+                if (item && item.name !== undefined) mfrMap[item.name] = item.count || 0;
+            });
+            normalized.manufacturerBreakdown = mfrMap;
+        } else if (!normalized.manufacturerBreakdown) {
+            normalized.manufacturerBreakdown = {};
+        }
+
+        return normalized;
     }
 
     function switchTab(tab) {
@@ -904,7 +964,13 @@ const PageDevices = (function() {
 
         // Security
         html += '<div class="detail-section"><h4>Security</h4><dl class="detail-list">';
-        html += '<dt>Encrypted</dt><dd>' + (device.isEncrypted ? '<span class="text-success">Yes</span>' : '<span class="text-critical">No</span>') + '</dd>';
+        if (device.isEncrypted === true) {
+            html += '<dt>Encrypted</dt><dd><span class="text-success">Yes</span></dd>';
+        } else if (device.isEncrypted === false) {
+            html += '<dt>Encrypted</dt><dd><span class="text-critical">No</span></dd>';
+        } else {
+            html += '<dt>Encrypted</dt><dd><span class="text-muted">--</span></dd>';
+        }
         html += '<dt>Jailbroken/Rooted</dt><dd>' + formatJailbroken(device.jailBroken) + '</dd>';
         if (device.os === 'iOS') {
             html += '<dt>Supervised</dt><dd>' + (device.isSupervised ? '<span class="text-success">Yes</span>' : '<span class="text-warning">No</span>') + '</dd>';

@@ -57,34 +57,6 @@ param(
 . "$PSScriptRoot\..\lib\CollectorBase.ps1"
 
 # ============================================================================
-# LOCAL HELPER FUNCTIONS
-# ============================================================================
-
-function Get-CredentialStatus {
-    <#
-    .SYNOPSIS
-        Returns credential status based on the nearest expiry across all credentials.
-    .OUTPUTS
-        String: expired, critical, warning, healthy, no-credentials, or unknown.
-    #>
-    param(
-        [Parameter()]
-        [AllowNull()]
-        $DaysUntilExpiry
-    )
-
-    if ($null -eq $DaysUntilExpiry) {
-        return "no-credentials"
-    }
-
-    if ($DaysUntilExpiry -lt 0)  { return "expired" }
-    if ($DaysUntilExpiry -le 7)  { return "critical" }    # 7 days - urgent
-    if ($DaysUntilExpiry -le 30) { return "warning" }     # 30 days - warning
-    if ($DaysUntilExpiry -le 90) { return "attention" }   # 90 days - attention
-    return "healthy"
-}
-
-# ============================================================================
 # MAIN COLLECTION LOGIC
 # ============================================================================
 
@@ -143,7 +115,10 @@ try {
     # Build lookup by AppId for credential cross-reference
     $appRegLookup = @{}
     foreach ($app in $appRegistrations) {
-        $appRegLookup[$app.appId] = $app
+        $appId = Get-GraphPropertyValue -Object $app -PropertyNames @("appId", "AppId")
+        if ($appId) {
+            $appRegLookup[$appId] = $app
+        }
     }
 
     # -----------------------------------------------------------------------
@@ -182,8 +157,8 @@ try {
         try {
             # Handle both PascalCase and camelCase property names
             $spId = if ($sp.Id) { $sp.Id } else { $sp.id }
-            $spAppId = if ($sp.AppId) { $sp.AppId } else { $sp.appId }
-            $spDisplayName = if ($sp.DisplayName) { $sp.DisplayName } else { $sp.displayName }
+            $spAppId = Get-GraphPropertyValue -Object $sp -PropertyNames @("appId", "AppId")
+            $spDisplayName = Get-GraphPropertyValue -Object $sp -PropertyNames @("displayName", "DisplayName")
             $spAccountEnabled = if ($null -ne $sp.AccountEnabled) { $sp.AccountEnabled } else { $sp.accountEnabled }
             $spAppOwnerOrgId = if ($sp.AppOwnerOrganizationId) { $sp.AppOwnerOrganizationId } else { $sp.appOwnerOrganizationId }
             $spPublisherName = if ($sp.PublisherName) { $sp.PublisherName } else { $sp.publisherName }
@@ -245,7 +220,7 @@ try {
                         $startDt = if ($secret.StartDateTime) { $secret.StartDateTime } else { $secret.startDateTime }
                         $daysUntil = Get-DaysUntilDate -DateValue $endDt
                         $secrets += @{
-                            displayName = if ($secret.DisplayName) { $secret.DisplayName } else { $secret.displayName }
+                            displayName = Get-GraphPropertyValue -Object $secret -PropertyNames @("displayName", "DisplayName")
                             hint = if ($secret.Hint) { $secret.Hint } else { $secret.hint }
                             keyId = if ($secret.KeyId) { $secret.KeyId } else { $secret.keyId }
                             startDateTime = if ($startDt) { ([DateTime]$startDt).ToString("o") } else { $null }
@@ -268,7 +243,7 @@ try {
                         $startDt = if ($cert.StartDateTime) { $cert.StartDateTime } else { $cert.startDateTime }
                         $daysUntil = Get-DaysUntilDate -DateValue $endDt
                         $certificates += @{
-                            displayName = if ($cert.DisplayName) { $cert.DisplayName } else { $cert.displayName }
+                            displayName = Get-GraphPropertyValue -Object $cert -PropertyNames @("displayName", "DisplayName")
                             type = if ($cert.Type) { $cert.Type } else { $cert.type }
                             usage = if ($cert.Usage) { $cert.Usage } else { $cert.usage }
                             keyId = if ($cert.KeyId) { $cert.KeyId } else { $cert.keyId }
@@ -361,7 +336,9 @@ try {
             }
         }
         catch {
-            $errors += "Error processing $($sp.displayName ?? $sp.DisplayName ?? 'unknown'): $($_.Exception.Message)"
+            $errName = Get-GraphPropertyValue -Object $sp -PropertyNames @("displayName", "DisplayName")
+            if (-not $errName) { $errName = "unknown" }
+            $errors += "Error processing $errName: $($_.Exception.Message)"
         }
     }
 

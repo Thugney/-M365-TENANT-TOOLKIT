@@ -259,6 +259,14 @@ try {
                                         ruleName = $ASRRuleDefinitions[$ruleId]
                                         mode = $mode
                                     }
+
+                                    # Update summary for settings catalog policies
+                                    switch ($mode) {
+                                        "Block"    { $asrData.rulesSummary[$ruleId].blockCount++; $asrData.summary.rulesInBlock++ }
+                                        "Audit"    { $asrData.rulesSummary[$ruleId].auditCount++; $asrData.summary.rulesInAudit++ }
+                                        "Warn"     { $asrData.rulesSummary[$ruleId].warnCount++; $asrData.summary.rulesInWarn++ }
+                                        "Disabled" { $asrData.rulesSummary[$ruleId].disabledCount++; $asrData.summary.rulesDisabled++ }
+                                    }
                                 }
                             }
                         }

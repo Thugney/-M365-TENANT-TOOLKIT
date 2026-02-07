@@ -55,25 +55,6 @@ param(
 . "$PSScriptRoot\..\lib\CollectorBase.ps1"
 
 # ============================================================================
-# LOCAL HELPER FUNCTIONS
-# ============================================================================
-
-function Get-CredentialStatus {
-    <#
-    .SYNOPSIS
-        Determines credential status based on expiry.
-    #>
-    param([int]$DaysUntilExpiry)
-
-    if ($null -eq $DaysUntilExpiry) { return "unknown" }
-    if ($DaysUntilExpiry -lt 0) { return "expired" }
-    if ($DaysUntilExpiry -le 7) { return "critical" }
-    if ($DaysUntilExpiry -le 30) { return "warning" }
-    if ($DaysUntilExpiry -le 90) { return "attention" }
-    return "healthy"
-}
-
-# ============================================================================
 # MAIN COLLECTION LOGIC
 # ============================================================================
 
@@ -126,7 +107,7 @@ try {
         # Process password credentials (secrets)
         foreach ($secret in $app.passwordCredentials) {
             $daysUntilExpiry = Get-DaysUntilDate -DateValue $secret.endDateTime
-            $status = Get-CredentialStatus -DaysUntilExpiry $daysUntilExpiry
+            $status = Get-CredentialStatus -DaysUntilExpiry $daysUntilExpiry -NullStatus "unknown"
 
             $secrets += [PSCustomObject]@{
                 keyId           = $secret.keyId
@@ -161,7 +142,7 @@ try {
         # Process key credentials (certificates)
         foreach ($cert in $app.keyCredentials) {
             $daysUntilExpiry = Get-DaysUntilDate -DateValue $cert.endDateTime
-            $status = Get-CredentialStatus -DaysUntilExpiry $daysUntilExpiry
+            $status = Get-CredentialStatus -DaysUntilExpiry $daysUntilExpiry -NullStatus "unknown"
 
             $certificates += [PSCustomObject]@{
                 keyId           = $cert.keyId

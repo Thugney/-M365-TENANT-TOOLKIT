@@ -152,6 +152,9 @@ try {
                 if ($signIn.status.failureReason) {
                     $statusReason = $signIn.status.failureReason
                 }
+                elseif ($statusCode -ne 0) {
+                    $statusReason = "Error $statusCode"
+                }
             }
 
             $city = $null

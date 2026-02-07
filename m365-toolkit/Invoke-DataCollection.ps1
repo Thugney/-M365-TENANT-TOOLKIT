@@ -64,7 +64,7 @@ param(
 
     [Parameter()]
     [ValidateSet("UserData", "LicenseData", "GuestData", "MFAData", "AdminRoleData",
-                 "SignInData", "DeviceData", "AutopilotData", "DefenderData", "EnterpriseAppData",
+                 "DeletedUsers", "SignInData", "DeviceData", "AutopilotData", "DefenderData", "EnterpriseAppData",
                  "AuditLogData", "PIMData", "TeamsData", "SharePointData", "SecureScoreData",
                  "AppSignInData", "ConditionalAccessData", "CompliancePolicies", "ConfigurationProfiles",
                  "WindowsUpdateStatus", "BitLockerStatus", "AppDeployments", "EndpointAnalytics",
@@ -75,6 +75,8 @@ param(
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
+. "$PSScriptRoot\lib\CollectorBase.ps1"
 
 function Write-CollectionHeader {
     <#
@@ -135,69 +137,6 @@ function Write-CollectionSummary {
     Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor Gray
     Write-Host "  Total Duration: $("{0:N1}" -f $totalDuration) seconds" -ForegroundColor White
     Write-Host ""
-}
-
-function Invoke-GraphWithRetry {
-    <#
-    .SYNOPSIS
-        Executes a Graph API call with automatic retry on throttling.
-
-    .DESCRIPTION
-        Wraps Graph API calls with retry logic that handles HTTP 429
-        (Too Many Requests) responses. Uses exponential backoff starting
-        at 60 seconds with up to 5 retries, allowing the Graph SDK's own
-        internal retries to settle before our wrapper retries.
-
-    .PARAMETER ScriptBlock
-        The script block containing the Graph API call to execute.
-
-    .PARAMETER MaxRetries
-        Maximum number of retry attempts. Default is 5.
-
-    .PARAMETER BaseBackoffSeconds
-        Base backoff time in seconds. Doubled with each attempt (exponential). Default is 60.
-
-    .OUTPUTS
-        Returns the result of the Graph API call.
-
-    .EXAMPLE
-        $users = Invoke-GraphWithRetry -ScriptBlock { Get-MgUser -All }
-    #>
-    param(
-        [Parameter(Mandatory)]
-        [scriptblock]$ScriptBlock,
-
-        [Parameter()]
-        [int]$MaxRetries = 5,
-
-        [Parameter()]
-        [int]$BaseBackoffSeconds = 60
-    )
-
-    $attempt = 0
-    while ($attempt -le $MaxRetries) {
-        try {
-            return & $ScriptBlock
-        }
-        catch {
-            # Check if this is a throttling error (HTTP 429)
-            if ($_.Exception.Message -match "429|throttl|TooManyRequests|Too many retries") {
-                $attempt++
-                if ($attempt -gt $MaxRetries) {
-                    throw "Max retries ($MaxRetries) exceeded. Last error: $($_.Exception.Message)"
-                }
-
-                # Exponential backoff: 60s, 120s, 240s, 480s, 960s
-                $waitSeconds = $BaseBackoffSeconds * [Math]::Pow(2, $attempt - 1)
-                Write-Host "    ⚠ Throttled by Graph API. Waiting ${waitSeconds}s (attempt $attempt/$MaxRetries)..." -ForegroundColor Yellow
-                Start-Sleep -Seconds $waitSeconds
-            }
-            else {
-                # Not a throttling error, rethrow immediately
-                throw
-            }
-        }
-    }
 }
 
 function Get-ConfigValidation {
@@ -536,6 +475,7 @@ $collectors = @(
     @{ Name = "Get-GuestData";     Script = "Get-GuestData.ps1";     Output = "guests.json" },
     @{ Name = "Get-MFAData";       Script = "Get-MFAData.ps1";       Output = "mfa-status.json" },
     @{ Name = "Get-AdminRoleData"; Script = "Get-AdminRoleData.ps1"; Output = "admin-roles.json" },
+    @{ Name = "Get-DeletedUsers";  Script = "Get-DeletedUsers.ps1";  Output = "deleted-users.json" },
     # Security & risk
     @{ Name = "Get-SignInData";    Script = "Get-SignInData.ps1";    Output = "risky-signins.json" },
     @{ Name = "Get-SignInLogs";    Script = "Get-SignInLogs.ps1";    Output = "signin-logs.json" },
@@ -678,6 +618,9 @@ $summary = @{
     adminCount = 0
     guestCount = 0
     staleGuests = 0
+    deletedUsers = 0
+    deletedUsersCritical = 0
+    deletedUsersHigh = 0
     totalDevices = 0
     compliantDevices = 0
     staleDevices = 0
@@ -711,6 +654,14 @@ try {
         $guests = Get-Content $guestsPath -Raw | ConvertFrom-Json
         $summary.guestCount = $guests.Count
         $summary.staleGuests = ($guests | Where-Object { $_.isStale }).Count
+    }
+
+    $deletedUsersPath = Join-Path $dataPath "deleted-users.json"
+    if (Test-Path $deletedUsersPath) {
+        $deletedUsers = Get-Content $deletedUsersPath -Raw | ConvertFrom-Json
+        $summary.deletedUsers = $deletedUsers.Count
+        $summary.deletedUsersCritical = ($deletedUsers | Where-Object { $_.urgency -eq "Critical" }).Count
+        $summary.deletedUsersHigh = ($deletedUsers | Where-Object { $_.urgency -eq "High" }).Count
     }
 
     $devicesPath = Join-Path $dataPath "devices.json"
@@ -764,6 +715,8 @@ $metadata = @{
     status = if ($collectorResults.Values | Where-Object { -not $_.Success }) { "partial" } else { "completed" }
     collectors = @()
     summary = $summary
+    thresholds = $configContent.thresholds
+    licenseOverlapRules = $configContent.licenseOverlapRules
     version = "1.0.0"
 }
 

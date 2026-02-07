@@ -158,6 +158,7 @@ try {
 
                     $memberObj = [PSCustomObject]@{
                         id                  = $memberId
+                        userId              = $memberId
                         displayName         = $memberName
                         memberType          = "User"
                         userPrincipalName   = $memberUpn

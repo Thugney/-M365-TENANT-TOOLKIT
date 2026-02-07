@@ -104,22 +104,17 @@ try {
 
     foreach ($user in $deletedUsers) {
         # Handle both PascalCase (cmdlet) and camelCase (direct API) property names
-        $userId = if ($user.Id) { $user.Id } else { $user.id }
-        $upn = if ($user.UserPrincipalName) { $user.UserPrincipalName } else { $user.userPrincipalName }
-        $displayName = if ($user.DisplayName) { $user.DisplayName } else { $user.displayName }
-        $mail = if ($user.Mail) { $user.Mail } else { $user.mail }
-        $userType = if ($user.UserType) { $user.UserType } else { $user.userType }
-        $department = if ($user.Department) { $user.Department } else { $user.department }
-        $jobTitle = if ($user.JobTitle) { $user.JobTitle } else { $user.jobTitle }
+        $userId = Get-GraphPropertyValue -Object $user -PropertyNames @("id", "Id")
+        $upn = Get-GraphPropertyValue -Object $user -PropertyNames @("userPrincipalName", "UserPrincipalName")
+        $displayName = Get-GraphPropertyValue -Object $user -PropertyNames @("displayName", "DisplayName")
+        $mail = Get-GraphPropertyValue -Object $user -PropertyNames @("mail", "Mail")
+        $userType = Get-GraphPropertyValue -Object $user -PropertyNames @("userType", "UserType")
+        $department = Get-GraphPropertyValue -Object $user -PropertyNames @("department", "Department")
+        $jobTitle = Get-GraphPropertyValue -Object $user -PropertyNames @("jobTitle", "JobTitle")
 
         # Get deletion timestamp
         $deletedDateTime = $null
-        if ($user.DeletedDateTime) {
-            $deletedDateTime = $user.DeletedDateTime
-        }
-        elseif ($user.deletedDateTime) {
-            $deletedDateTime = $user.deletedDateTime
-        }
+        $deletedDateTime = Get-GraphPropertyValue -Object $user -PropertyNames @("deletedDateTime", "DeletedDateTime")
 
         # Calculate days until permanent deletion (30 days from deletion)
         $daysSinceDeletion = $null

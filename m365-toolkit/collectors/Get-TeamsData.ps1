@@ -75,33 +75,24 @@ try {
     Write-Host "      Fetching Teams activity report..." -ForegroundColor Gray
 
     $activityData = @{}
-    $tempCsvPath = Join-Path ([System.IO.Path]::GetTempPath()) "teams-activity-$((Get-Date).ToString('yyyyMMddHHmmss')).csv"
+    $reportPeriod = Get-ReportPeriod -Days $inactiveThreshold
 
     try {
-        Invoke-GraphWithRetry -ScriptBlock {
-            Invoke-MgGraphRequest -Method GET `
-                -Uri "https://graph.microsoft.com/v1.0/reports/getTeamsTeamActivityDetail(period='D30')" `
-                -OutputFilePath $tempCsvPath
-        } -OperationName "Teams activity report"
-
-        if (Test-Path $tempCsvPath) {
-            $reportRows = Import-Csv -Path $tempCsvPath
-            foreach ($row in $reportRows) {
-                $teamId = $row.'Team Id'
-                if ($teamId) {
-                    $activityData[$teamId] = @{
-                        teamName       = $row.'Team Name'
-                        lastActivity   = $row.'Last Activity Date'
-                        guestCount     = if ($row.'Guests') { [int]$row.'Guests' } else { 0 }
-                        activeUsers    = if ($row.'Active Users') { [int]$row.'Active Users' } else { 0 }
-                        activeChannels = if ($row.'Active Channels') { [int]$row.'Active Channels' } else { 0 }
-                        postMessages   = if ($row.'Post Messages') { [int]$row.'Post Messages' } else { 0 }
-                    }
+        $reportRows = Get-ReportCsvData -Uri "https://graph.microsoft.com/v1.0/reports/getTeamsTeamActivityDetail(period='$reportPeriod')" -OperationName "Teams activity report" -TempPrefix "teams-activity"
+        foreach ($row in $reportRows) {
+            $teamId = $row.'Team Id'
+            if ($teamId) {
+                $activityData[$teamId] = @{
+                    teamName       = $row.'Team Name'
+                    lastActivity   = $row.'Last Activity Date'
+                    guestCount     = if ($row.'Guests') { [int]$row.'Guests' } else { 0 }
+                    activeUsers    = if ($row.'Active Users') { [int]$row.'Active Users' } else { 0 }
+                    activeChannels = if ($row.'Active Channels') { [int]$row.'Active Channels' } else { 0 }
+                    postMessages   = if ($row.'Post Messages') { [int]$row.'Post Messages' } else { 0 }
                 }
             }
-            Remove-Item -Path $tempCsvPath -Force -ErrorAction SilentlyContinue
-            Write-Host "      Activity report: $($activityData.Count) teams" -ForegroundColor Gray
         }
+        Write-Host "      Activity report ($reportPeriod): $($activityData.Count) teams" -ForegroundColor Gray
     }
     catch {
         Write-Host "      Warning: Could not fetch activity report: $($_.Exception.Message)" -ForegroundColor Yellow

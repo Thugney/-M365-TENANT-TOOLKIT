@@ -107,8 +107,8 @@ try {
         # Handle both PascalCase (cmdlet) and camelCase (direct API) property names
         # Core identity
         $recordId = if ($record.Id) { $record.Id } else { $record.id }
-        $upn = if ($record.UserPrincipalName) { $record.UserPrincipalName } else { $record.userPrincipalName }
-        $displayName = if ($record.UserDisplayName) { $record.UserDisplayName } else { $record.userDisplayName }
+        $upn = Get-GraphPropertyValue -Object $record -PropertyNames @("userPrincipalName", "UserPrincipalName")
+        $displayName = Get-GraphPropertyValue -Object $record -PropertyNames @("userDisplayName", "UserDisplayName")
         $userType = if ($record.UserType) { $record.UserType } else { $record.userType }
 
         # MFA status

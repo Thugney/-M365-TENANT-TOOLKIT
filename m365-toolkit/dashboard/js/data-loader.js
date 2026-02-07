@@ -35,6 +35,7 @@ const DataLoader = (function() {
         guests: [],
         mfaStatus: [],
         adminRoles: [],
+        deletedUsers: [],
         // Security & risk
         riskySignins: [],
         signinLogs: null,
@@ -75,6 +76,7 @@ const DataLoader = (function() {
         guests: 'data/guests.json',
         mfaStatus: 'data/mfa-status.json',
         adminRoles: 'data/admin-roles.json',
+        deletedUsers: 'data/deleted-users.json',
         // Security & risk
         riskySignins: 'data/risky-signins.json',
         signinLogs: 'data/signin-logs.json',
@@ -320,6 +322,10 @@ const DataLoader = (function() {
             const devices = Array.isArray(dataStore.devices) ? dataStore.devices : [];
             const alerts = Array.isArray(dataStore.defenderAlerts) ? dataStore.defenderAlerts : [];
             const licenseSkus = Array.isArray(dataStore.licenseSkus) ? dataStore.licenseSkus : [];
+            const thresholds = (dataStore.metadata && dataStore.metadata.thresholds) ? dataStore.metadata.thresholds : {};
+            const spHighStorageThreshold = (typeof thresholds.highStorageThresholdGB === 'number' && thresholds.highStorageThresholdGB > 0)
+                ? thresholds.highStorageThresholdGB
+                : 20;
 
             const compliantDevices = devices.filter(d => d.complianceState === 'compliant').length;
             const staleDevices = devices.filter(d => d.isStale).length;
@@ -362,7 +368,9 @@ const DataLoader = (function() {
                 inactiveSites: (dataStore.sharepointSites || []).filter(s => s.isInactive && !s.isPersonalSite).length,
                 totalStorageGB: Math.round(((dataStore.sharepointSites || []).reduce((sum, s) => sum + (s.storageUsedGB || 0), 0)) * 10) / 10,
                 groupConnectedSites: (dataStore.sharepointSites || []).filter(s => s.isGroupConnected).length,
-                highStorageSites: (dataStore.sharepointSites || []).filter(s => (s.storageUsedGB || 0) >= 20).length,
+                highStorageSites: (dataStore.sharepointSites || []).filter(s =>
+                    !s.isPersonalSite && ((s.flags && s.flags.includes('high-storage')) || (s.storageUsedGB || 0) >= spHighStorageThreshold)
+                ).length,
                 externalSharingSites: (dataStore.sharepointSites || []).filter(s => !s.isPersonalSite && s.hasExternalSharing).length,
                 anonymousLinkSites: (dataStore.sharepointSites || []).filter(s => !s.isPersonalSite && (s.anonymousLinkCount || 0) > 0).length,
                 noLabelSites: (dataStore.sharepointSites || []).filter(s => !s.isPersonalSite && !s.sensitivityLabelId).length,
